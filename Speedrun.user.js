@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      0.50α
+// @version      0.50a
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -267,13 +267,13 @@
     }
 
     function firstNonNull(...args) {
-        return args.find(element => (element !== undefined && element!== null));
+        return args.find(element => !(element == undefined));
     }
 
     // convert to an array if it isn't already
     // undefined if undefined
     function arrayify(o) {
-        return (o === undefined || o === null) ? o : Array.isArray(o) ? o : [o];
+        return (o == undefined) ? o : Array.isArray(o) ? o : [o];
     }
 
     //find elements of an array/str that start with a prefix
