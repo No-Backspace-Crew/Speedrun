@@ -70,6 +70,7 @@
 
     dayjs.extend(window.dayjs_plugin_utc);
 
+
     let regionMap = {
         "US East (N. Virginia)": "us-east-1",
         "US East (Ohio)": "us-east-2",
@@ -118,6 +119,7 @@
 
     let templates = {
         settings : `~~~g_usernameOverride=Username Override~~~
+                    ~~~g_role=Role {"default":"speedrun-ReadOnly"}~~~
                     ~~~g_aws-accountId=AWS Account Id for Classic~~~`,
         copy : "${content}",
         raw : {
@@ -188,6 +190,19 @@ let tabNames = {
     "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z"
 
 }
+
+let userConfig = {
+        "services" : {
+            "${user}" : {
+                "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
+                "config" : {
+                    "aws" : {
+                        "account" : GM_getValue('g_aws-accountId', undefined)
+                    }
+                }
+            }
+        }
+    };
 
 $("head").append(`<style>${GM_getResourceText('select2css')}
     /* Select2 theming to match github */
@@ -594,7 +609,7 @@ function getServiceDropdownName(serviceName) {
     //Only pretty up final name in extension as service name for dropdown
     //A = A
     //A.B.C = C
-    return prettyCamelCase(serviceName.replace('.*\.',''));
+    return prettyCamelCase(serviceName.replace('${user}',GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
 }
 
 async function nope(content, preview) {
@@ -829,7 +844,7 @@ async function nope(content, preview) {
                 console.log('Console url', consoleURL);
                 let url = consoleURL;
                 if(needsNewCreds(variables)) {
-                    let url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
+                    url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
                     url.searchParams.append('role',variables.roleArn);
                     url.searchParams.append('destination',consoleURL);
                     url = url.toString();
@@ -1022,7 +1037,7 @@ function hasElements(arr) {
 }
 
 async function buildConfig() {
-    pageConfig = {};
+    pageConfig = userConfig.services['${user}'].config.aws.account ? _.cloneDeep(userConfig) : {};
     const configs = [];
     for (const pre of $("div.markdown-body pre")){
         const details = parseContent($(pre).text(), SR_CONFIG);
