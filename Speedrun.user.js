@@ -137,8 +137,8 @@
         },
         federateService : {
             //Sort object by keys https://github.com/lodash/lodash/issues/1459
-            "value":"~~~path=Service {\"type\":\"select\",\"options\":\"${_(consoleOptions).toPairs().sortBy(0).fromPairs().value()}\",\"suppress\":true}~~~\n${path.includes('?') ? path : `${path}/home?region=${region}`}",
-            "consoleOptions": {
+            value:"~~~path=Service {\"type\":\"select\",\"options\":\"${_(consoleOptions).toPairs().sortBy(0).fromPairs().value()}\",\"suppress\":true}~~~\n${path.includes('?') ? path : `${path}/home?region=${region}`}",
+            consoleOptions: {
                 "API Gateway" : "apigateway",
                 "Athena": "athena/home?region=${region}#query",
                 "CloudFormation": "cloudformation",
@@ -166,32 +166,32 @@
         },
         link : "${lastLine(content)}",
         DDBItem: {
-            "type" : "federate",
-            "value" : "dynamodbv2/home?region=${region}#edit-item?table=${tableName}&itemMode=2&pk=${key}&sk${typeof searchKey === 'undefined' ? '' : `=${searchKey}`}&route=ROUTE_ITEM_EXPLORER"
+            type : "federate",
+            value : "dynamodbv2/home?region=${region}#edit-item?table=${tableName}&itemMode=2&pk=${key}&sk${typeof searchKey === 'undefined' ? '' : `=${searchKey}`}&route=ROUTE_ITEM_EXPLORER"
         },
         CWLInsights: {
-        type : "federate",
-        value : "cloudwatch/home?region=${region}#logsV2:logs-insights$3FqueryDetail=~(end~0~start~${typeof start === 'undefined' ? '-3600' : start}~timeType~'RELATIVE~unit~'seconds~tz~'UTC~editorString~'${content}~isLiveTail~false~source~(~'${join(logGroups,\"~'\")}))",
-    }
+            type : "federate",
+            value : "cloudwatch/home?region=${region}#logsV2:logs-insights$3FqueryDetail$3D$257E$2528end$257E0$257Estart$257E${typeof start === 'undefined' ? '-3600' : start}$257EtimeType$257E$2527RELATIVE$257Eunit$257E$2527seconds$257EeditorString$257E$2527${encodeCloudWatchInsightsParam(content)}$257EisLiveTail$257Efalse$257Esource$257E$2528${encodeCloudWatchURL(prepend(`~'`,arrayify(logGroups).map(x => encodeCloudWatchInsightsParam(x))).join(''))}$2529$2529"
+        }
     };
 
- var pageConfig = {};
+    var pageConfig = {};
 
-//https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
-RegExp.escape = function(s) {
-    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-};
+    //https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
+    RegExp.escape = function(s) {
+        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
 
-let user = $("meta[name='user-login']").attr("content");
+    let user = $("meta[name='user-login']").attr("content");
 
-let tabNames = {
-    "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
-    "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
-    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z"
+    let tabNames = {
+        "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
+        "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
+        "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z"
 
-}
+    }
 
-let userConfig = {
+    let userConfig = {
         "services" : {
             "${user}" : {
                 "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
@@ -204,7 +204,7 @@ let userConfig = {
         }
     };
 
-$("head").append(`<style>${GM_getResourceText('select2css')}
+    $("head").append(`<style>${GM_getResourceText('select2css')}
     /* Select2 theming to match github */
 
         .select2-container--default {
@@ -246,9 +246,9 @@ $("head").append(`<style>${GM_getResourceText('select2css')}
         }
         </style>`);
 
-//let toolbar = $('<div/>',{"css":{"position":"fixed","top":"0","right":"0","padding":"2px","z-index":"50","border-radius":"5px", "background": "rgba(0, 0, 0, .6)"}});
-let toolbar = $('<div/>',{"id":"srToolbar","css":{"display":"none", "position":"fixed","top":"0","left": "50%","transform":"translate(-50%, 0)","padding":"2px","z-index":"50","border-radius":"5px", "background": "var(--color-header-bg)"}});
-toolbar.append(`
+    //let toolbar = $('<div/>',{"css":{"position":"fixed","top":"0","right":"0","padding":"2px","z-index":"50","border-radius":"5px", "background": "rgba(0, 0, 0, .6)"}});
+    let toolbar = $('<div/>',{"id":"srToolbar","css":{"display":"none", "position":"fixed","top":"0","left": "50%","transform":"translate(-50%, 0)","padding":"2px","z-index":"50","border-radius":"5px", "background": "var(--color-header-bg)"}});
+    toolbar.append(`
       <a id='toggleSRToolbar' href="#"><img width="25" height="25" style="vertical-align:middle" src="${GM_info.script.icon}"/></a>
       <span id='toolbar'>
       <span class='needsService'>
@@ -265,7 +265,7 @@ toolbar.append(`
       </span>
     `);
 
-$("body").append(toolbar).append(`
+    $("body").append(toolbar).append(`
 <div class="position-fixed top-0 right-0 d-none" style='"top":"0","left": "50%","transform":"translate(-50%, 0)"'id='snackbar'>
   <div class="Toast Toast--success anim-fade-in fast">
     <span class="Toast-icon">
@@ -296,829 +296,850 @@ $("body").append(toolbar).append(`
 </details>`);
 
 
-let noop = function() {}
+    let noop = function() {}
 
-function toast(str) {
-    let snackbar = $("#snackbar");
-    $('#toast').html(str);
-    snackbar.removeClass('d-none');
-    setTimeout(function(){ snackbar.addClass('d-none')}, 2500);
-}
-
-function nullSafe(obj) {
-    return firstNonNull(obj, {});
-}
-
-//set mustExist to true if region must exist in regionNameMap
-function getPartition(region, mustExist) {
-    if(!region || (mustExist && !(regionNameMap[region]))) {
-        return undefined;
+    function toast(str) {
+        let snackbar = $("#snackbar");
+        $('#toast').html(str);
+        snackbar.removeClass('d-none');
+        setTimeout(function(){ snackbar.addClass('d-none')}, 2500);
     }
-    for (const [key, value] of Object.entries(partitionPrefixMap)) {
-        if (region.startsWith(key)) {
-            return value;
-        }
+
+    function nullSafe(obj) {
+        return firstNonNull(obj, {});
     }
-    return "aws";
-}
 
-function firstNonNull(...args) {
-    return args.find(element => !(element == undefined));
-}
-
-// convert to an array if it isn't already
-// undefined if undefined
-function arrayify(o) {
-    return o == undefined ? o : Array.isArray(o) ? o : [o];
-}
-
-//calls a method on an object or each member of an array
-function filter(method, param, o) {
-    return o == undefined ? o : Array.isArray(o) ? o.filter(str => str[method](param)) : (o[method](param) ? o : undefined);
-}
-//find elements of an array/str that start with a prefix
-function prefixSearch(prefix, o){
-    return filter('startsWith', prefix, o);
-}
-
-//find elements of an array/str that includes a string
-function includesSearch(includes, o){
-    return filter('includes', includes, o);
-}
-
-//find elements of an array/str that contain a regex
-function regexSearch(regex, o){
-    return o == undefined ? o : (Array.isArray(o) ? o.filter(str => regex.test(str)) : (regex.test(o) ? o : undefined));
-}
-
-//prepend a string to each element of an array/str
-function prepend(prefix, o){
-    return o == undefined ? o : (Array.isArray(o) ? o.map(str => prefix + str) : prefix + o);
-}
-
-//return the last non-whitespace line of a string
-function lastLine(str) {
-    return str ? str.trim().match(/.*$/) : str;
-}
-
-function parseJSON(str, name) {
-    try {
-        return JSON.parse(str);
-    } catch(err) {
-        alertAndThrow("Unable to parse '" + (name || str) + "' due to: " + err, err);
-    }
-}
-
-function jsonWithoutInternalVariables(variables) {
-    //return prettyJSON(variables);
-    return prettyJSON(variables,function replacer(key, value) { return (key=="internal") ? undefined : value;});
-}
-
-function prettyJSON(obj, replacer, spaces) {
-    return JSON.stringify(obj, replacer, spaces || 2);
-}
-
-//https://stackoverflow.com/questions/38304401/javascript-check-if-dictionary
-function isDict(d) {
-    return !(d == undefined) && d.constructor == Object;
-}
-
-function reverseMap(obj) {
-    return _.invert(obj);
-}
-
-function isValidVarName( name ) {
-    try {
-        Function('var ' + name);
-    } catch( e ) {
-        return false;
-    }
-    return true;
-}
-
-function cachedValidVarName(name) {
-    return firstNonNull(varNameCache[name], varNameCache.set(name, isValidVarName(name)).get(name));
-}
-
-
-
-//https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
-function interpolate(tpl, variables, suppressErrors) {
-    try {
-        sessionVariables = variables;
-        var keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
-            //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
-            fn = new Function(...keys,`return \`${tpl}\`;`);
-
-        var result = fn(...keys.map(x => variables[x]));
-        if(!suppressErrors && hasDOMContent(result)){
-            throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
-        }
-        return result;
-    } catch(err) {
-        if(suppressErrors) {
+    //set mustExist to true if region must exist in regionNameMap
+    function getPartition(region, mustExist) {
+        if(!region || (mustExist && !(regionNameMap[region]))) {
             return undefined;
-        } else {
-            alertAndThrow(`${err} while parsing:\n${tpl}`, err);
         }
-    }
-};
-
-function retrieve(path) {
-    return new Promise((resolve,reject) => {
-        let [,root] = window.location.href.match(/^(.*?\/wiki)\//);
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: `${root}/${path}`,
-            onload: function(response) {
-                resolve(response.responseText);
-            },
-            onerror: function(err) {
-                reject(err);
-            }
-        });
-    });
-}
-
-function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
-    let offset = str.indexOf('${');
-    while(offset>-1 && !variables.raw) {
-        let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
-        let toReplace = "${" + matches[0] + "}";
-        let replacement = wrap(interpolate(toReplace, variables, suppressErrors), toReplace);
-        str = str.replace(toReplace,replacement);
-        offset = str.indexOf('${',offset+replacement.length);
-    }
-    return str;
-}
-
-//recursively interpolate variables in arrays and dicts
-function deepInterpolate(obj, variables, suppressErrors){
-    if (_.isString(obj) && obj.match(LITERAL)) {
-        return interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
-    } else if(isDict(obj)){
-        for (const [key, value] of Object.entries(obj)) {
-            var result = deepInterpolate(value, variables, suppressErrors);
-            if(result) {
-                obj[key] = result;
+        for (const [key, value] of Object.entries(partitionPrefixMap)) {
+            if (region.startsWith(key)) {
+                return value;
             }
         }
-    } else if(Array.isArray(obj)) {
-        obj = obj.map(item => deepInterpolate(item, variables, suppressErrors));
-    }
-    return obj;
-}
-
-function hasDOMContent(str) {
-    return !(str == undefined) && HAS_DOM_CONTENT_REGEX.test(str);
-}
-
-function isWiki() {
-    return WIKI_REGEX.test(location.pathname);
-}
-
-function showToolbarOnWiki() {
-    isWiki() ? $("#srToolbar").show() : $("#srToolbar").hide()
-}
-
-function escapeHTMLQuotesAnd$(str){
-    return str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m]));
-}
-
-function escapeHTMLStartTags(str){
-    return str ? _.escape(str) : str;
-}
-
-function getPrompts(content, tpl){
-    const contentPrompts = [...content.matchAll(PROMPT_G)].map(x => ({location: 'content', prompt: x }));
-    const templatePrompts = [...firstNonNull(tpl,"").matchAll(PROMPT_G)].map(x => ({location: 'template', prompt: x}));
-    return _.concat(contentPrompts, templatePrompts);
-}
-
-function getURLSearchParam(key){
-    return new URLSearchParams(window.location.search).get(key);
-}
-
-function getPromptInfo(prompt) {
-    let variable = prompt[1];
-    let text = prompt[2];
-    let configuration = prompt[3] ? parseJSON(prompt[3]) : {};
-    let isGlobal = variable && variable.startsWith(GLOBAL_PREFIX);
-    let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
-    let sPrompt = localStorage.getItem(text);
-    //TODO add ability to override value with url search param getURLSearchParam. Figure out how to only use that value once.
-    var sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,sVariable,sPrompt,configuration.default,"");
-    return {raw:prompt[0], variable:variable, prompt: text, configuration: configuration, value: sessionValue, default: configuration.default, condition: configuration.condition};
-}
-
-
-function getService() {
-    return $('#service').val();
-}
-
-function getRegion() {
-    return $('#region').val();
-}
-
-function getInputValue(input) {
-    return input.is(':checkbox') ? input.is(':checked') : input.val();
-}
-
-function setInputValue(input, value) {
-    input.is(':checkbox') ? input.prop('checked', value) : input.val(value);
-}
-
-var exposedFunctions = {
-    lastLine : lastLine,
-    window : noop,
-    alert : noop,
-    document : noop,
-    __proto__ : noop,
-    eval : noop,
-    dayjs : dayjs,
-    prettyJSON : prettyJSON,
-    prefixSearch : prefixSearch,
-    firstNonNull: firstNonNull,
-    _ : _
-}
-
-function injectCustomFunctions(variables) {
-    if(isDict(variables)) {
-        for (const [key, value] of Object.entries(variables)) {
-            if(key.startsWith('function:')) {
-                const functionName = key.replace('function:','');
-                const args = arrayify(firstNonNull(value.args,"str"));
-                const body = value.body;
-                if(!body) {
-                    throw new Error(`function ${key} must have a body`);
-                }
-                delete variables[key];
-                variables[functionName] = new Function(...args, body);
-            } else {
-                variables[key] = injectCustomFunctions(value);
-            }
-        }
-    } else if(Array.isArray(variables)) {
-        return variables.map(item => injectCustomFunctions(item));
-    }
-    return variables;
-}
-
-function overlayExposedFunctions(variables) {
-    return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions);
-}
-
-// get variables for service and smash them together allowing for extension
-// if the service name is warp.federation.support
-// overlay the variables of warp, with warp.federation and with warp.federation.support
-function getServiceVariables(service, services) {
-    return service ? service.split('.').reduceRight((variables, previous, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(index).join('.')]), {}) : {};
-}
-
-// get variables for templates and smash them together allowing for extension
-// if the template name is copy.raw.warp
-// overlay the variables of copy with raw and with warp.
-function getTemplateVariables(template, templates) {
-    return template ? template.split('.').reduce((variables, previous, index, arr) => {
-        let templateValues = nullSafe(templates)[arr[index]];
-        if(undefined === templateValues) {
-            throw new Error(`template named: ${arr[index]} not defined`);
-        }
-        if(_.isString(templateValues)) {
-            templateValues = {value: templateValues};
-            if(index == 0) {
-                templateValues.type = firstNonNull(templateValues.value,"").startsWith('http') ? 'link' : arr[index];
-            }
-        } else {
-            //make sure creds is set if this is federate
-            if(arr[index].startsWith('federate')) {
-                templateValues.creds = true;
-                templateValues.type = firstNonNull(templateValues.type, 'federate');
-            }
-        }
-        return $.extend(true, variables, templateValues)}, {})
-    : {} ;
-}
-
-//Add spaces before uppercase letters in value
-function prettyCamelCase(str) {
-    return str.replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-
-function getServiceDropdownName(serviceName) {
-    //Only pretty up final name in extension as service name for dropdown
-    //A = A
-    //A.B.C = C
-    return prettyCamelCase(serviceName.replace('${user}',GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
-}
-
-async function nope(content, preview) {
-    let pageVariables = _.cloneDeep(nullSafe(pageConfig));
-    delete pageVariables.templates;
-    delete pageVariables.services;
-    let variables = {internal:{}, user: GM_getValue("g_usernameOverride") || user, region: getRegion(), service: getService(), content: content.replace(HEADER,"").replace(/\s+$/,"")};
-    let details = parseContent(content);
-    let templateVariables;
-
-    try {
-        templateVariables = getTemplateVariables(details.template, templates);
-    } catch(err) {
-        //rethrow if
-        alertAndThrow(err);
+        return "aws";
     }
 
-    variables.internal.template = templateVariables.value || "${content}";
-    variables.internal.templateType = templateVariables.type;
-    delete templateVariables.value;
-    delete templateVariables.type;
-
-    let serviceVariables = _.cloneDeep(getServiceVariables(variables.service, pageConfig.services));
-
-
-    variables.internal.templateName = details.template
-    variables.partition = getPartition(variables.region, true);
-    let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.config)[variables.partition]) : {};
-    let regionVariables = variables.region ? nullSafe(nullSafe(serviceVariables.config)[variables.region]) : {};
-    delete serviceVariables.config
-
-    const entryVariables = nullSafe(details.variables);
-
-    //Note, there are a few variables that are always defined on web pages like name.
-    //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
-
-    variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables, entryVariables);
-    variables = overlayExposedFunctions(variables);
-
-    if(variables.stripComments || !firstNonNull(variables.raw, false) && !preview) {
-        //rip out comments
-        variables.content = variables.content.replace(COMMENT_G, function(prompt) {
-            const [,before,,,,after] = prompt.match(COMMENT);
-            const leadingContent = firstNonNull(before,'').trim();
-            return `${leadingContent.length ? leadingContent.concat(firstNonNull(after,'')) : ''}`;
-        });
-        //if / is escaped so it isn't treated as a comment, unescape it
-        variables.content = variables.content.replace('&sol;','/');
+    function firstNonNull(...args) {
+        return args.find(element => !(element == undefined));
     }
 
-    variables.internal.prompts = getPrompts(content, variables.internal.template);
-
-
-    if (!preview) {
-        if(hasElements(variables.internal.prompts)) {
-            const div = $('<div/>');
-            const table = $('<table/>');
-            div.append(table);
-            variables.internal.prompts.forEach(prompt => {
-                const info = getPromptInfo(prompt.prompt);
-                const row = $('<tr/>');
-                const header = $('<td/>', {class: 'p-2'})
-                const label = $(`<label class='v-align-top float-right'>${escapeHTMLStartTags(info.prompt)}</label>`);
-                header.append(label);
-                row.append(header);
-                var input = undefined;
-                info.interpolatedDefault = firstNonNull(interpolate(firstNonNull(info.default,""),variables, true), info.default);
-                info.interpolatedValue = firstNonNull(interpolate(firstNonNull(info.value,""),variables, true), info.value);
-                info.location = prompt.location;
-                switch(info.configuration.type) {
-                    case "checkbox":
-                        input = $(`<input type='checkbox'/>`);
-                        setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
-                        break;
-                    case "select":
-                        var options = info.configuration.options;
-                        if(options && (typeof options === 'string')) {
-                            var literal = options.match(LITERAL);
-                            if(literal){
-                                options = interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
-                            }
-                            options = parseJSON(options);
-                        }
-
-                        if(isDict(options) || hasElements(options)){
-                            input = $("<select>");
-                            if(Array.isArray(options)){
-                                //convert to a map
-                                options = _.zipObject(options, options);
-                            }
-                            Object.entries(options).forEach(([key, value]) => {
-                                input.append($(`<option value='${value}' ${value===info.interpolatedValue ? "selected" : ""}>${key}</option>`));
-                            });
-                        } else {
-                            alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
-                        }
-                        break;
-                    case "textarea":
-                        input = $('<textarea/>', {rows:"5",cols:"40"});
-                        input.val(info.interpolatedValue);
-                        break;
-                    default:
-                        input = $('<input/>');
-                        input.val(info.interpolatedValue);
-                        break;
-                }
-                input.data('prompt', info);
-                var col = $('<td/>', {class: 'p-2'})
-                col.append(input);
-                row.append(col);
-                col = $('<td/>', {class: 'p-2'})
-                if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
-                    const text = info.interpolatedDefault;
-                    const button = $(`<button class="btn btn-sm Truncate v-align-top" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
-                    button.data('prompt', info);
-                    button.data('source', input);
-                    button.prop('disabled', info.interpolatedValue === text);
-                    input.on('input', function() {
-                        button.prop('disabled', getInputValue(input) === button.data("prompt").interpolatedDefault);
-                    });
-                    button.on("click", function() {
-                        setInputValue($(button.data('source')), button.data('prompt').interpolatedDefault);
-                        button.prop('disabled', true);
-                    });
-                    col.append(button);
-                }
-                row.append(col);
-                table.append(row);
-            });
-            try {
-                await dialog(div, variables.internal.templateName === 'settings' ? `Speedrun V${GM_info.script.version} Settings` : 'Input', function() {
-                    $('#srModal :input' ).not(':input[type=button],button').each(function() {
-                        const prompt = $(this).data('prompt');
-                        if(prompt) {
-                            const value = getInputValue($(this));
-                            var transformedValue = value;
-                            if(prompt.configuration.transform){
-                                console.log('Transform:', prompt.configuration.transform);
-                                console.log('Value Before:', value);
-                                variables.value = value;
-                                transformedValue = interpolate(`\${${prompt.configuration.transform}}`, variables, false);
-                                console.log('Value After:', transformedValue);
-                            }
-                            if(prompt.configuration.cast){
-                                switch(prompt.configuration.cast){
-                                    case "json":
-                                        transformedValue = parseJSON(transformedValue);
-                                        break;
-                                    case "Number":
-                                        transformedValue = Number(transformedValue);
-                                        break;
-                                    case "Boolean":
-                                        transformedValue = Boolean(transformedValue);
-                                        break;
-                                    case "dayjs":
-                                        transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                        break;
-                                    case "dayjs.utc":
-                                        transformedValue = dayjs.utc(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                        break;
-                                    default:
-                                        throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
-                                }
-                            }
-                            localStorage.setItem(prompt.prompt,value);
-                            if(prompt.variable) {
-                                variables[prompt.variable] = transformedValue;
-                                prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
-                            }
-                            var suffix = "";
-                            if(prompt.configuration.suppress){
-                                suffix = "\n?";
-                                transformedValue = "";
-                            }
-                            var replacement = new RegExp(RegExp.escape(prompt.raw)+suffix);
-                            if (prompt.location == 'content') {
-                                variables.content = variables.content.replace(replacement, transformedValue);
-                            } else {
-                                variables.internal.template = variables.internal.template.replace(replacement, transformedValue);
-                            }
-                        }
-                    });
-                })}
-            catch(err) {
-                //TODO alert and throw?
-                console.log(err);
-                return;
-            }
-
-        }
-
-        if(!variables.raw){
-            // interpolate variables using 2 passes to account for variables that are defined later
-            [1,2].forEach((pass) => {
-                Object.entries(variables).forEach(([key, value]) => {
-                    const result = deepInterpolate(value, variables, pass==1 || preview);
-                    if(result) {
-                        variables[key] = result;
-                    }
-                })});
-        }
-
-        variables.internal.result = interpolate(variables.internal.template, variables, preview);
-
-
-
-        if(variables.creds) {
-                    if(variables.account && variables.role && variables.partition) {
-                        variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
-                    } else {
-                        alertAndThrow("Unable to determine role arn, role, account and partition must be defined");
-                    }
-        }
-        switch(variables.internal.templateType) {
-            case "copy" :
-                //refactor to show key if creds are needed
-                if(needsNewCreds(variables)) {
-                    variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\n' + variables.internal.result;
-                }
-                GM_setClipboard(variables.internal.result);
-                toast("📋 Copied");
-                persistCreds(variables);
-                break;
-            case "link" :
-                window.open(variables.internal.result);
-                break;
-            case "settings" :
-                toast("Settings updated");
-                break;
-            case "federate" : {
-                let consoleURL = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
-                console.log('Console url', consoleURL);
-                let url = consoleURL;
-                if(needsNewCreds(variables)) {
-                    url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
-                    url.searchParams.append('role',variables.roleArn);
-                    url.searchParams.append('destination',consoleURL);
-                    url = url.toString();
-                    console.log('Federation url', url);
-                }
-                window.open(url);
-                persistCreds(variables);
-                break;
-            }
-            default:
-                alertAndThrow(`Unknown template type ${variables.internal.templateType}`);
-
-        }
-         //persist last region and service
-        let lastRegion = getValue('#select2-region-container', true);
-        if(lastRegion) {
-            localStorage.setItem(LAST_REGION_KEY, lastRegion);
-        }
-        let lastService = getValue('#service');
-        if(lastService) {
-            localStorage.setItem(LAST_SERVICE_KEY, lastService);
-        }
-    } else if(!variables.content.trim().length) {
-        variables.content = variables.internal.template;
-    }
-    return variables;
-}
-
-$('#toggleSRToolbar').click(function () {
-    $('#toolbar').toggle();
-});
-
-$('#srFederate,#srFederateService').click(async (event) => {
-    await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`, false);
-});
-
-$("#service").on('change', function() {
-    updateRegions();
-    $("#region").trigger('change');
-});
-
-$("#region").on('change', function() {
-    updateTabs();
-});
-
-$("#srSettings").on('click', async () => {
-    await nope('#settings', false);
-});
-
-$("#srCopyAccount").on('click', async () => {
-    await nope('#copy\n${account}', false);
-});
-
-$("#srGetCreds").on('click', async () => {
-    await nope('#copy.withCreds {"forceNewCreds": true}\necho $credentials', false);
-});
-
-$("#srFlush").on('click', async () => {
-    GM_deleteValue(`${LAST_CREDS}federate`);
-    GM_deleteValue(`${LAST_CREDS}copy`);
-    toast('Credentials flushed');
-});
-
-
-await updatePage();
-
-$(document).ready(function() {
-    $('#service,#region').select2({
-        dropdownAutoWidth : true,
-        width:'copy'});
-});
-
-showToolbarOnWiki();
-
-function getValue(selector, useText) {
-    let element = $(selector);
-    if(element && element.is(':visible')) {
-        return useText ? element.text() : element.val();
-    }
-    return undefined;
-}
-
-function updateRegions() {
-    let service = $('#service')
-    let lastRegion = getValue('#select2-region-container', true) || localStorage.getItem(LAST_REGION_KEY);
-    let regions = [];
-    for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
-        let splits = region.split(' ', 2);
-        let suffix = splits.length > 1 ? splits[1] : '';
-        regions.push(`<option title='${regionNameMap[splits[0]].name}' value="${splits[0]}" ${region == lastRegion ? 'selected' : ''}>${region}</option>`);
-    }
-    $('#region').empty().append(regions);
-}
-
-
-async function updatePage() {
-    sessionVariables = {};
-    // first pass to build page config
-    pageConfig = await buildConfig();
-
-
-    let serviceDropdown = $("#service");
-    let regionDropdown = $("#region");
-
-    let hadServices = serviceDropdown.children().length > 0;
-    let newServices = [];
-    let lastService = getValue('#service') || localStorage.getItem(LAST_SERVICE_KEY);
-
-    for (const [key, value] of Object.entries(getServices(pageConfig))) {
-        newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
-    };
-    serviceDropdown.empty().append(newServices);
-    if(hadServices != newServices.length>0) {
-        $('.needsService').each((index, element)=>{newServices.length>0 ? $(element).show() : $(element).hide()});
+    // convert to an array if it isn't already
+    // undefined if undefined
+    function arrayify(o) {
+        return o == undefined ? o : Array.isArray(o) ? o : [o];
     }
 
-    // second pass to wire up content
-    await wireUpContent();
+    //calls a method on an object or each member of an array
+    function filter(method, param, o) {
+        return o == undefined ? o : Array.isArray(o) ? o.filter(str => str[method](param)) : (o[method](param) ? o : undefined);
+    }
+    //find elements of an array/str that start with a prefix
+    function prefixSearch(prefix, o){
+        return filter('startsWith', prefix, o);
+    }
 
-    serviceDropdown.trigger('change');
+    //find elements of an array/str that includes a string
+    function includesSearch(includes, o){
+        return filter('includes', includes, o);
+    }
 
-}
+    //find elements of an array/str that contain a regex
+    function regexSearch(regex, o){
+        return o == undefined ? o : (Array.isArray(o) ? o.filter(str => regex.test(str)) : (regex.test(o) ? o : undefined));
+    }
 
-function updateTabs() {
-    $('.srRunBtn').each(async function (item) {
-        const variables = await nope($(this).data('code'), true);
-        $(this).data('previewTab').first("code").html(buildPreview(variables));
-        $(this).data('debugTab').first("code").html(jsonWithoutInternalVariables(variables));
-        if(variables.danger || (variables.creds && _.isString(variables.role) && variables.role.toLowerCase().match(/(full|admin|write)/))) {
-            $(this).addClass('color-bg-danger-emphasis');
-            $(this).removeClass('btn-primary');
-        } else {
-            $(this).removeClass('color-bg-danger-emphasis');
-            $(this).addClass('btn-primary');
-        }
-        switch(variables.internal.templateType) {
-            case 'link':
-                $(this).text('Open');
-            break;
-            case 'federate':
-                $(this).text('Open AWS Console');
-            break;
-            case 'copy':
-                $(this).text('Copy');
-            break;
-        }
-    });
-}
-function getServices(pageConfig) {
-    let result = {};
-    let services = nullSafe(nullSafe(pageConfig).services);
-    if(services) {
-        let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
-        for(const [service, config] of Object.entries(services)) {
-            if(!serviceFilter.length || serviceFilter.includes(service)) {
-                result[service] = {name : service,
-                                   dropdownName:getServiceDropdownName(service),
-                                   config: getServiceVariables(service, services),
-                                   regions: getRegions(service, pageConfig)};
-            }
+    //prepend a string to each element of an array/str
+    function prepend(prefix, o){
+        return o == undefined ? o : (Array.isArray(o) ? o.map(str => prefix + str) : prefix + o);
+    }
+
+    //return the last non-whitespace line of a string
+    function lastLine(str) {
+        return str ? str.trim().match(/.*$/) : str;
+    }
+
+    function parseJSON(str, name) {
+        try {
+            return JSON.parse(str);
+        } catch(err) {
+            alertAndThrow("Unable to parse '" + (name || str) + "' due to: " + err, err);
         }
     }
-    return result;
-}
 
-function getRegions(service, pageConfig) {
-    let regionSet = new Set();
-    let regionFilter = firstNonNull(arrayify(pageConfig[SR_REGION_FILTER]),[]);
-    for (const [region, config] of Object.entries(nullSafe(nullSafe(nullSafe(pageConfig.services)[service]).config))){
-        let regions = isPartition(region) ? partitionMap[region] : [region];
-        regions.forEach(region => {
-            if(!regionFilter.length || regionFilter.includes(region)) {
-                regionSet.add(region);
-            }
-        });
-    }
-    return [...regionSet];
-}
-
-function parseContent(str, name) {
-    const groups = str.match(HEADER);
-    if(groups && groups[1] && (!name || name === groups[1])) {
-        return {"template" : groups[1], "service" : groups[2], "variables": groups[3] ? parseJSON(groups[3]) : undefined, "body": str.replace(HEADER,"")};
-    }
-    return undefined;
-}
-
-function hasElements(arr) {
-    return arr && Array.isArray(arr) && arr.length>0;
-}
-
-async function buildConfig() {
-    pageConfig = userConfig.services['${user}'].config.aws.account ? _.cloneDeep(userConfig) : {};
-    const configs = [];
-    for (const pre of $("div.markdown-body pre")){
-        const details = parseContent($(pre).text(), SR_CONFIG);
-        if(details) {
-            if(details.variables && details.variables.transclude) {
-                for (const path of arrayify(details.variables.transclude)) {
-                    const result = await retrieve(path);
-                    $(result).find("div.markdown-body pre").each(function () {
-                        const transclude = parseContent($(this).text(), SR_CONFIG);
-                        if(transclude) {
-                            configs.push(parseJSON(transclude.body));
-                        }
-                    });
-                }
-            }
-            // if there is any body content overlay that
-            let body = details.body.trim()
-            if(body.length > 0) {
-                configs.push(parseJSON(body));
-            }
-        }
-    }
-    //smash configs together
-    if(hasElements(configs)) {
-        configs.forEach(config => {
-            if(config.templates) {
-                templates = $.extend(true, templates, config.templates);
-                delete config.templates;
-            }
-            pageConfig = $.extend(true, pageConfig, config);
-        });
+    function jsonWithoutInternalVariables(variables) {
+        //return prettyJSON(variables);
+        return prettyJSON(variables,function replacer(key, value) { return (key=="internal") ? undefined : value;});
     }
 
-    return pageConfig;
-}
+    function prettyJSON(obj, replacer, spaces) {
+        return JSON.stringify(obj, replacer, spaces || 2);
+    }
 
-function hasTemplate(name) {
-    if(!templates[name]){
-      for(let piece of name.split('.')){
-        if(!templates[piece]) {
+    //https://stackoverflow.com/questions/38304401/javascript-check-if-dictionary
+    function isDict(d) {
+        return !(d == undefined) && d.constructor == Object;
+    }
+
+    function reverseMap(obj) {
+        return _.invert(obj);
+    }
+
+    function isValidVarName( name ) {
+        try {
+            Function('var ' + name);
+        } catch( e ) {
             return false;
         }
-      }
+        return true;
     }
-    return true;
-}
 
-function needsNewCreds(variables) {
-    const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration < (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
-    return variables.internal.newCreds
-}
-
-function persistCreds(variables) {
-    if(variables.internal.newCreds) {
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, expiration: Date.now() + 360000});
+    function encodeCloudWatchInsightsParam(str) {
+        return encodeURIComponent(str).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
     }
-}
 
-async function wireUpContent() {
-    let block = 0;
-    for (const pre of $("div.markdown-body pre")) {
-        block++;
-        const code = $(pre).text();
-        const groups = code.match(HEADER);
-        if(groups && groups[1] && hasTemplate(groups[1])) {
-            const nav = $('<nav class="UnderlineNav UnderlineNav--right" aria-label="Preview">');
-            const actions = $('<div class="UnderlineNav-actions">');
-            const runBtn = $('<button type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>');
-            actions.append(runBtn);
-            nav.append(actions);
-            runBtn.data('code', code);
-            const navBody = $('<div class="UnderlineNav-body">');
-            var index = 0;
-            for (const [key, value] of Object.entries(tabNames)) {
-                const localBlock = block;
-                let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" href="#url" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
-                navBody.append(tab);
-                tab.click(function(tab) {
-                    for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
-                        let tabId = `${oTabKey}-${localBlock}`
+
+    function encodeCloudWatchURL(str, passes=2) {
+        [...Array(passes)].forEach(() => {str = escape(str)});
+        return str.replaceAll('%','$');
+    }
+
+    function cachedValidVarName(name) {
+        return firstNonNull(varNameCache[name], varNameCache.set(name, isValidVarName(name)).get(name));
+    }
+
+
+
+    //https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
+    function interpolate(tpl, variables, suppressErrors) {
+        try {
+            sessionVariables = variables;
+            var keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
+                //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
+                fn = new Function(...keys,`return \`${tpl}\`;`);
+
+            var result = fn(...keys.map(x => variables[x]));
+            if(!suppressErrors && hasDOMContent(result)){
+                throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
+            }
+            return result;
+        } catch(err) {
+            if(suppressErrors) {
+                return undefined;
+            } else {
+                alertAndThrow(`${err} while parsing:\n${tpl}`, err);
+            }
+        }
+    };
+
+    function retrieve(path) {
+        return new Promise((resolve,reject) => {
+            let [,root] = window.location.href.match(/^(.*?\/wiki)\//);
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url: `${root}/${path}`,
+                onload: function(response) {
+                    resolve(response.responseText);
+                },
+                onerror: function(err) {
+                    reject(err);
+                }
+            });
+        });
+    }
+
+    function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
+        let offset = str.indexOf('${');
+        while(offset>-1 && !variables.raw) {
+            let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
+            let toReplace = "${" + matches[0] + "}";
+            let replacement = wrap(interpolate(toReplace, variables, suppressErrors), toReplace);
+            str = str.replace(toReplace,replacement);
+            offset = str.indexOf('${',offset+replacement.length);
+        }
+        return str;
+    }
+
+    //recursively interpolate variables in arrays and dicts
+    function deepInterpolate(obj, variables, suppressErrors){
+        if (_.isString(obj) && obj.match(LITERAL)) {
+            return interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
+        } else if(isDict(obj)){
+            for (const [key, value] of Object.entries(obj)) {
+                var result = deepInterpolate(value, variables, suppressErrors);
+                if(result) {
+                    obj[key] = result;
+                }
+            }
+        } else if(Array.isArray(obj)) {
+            obj = obj.map(item => deepInterpolate(item, variables, suppressErrors));
+        }
+        return obj;
+    }
+
+    function hasDOMContent(str) {
+        return !(str == undefined) && HAS_DOM_CONTENT_REGEX.test(str);
+    }
+
+    function isWiki() {
+        return WIKI_REGEX.test(location.pathname);
+    }
+
+    function showToolbarOnWiki() {
+        isWiki() ? $("#srToolbar").show() : $("#srToolbar").hide()
+    }
+
+    function escapeHTMLQuotesAnd$(str){
+        return str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m]));
+    }
+
+    function escapeHTMLStartTags(str){
+        return str ? _.escape(str) : str;
+    }
+
+    function getPrompts(content, tpl){
+        const contentPrompts = [...content.matchAll(PROMPT_G)].map(x => ({location: 'content', prompt: x }));
+        const templatePrompts = [...firstNonNull(tpl,"").matchAll(PROMPT_G)].map(x => ({location: 'template', prompt: x}));
+        return _.concat(contentPrompts, templatePrompts);
+    }
+
+    function getURLSearchParam(key){
+        return new URLSearchParams(window.location.search).get(key);
+    }
+
+    function getPromptInfo(prompt) {
+        let variable = prompt[1];
+        let text = prompt[2];
+        let configuration = prompt[3] ? parseJSON(prompt[3]) : {};
+        let isGlobal = variable && variable.startsWith(GLOBAL_PREFIX);
+        let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
+        let sPrompt = localStorage.getItem(text);
+        //TODO add ability to override value with url search param getURLSearchParam. Figure out how to only use that value once.
+        var sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,sVariable,sPrompt,configuration.default,"");
+        return {raw:prompt[0], variable:variable, prompt: text, configuration: configuration, value: sessionValue, default: configuration.default, condition: configuration.condition};
+    }
+
+
+    function getService() {
+        return $('#service').val();
+    }
+
+    function getRegion() {
+        return $('#region').val();
+    }
+
+    function getInputValue(input) {
+        return input.is(':checkbox') ? input.is(':checked') : input.val();
+    }
+
+    function setInputValue(input, value) {
+        input.is(':checkbox') ? input.prop('checked', value) : input.val(value);
+    }
+
+    var exposedFunctions = {
+        window : noop,
+        alert : noop,
+        document : noop,
+        __proto__ : noop,
+        eval : noop,
+        lastLine : lastLine,
+        dayjs : dayjs,
+        prettyJSON : prettyJSON,
+        prefixSearch : prefixSearch,
+        includesSearch : includesSearch,
+        regexSearch : regexSearch,
+        firstNonNull: firstNonNull,
+        prepend: prepend,
+        encodeCloudWatchInsightsParam: encodeCloudWatchInsightsParam,
+        encodeCloudWatchURL: encodeCloudWatchURL,
+        nullSafe: nullSafe,
+        arrayify: arrayify,
+        XRegExp: XRegExp,
+        _ : _
+    }
+
+    function injectCustomFunctions(variables) {
+        if(isDict(variables)) {
+            for (const [key, value] of Object.entries(variables)) {
+                if(key.startsWith('function:')) {
+                    const functionName = key.replace('function:','');
+                    const args = arrayify(firstNonNull(value.args,"str"));
+                    const body = value.body;
+                    if(!body) {
+                        throw new Error(`function ${key} must have a body`);
+                    }
+                    delete variables[key];
+                    variables[functionName] = new Function(...args, body);
+                } else {
+                    variables[key] = injectCustomFunctions(value);
+                }
+            }
+        } else if(Array.isArray(variables)) {
+            return variables.map(item => injectCustomFunctions(item));
+        }
+        return variables;
+    }
+
+    function overlayExposedFunctions(variables) {
+        return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions);
+    }
+
+    // get variables for service and smash them together allowing for extension
+    // if the service name is warp.federation.support
+    // overlay the variables of warp, with warp.federation and with warp.federation.support
+    function getServiceVariables(service, services) {
+        return service ? service.split('.').reduceRight((variables, previous, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(index).join('.')]), {}) : {};
+    }
+
+    // get variables for templates and smash them together allowing for extension
+    // if the template name is copy.raw.warp
+    // overlay the variables of copy with raw and with warp.
+    function getTemplateVariables(template, templates) {
+        return template ? template.split('.').reduce((variables, previous, index, arr) => {
+            let templateValues = nullSafe(templates)[arr[index]];
+            if(undefined === templateValues) {
+                throw new Error(`template named: ${arr[index]} not defined`);
+            }
+            if(_.isString(templateValues)) {
+                templateValues = {value: templateValues};
+                if(index == 0) {
+                    templateValues.type = firstNonNull(templateValues.value,"").startsWith('http') ? 'link' : arr[index];
+                }
+            } else {
+                //make sure creds is set if this is federate
+                if(arr[index].startsWith('federate')) {
+                    templateValues.creds = true;
+                    templateValues.type = firstNonNull(templateValues.type, 'federate');
+                }
+            }
+            return $.extend(true, variables, templateValues)}, {})
+        : {} ;
+    }
+
+    //Add spaces before uppercase letters in value
+    function prettyCamelCase(str) {
+        return str.replace(/([a-z])([A-Z])/g, "$1 $2");
+    }
+
+    function getServiceDropdownName(serviceName) {
+        //Only pretty up final name in extension as service name for dropdown
+        //A = A
+        //A.B.C = C
+        return prettyCamelCase(serviceName.replace('${user}',GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
+    }
+
+    async function nope(content, preview) {
+        let pageVariables = _.cloneDeep(nullSafe(pageConfig));
+        delete pageVariables.templates;
+        delete pageVariables.services;
+        let variables = {internal:{}, user: GM_getValue("g_usernameOverride") || user, region: getRegion(), service: getService(), content: content.replace(HEADER,"").replace(/\s+$/,"")};
+        let details = parseContent(content);
+        let templateVariables;
+
+        try {
+            templateVariables = getTemplateVariables(details.template, templates);
+        } catch(err) {
+            //rethrow if
+            alertAndThrow(err);
+        }
+
+        variables.internal.template = templateVariables.value || "${content}";
+        variables.internal.templateType = templateVariables.type;
+        delete templateVariables.value;
+        delete templateVariables.type;
+
+        let serviceVariables = _.cloneDeep(getServiceVariables(variables.service, pageConfig.services));
+
+
+        variables.internal.templateName = details.template
+        variables.partition = getPartition(variables.region, true);
+        let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.config)[variables.partition]) : {};
+        let regionVariables = variables.region ? nullSafe(nullSafe(serviceVariables.config)[variables.region]) : {};
+        delete serviceVariables.config
+
+        const entryVariables = nullSafe(details.variables);
+
+        //Note, there are a few variables that are always defined on web pages like name.
+        //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
+
+        variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables, entryVariables);
+        variables = overlayExposedFunctions(variables);
+
+        if(variables.stripComments || !firstNonNull(variables.raw, false) && !preview) {
+            //rip out comments
+            variables.content = variables.content.replace(COMMENT_G, function(prompt) {
+                const [,before,,,,after] = prompt.match(COMMENT);
+                const leadingContent = firstNonNull(before,'').trim();
+                return `${leadingContent.length ? leadingContent.concat(firstNonNull(after,'')) : ''}`;
+            });
+            //if / is escaped so it isn't treated as a comment, unescape it
+            variables.content = variables.content.replace('&sol;','/');
+        }
+
+        variables.internal.prompts = getPrompts(content, variables.internal.template);
+
+
+        if (!preview) {
+            if(hasElements(variables.internal.prompts)) {
+                const div = $('<div/>');
+                const table = $('<table/>');
+                div.append(table);
+                variables.internal.prompts.forEach(prompt => {
+                    const info = getPromptInfo(prompt.prompt);
+                    const row = $('<tr/>');
+                    const header = $('<td/>', {class: 'p-2'})
+                    const label = $(`<label class='v-align-top float-right'>${escapeHTMLStartTags(info.prompt)}</label>`);
+                    header.append(label);
+                    row.append(header);
+                    var input = undefined;
+                    info.interpolatedDefault = firstNonNull(interpolate(firstNonNull(info.default,""),variables, true), info.default);
+                    info.interpolatedValue = firstNonNull(interpolate(firstNonNull(info.value,""),variables, true), info.value);
+                    info.location = prompt.location;
+                    switch(info.configuration.type) {
+                        case "checkbox":
+                            input = $(`<input type='checkbox'/>`);
+                            setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
+                            break;
+                        case "select":
+                            var options = info.configuration.options;
+                            if(options && (typeof options === 'string')) {
+                                var literal = options.match(LITERAL);
+                                if(literal){
+                                    options = interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
+                                }
+                                options = parseJSON(options);
+                            }
+
+                            if(isDict(options) || hasElements(options)){
+                                input = $("<select>");
+                                if(Array.isArray(options)){
+                                    //convert to a map
+                                    options = _.zipObject(options, options);
+                                }
+                                Object.entries(options).forEach(([key, value]) => {
+                                    input.append($(`<option value='${value}' ${value===info.value ? "selected" : ""}>${key}</option>`));
+                                });
+                            } else {
+                                alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
+                            }
+                            break;
+                        case "textarea":
+                            input = $('<textarea/>', {rows:"5",cols:"40"});
+                            input.val(info.interpolatedValue);
+                            break;
+                        default:
+                            input = $('<input/>');
+                            input.val(info.interpolatedValue);
+                            break;
+                    }
+                    input.data('prompt', info);
+                    var col = $('<td/>', {class: 'p-2'})
+                    col.append(input);
+                    row.append(col);
+                    col = $('<td/>', {class: 'p-2'})
+                    if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
+                        const text = info.interpolatedDefault;
+                        const button = $(`<button class="btn btn-sm Truncate v-align-top" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
+                        button.data('prompt', info);
+                        button.data('source', input);
+                        button.prop('disabled', info.interpolatedValue === text);
+                        input.on('input', function() {
+                            button.prop('disabled', getInputValue(input) === button.data("prompt").interpolatedDefault);
+                        });
+                        button.on("click", function() {
+                            setInputValue($(button.data('source')), button.data('prompt').interpolatedDefault);
+                            button.prop('disabled', true);
+                        });
+                        col.append(button);
+                    }
+                    row.append(col);
+                    table.append(row);
+                });
+                try {
+                    await dialog(div, variables.internal.templateName === 'settings' ? `Speedrun V${GM_info.script.version} Settings` : 'Input', function() {
+                        $('#srModal :input' ).not(':input[type=button],button').each(function() {
+                            const prompt = $(this).data('prompt');
+                            if(prompt) {
+                                const value = getInputValue($(this));
+                                var transformedValue = value;
+                                if(prompt.configuration.transform){
+                                    console.log('Transform:', prompt.configuration.transform);
+                                    console.log('Value Before:', value);
+                                    variables.value = value;
+                                    transformedValue = interpolate(`\${${prompt.configuration.transform}}`, variables, false);
+                                    console.log('Value After:', transformedValue);
+                                }
+                                if(prompt.configuration.cast){
+                                    switch(prompt.configuration.cast){
+                                        case "json":
+                                            transformedValue = parseJSON(transformedValue);
+                                            break;
+                                        case "Number":
+                                            transformedValue = Number(transformedValue);
+                                            break;
+                                        case "Boolean":
+                                            transformedValue = Boolean(transformedValue);
+                                            break;
+                                        case "dayjs":
+                                            transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                            break;
+                                        case "dayjs.utc":
+                                            transformedValue = dayjs.utc(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                            break;
+                                        default:
+                                            throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
+                                    }
+                                }
+                                localStorage.setItem(prompt.prompt,value);
+                                if(prompt.variable) {
+                                    variables[prompt.variable] = transformedValue;
+                                    prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
+                                }
+                                var suffix = "";
+                                if(prompt.configuration.suppress){
+                                    suffix = "\n?";
+                                    transformedValue = "";
+                                }
+                                var replacement = new RegExp(RegExp.escape(prompt.raw)+suffix);
+                                if (prompt.location == 'content') {
+                                    variables.content = variables.content.replace(replacement, transformedValue);
+                                } else {
+                                    variables.internal.template = variables.internal.template.replace(replacement, transformedValue);
+                                }
+                            }
+                        });
+                    })}
+                catch(err) {
+                    //TODO alert and throw?
+                    console.log(err);
+                    return;
+                }
+
+            }
+
+            if(!variables.raw){
+                // interpolate variables using 2 passes to account for variables that are defined later
+                [1,2].forEach((pass) => {
+                    Object.entries(variables).forEach(([key, value]) => {
+                        const result = deepInterpolate(value, variables, pass==1 || preview);
+                        if(result) {
+                            variables[key] = result;
+                        }
+                    })});
+            }
+
+            variables.internal.result = interpolate(variables.internal.template, variables, preview);
+
+
+
+            if(variables.creds) {
+                if(variables.account && variables.role && variables.partition) {
+                    variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
+                } else {
+                    alertAndThrow("Unable to determine role arn, role, account and partition must be defined");
+                }
+            }
+            switch(variables.internal.templateType) {
+                case "copy" :
+                    //refactor to show key if creds are needed
+                    if(needsNewCreds(variables)) {
+                        variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\n' + variables.internal.result;
+                    }
+                    GM_setClipboard(variables.internal.result);
+                    toast("📋 Copied");
+                    persistCreds(variables);
+                    break;
+                case "link" :
+                    window.open(variables.internal.result);
+                    break;
+                case "settings" :
+                    toast("Settings updated");
+                    break;
+                case "federate" : {
+                    // strip leading / if present or console links won't work
+                    variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
+                    // use cloudwatch/deeplink.js instead of home to better handle long urls
+                    variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js')
+                    let consoleURL = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
+                    console.log('Console url', consoleURL);
+                    let url = consoleURL;
+                    if(needsNewCreds(variables)) {
+                        url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
+                        url.searchParams.append('role',variables.roleArn);
+                        url.searchParams.append('destination',consoleURL);
+                        url = url.toString();
+                        console.log('Federation url', url);
+                    }
+                    window.open(url);
+                    persistCreds(variables);
+                    break;
+                }
+                default:
+                    alertAndThrow(`Unknown template type ${variables.internal.templateType}`);
+
+            }
+            //persist last region and service
+            let lastRegion = getValue('#select2-region-container', true);
+            if(lastRegion) {
+                localStorage.setItem(LAST_REGION_KEY, lastRegion);
+            }
+            let lastService = getValue('#service');
+            if(lastService) {
+                localStorage.setItem(LAST_SERVICE_KEY, lastService);
+            }
+        } else if(!variables.content.trim().length) {
+            variables.content = variables.internal.template;
+        }
+        return variables;
+    }
+
+    $('#toggleSRToolbar').click(function () {
+        $('#toolbar').toggle();
+    });
+
+    $('#srFederate,#srFederateService').click(async (event) => {
+        await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`, false);
+    });
+
+    $("#service").on('change', function() {
+        updateRegions();
+        $("#region").trigger('change');
+    });
+
+    $("#region").on('change', function() {
+        updateTabs();
+    });
+
+    $("#srSettings").on('click', async () => {
+        await nope('#settings', false);
+    });
+
+    $("#srCopyAccount").on('click', async () => {
+        await nope('#copy\n${account}', false);
+    });
+
+    $("#srGetCreds").on('click', async () => {
+        await nope('#copy.withCreds {"forceNewCreds": true}\necho $credentials', false);
+    });
+
+    $("#srFlush").on('click', async () => {
+        GM_deleteValue(`${LAST_CREDS}federate`);
+        GM_deleteValue(`${LAST_CREDS}copy`);
+        toast('Credentials flushed');
+    });
+
+    await updatePage();
+
+    $(document).ready(function() {
+        $('#service,#region').select2({
+            dropdownAutoWidth : true,
+            width:'copy'});
+    });
+
+    showToolbarOnWiki();
+
+    function getValue(selector, useText) {
+        let element = $(selector);
+        if(element && element.is(':visible')) {
+            return useText ? element.text() : element.val();
+        }
+        return undefined;
+    }
+
+    function updateRegions() {
+        let service = $('#service')
+        let lastRegion = getValue('#select2-region-container', true) || localStorage.getItem(LAST_REGION_KEY);
+        let regions = [];
+        for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
+            let splits = region.split(' ', 2);
+            let suffix = splits.length > 1 ? splits[1] : '';
+            regions.push(`<option title='${regionNameMap[splits[0]].name}' value="${splits[0]}" ${region == lastRegion ? 'selected' : ''}>${region}</option>`);
+        }
+        $('#region').empty().append(regions);
+    }
+
+
+    async function updatePage() {
+        sessionVariables = {};
+        // first pass to build page config
+        pageConfig = await buildConfig();
+
+
+        let serviceDropdown = $("#service");
+        let regionDropdown = $("#region");
+
+        let hadServices = serviceDropdown.children().length > 0;
+        let newServices = [];
+        let lastService = getValue('#service') || localStorage.getItem(LAST_SERVICE_KEY);
+
+        for (const [key, value] of Object.entries(getServices(pageConfig))) {
+            newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
+        };
+        serviceDropdown.empty().append(newServices);
+        if(hadServices != newServices.length>0) {
+            $('.needsService').each((index, element)=>{newServices.length>0 ? $(element).show() : $(element).hide()});
+        }
+
+        // second pass to wire up content
+        await wireUpContent();
+
+        serviceDropdown.trigger('change');
+
+    }
+
+    function updateTabs() {
+        $('.srRunBtn').each(async function (item) {
+            const variables = await nope($(this).data('code'), true);
+            $(this).data('previewTab').first("code").html(buildPreview(variables));
+            $(this).data('debugTab').first("code").html(jsonWithoutInternalVariables(variables));
+            if(variables.danger || (variables.creds && _.isString(variables.role) && variables.role.toLowerCase().match(/(full|admin|write)/))) {
+                $(this).addClass('color-bg-danger-emphasis');
+                $(this).removeClass('btn-primary');
+            } else {
+                $(this).removeClass('color-bg-danger-emphasis');
+                $(this).addClass('btn-primary');
+            }
+            switch(variables.internal.templateType) {
+                case 'link':
+                    $(this).text('Open');
+                    break;
+                case 'federate':
+                    $(this).text('Open AWS Console');
+                    break;
+                case 'copy':
+                    $(this).text('Copy');
+                    break;
+            }
+        });
+    }
+    function getServices(pageConfig) {
+        let result = {};
+        let services = nullSafe(nullSafe(pageConfig).services);
+        if(services) {
+            let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
+            for(const [service, config] of Object.entries(services)) {
+                if(!serviceFilter.length || serviceFilter.includes(service)) {
+                    result[service] = {name : service,
+                                       dropdownName:getServiceDropdownName(service),
+                                       config: getServiceVariables(service, services),
+                                       regions: getRegions(service, pageConfig)};
+                }
+            }
+        }
+        return result;
+    }
+
+    function getRegions(service, pageConfig) {
+        let regionSet = new Set();
+        let regionFilter = firstNonNull(arrayify(pageConfig[SR_REGION_FILTER]),[]);
+        for (const [region, config] of Object.entries(nullSafe(nullSafe(nullSafe(pageConfig.services)[service]).config))){
+            let regions = isPartition(region) ? partitionMap[region] : [region];
+            regions.forEach(region => {
+                if(!regionFilter.length || regionFilter.includes(region)) {
+                    regionSet.add(region);
+                }
+            });
+        }
+        return [...regionSet];
+    }
+
+    function parseContent(str, name) {
+        const groups = str.match(HEADER);
+        if(groups && groups[1] && (!name || name === groups[1])) {
+            return {"template" : groups[1], "service" : groups[2], "variables": groups[3] ? parseJSON(groups[3]) : undefined, "body": str.replace(HEADER,"")};
+        }
+        return undefined;
+    }
+
+    function hasElements(arr) {
+        return arr && Array.isArray(arr) && arr.length>0;
+    }
+
+    async function buildConfig() {
+        pageConfig = userConfig.services['${user}'].config.aws.account ? _.cloneDeep(userConfig) : {};
+        const configs = [];
+        for (const pre of $("div.markdown-body pre")){
+            const details = parseContent($(pre).text(), SR_CONFIG);
+            if(details) {
+                if(details.variables && details.variables.transclude) {
+                    for (const path of arrayify(details.variables.transclude)) {
+                        const result = await retrieve(path);
+                        $(result).find("div.markdown-body pre").each(function () {
+                            const transclude = parseContent($(this).text(), SR_CONFIG);
+                            if(transclude) {
+                                configs.push(parseJSON(transclude.body));
+                            }
+                        });
+                    }
+                }
+                // if there is any body content overlay that
+                let body = details.body.trim()
+                if(body.length > 0) {
+                    configs.push(parseJSON(body));
+                }
+            }
+        }
+        //smash configs together
+        if(hasElements(configs)) {
+            configs.forEach(config => {
+                if(config.templates) {
+                    templates = $.extend(true, templates, config.templates);
+                    delete config.templates;
+                }
+                pageConfig = $.extend(true, pageConfig, config);
+            });
+        }
+
+        return pageConfig;
+    }
+
+    function hasTemplate(name) {
+        if(!templates[name]){
+            for(let piece of name.split('.')){
+                if(!templates[piece]) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    function needsNewCreds(variables) {
+        const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
+        variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration < (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
+        return variables.internal.newCreds
+    }
+
+    function persistCreds(variables) {
+        if(variables.internal.newCreds) {
+            GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, expiration: Date.now() + 360000});
+        }
+    }
+
+    async function wireUpContent() {
+        let block = 0;
+        for (const pre of $("div.markdown-body pre")) {
+            block++;
+            const code = $(pre).text();
+            const groups = code.match(HEADER);
+            if(groups && groups[1] && hasTemplate(groups[1])) {
+                const nav = $('<nav class="UnderlineNav UnderlineNav--right" aria-label="Preview">');
+                const actions = $('<div class="UnderlineNav-actions">');
+                const runBtn = $('<button type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>');
+                actions.append(runBtn);
+                nav.append(actions);
+                runBtn.data('code', code);
+                const navBody = $('<div class="UnderlineNav-body">');
+                var index = 0;
+                for (const [key, value] of Object.entries(tabNames)) {
+                    const localBlock = block;
+                    let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" href="#url" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
+                    navBody.append(tab);
+                    tab.click(function(tab) {
+                        for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
+                            let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
                                 $(this).attr('aria-current','page');
                                 $(`#${tabId}`).show();
@@ -1145,34 +1166,34 @@ async function wireUpContent() {
     }
 }
 
-function colorizeComments(content, variables) {
-    return firstNonNull(variables.internal.raw, false) && !firstNonNull(variables.stripComments, true) ? content :
-    content.replace(COMMENT_G,function(comment) {
-        let [,before,,,content,after] = comment.match(COMMENT);
-        return `${before}<span class="Label Label--inline Label--secondary"><i>${escapeHTMLQuotesAnd$(content)}</i></span>${firstNonNull(after,"")}`;
-    });
-}
-
-function colorizePrompts(content, variables) {
-    return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
-        let groups = prompt.match(PROMPT);
-        return `<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`.replace(/\}/g,"&#125;");
-    }) : content;
-}
-
-function colorizeLiterals(content, variables) {
-    return interpolateLiteralsInString(content, variables, true,
-                                       (result, match) =>
-                                       {return `<span title="${escapeHTMLQuotesAnd$(match)}" class="Label Label--inline Label--${typeof result === undefined ? "danger" : "success"}">${firstNonNull(result, match)}</span>`});
-}
-
-function buildPreview(variables) {
-    let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}</span>`:''}
-${variables.content}`;
-        preview = colorizeComments(preview, variables);
-        preview = colorizePrompts(preview, variables);
-        return colorizeLiterals(preview, variables);
+    function colorizeComments(content, variables) {
+        return firstNonNull(variables.internal.raw, false) && !firstNonNull(variables.stripComments, true) ? content :
+        content.replace(COMMENT_G,function(comment) {
+            let [,before,,,content,after] = comment.match(COMMENT);
+            return `${before}<span class="Label Label--inline Label--secondary"><i>${escapeHTMLQuotesAnd$(content)}</i></span>${firstNonNull(after,"")}`;
+        });
     }
+
+    function colorizePrompts(content, variables) {
+        return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
+            let groups = prompt.match(PROMPT);
+            return `<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`.replace(/\}/g,"&#125;");
+        }) : content;
+    }
+
+    function colorizeLiterals(content, variables) {
+        return interpolateLiteralsInString(content, variables, true,
+                                           (result, match) =>
+                                           {return `<span title="${escapeHTMLQuotesAnd$(match)}" class="Label Label--inline Label--${typeof result === undefined ? "danger" : "success"}">${firstNonNull(result, match)}</span>`});
+    }
+
+    function buildPreview(variables) {
+        let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}</span>`:''}
+${variables.content}`;
+    preview = colorizeComments(preview, variables);
+    preview = colorizePrompts(preview, variables);
+    return colorizeLiterals(preview, variables);
+}
 
     $(document).on('select2:open', () => {
         const selects = document.querySelectorAll('.select2-container--open .select2-search__field');
@@ -1188,6 +1209,12 @@ ${variables.content}`;
     function dialog(body, title, callback) {
         $('#srModal-title').text(title || 'Input');
         $('#srModal-body').html(body);
+        $('#srModal').ready(new function() {
+            $('#srModal').find("select").each(function(index, select) {
+                $(select).select2();
+            });
+            $('#srModal-ok').focus();
+        });
         document.querySelector('#srModal').open = true;
         return new Promise((resolve,reject) => {
             let isResolved = false;
