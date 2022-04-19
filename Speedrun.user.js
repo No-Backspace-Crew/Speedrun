@@ -276,7 +276,7 @@
     const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`
     const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`
     const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/credentials`
-    const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?\\\\"$key\\\\":\\\\"(.*?)\\\\".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
+    const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `export AWS_ACCESS_KEY_ID="";export AWS_SECRET_ACCESS_KEY="";export AWS_SESSION_TOKEN="";\ncredentials=$(CREDS_REQUEST | ${PERL_EXTRACT});$(echo $credentials);`;
 
 
@@ -526,8 +526,8 @@ input:checked + .slider:before {
       </label>
       <span id='toolbar'>
       <span class='needsService'>
-      <select id="service" class="select-sm" aria-label="Service"></select>
-      <select id="region" class="select-sm" aria-label="Region"></select>
+      <select id="service" class="select-sm width-fit" aria-label="Service"></select>
+      <select id="region" class="select-sm width-fit" aria-label="Region"></select>
       <div class='BtnGroup'>
       <button title="Federate to AWS Console" class="btn btn-sm BtnGroup-item canBeDangerous" id="srFederate"><svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 20 20" width="20" height="20"><path fill-rule="evenodd" d="M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z"></path></svg></button>
       <button title="Federate to service in AWS Console" class="btn btn-sm BtnGroup-item canBeDangerous" id="srFederateService"><svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 20 20" width="20" height="20"><path fill-rule="evenodd" d="M7.998 14.5c2.832 0 5-1.98 5-4.5 0-1.463-.68-2.19-1.879-3.383l-.036-.037c-1.013-1.008-2.3-2.29-2.834-4.434-.322.256-.63.579-.864.953-.432.696-.621 1.58-.046 2.73.473.947.67 2.284-.278 3.232-.61.61-1.545.84-2.403.633a2.788 2.788 0 01-1.436-.874A3.21 3.21 0 003 10c0 2.53 2.164 4.5 4.998 4.5zM9.533.753C9.496.34 9.16.009 8.77.146 7.035.75 4.34 3.187 5.997 6.5c.344.689.285 1.218.003 1.5-.419.419-1.54.487-2.04-.832-.173-.454-.659-.762-1.035-.454C2.036 7.44 1.5 8.702 1.5 10c0 3.512 2.998 6 6.498 6s6.5-2.5 6.5-6c0-2.137-1.128-3.26-2.312-4.438-1.19-1.184-2.436-2.425-2.653-4.81z"></path></svg></button>
@@ -681,8 +681,8 @@ input:checked + .slider:before {
         return prettyJSON(variables,function replacer(key, value) { return (key=="internal") ? undefined : value;});
     }
 
-    function prettyJSON(obj, replacer, spaces) {
-        return JSON.stringify(obj, replacer, spaces || 2);
+    function prettyJSON(obj, replacer, spaces=2) {
+        return JSON.stringify(obj, replacer, spaces);
     }
 
     //https://stackoverflow.com/questions/38304401/javascript-check-if-dictionary
@@ -924,6 +924,10 @@ input:checked + .slider:before {
         }
     }
 
+    function stringify(str) {
+        JSON.stringify(str).slice(1, -1);
+    }
+
     var exposedFunctions = {
         window : noop,
         alert : noop,
@@ -947,6 +951,7 @@ input:checked + .slider:before {
         nullSafe: nullSafe,
         arrayify: arrayify,
         XRegExp: XRegExp,
+        stringify: stringify,
         _ : _
     }
 
@@ -1106,8 +1111,8 @@ input:checked + .slider:before {
                 variables.internal.prompts.forEach(prompt => {
                     const info = getPromptInfo(prompt.prompt);
                     const row = $('<tr/>');
-                    const header = $('<td/>', {class: 'p-2'})
-                    const label = $(`<label class='v-align-top float-right'>${escapeHTMLStartTags(info.prompt)}</label>`);
+                    const header = $('<td/>', {class: 'p-2 text-right v-align-top'})
+                    const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
                     header.append(label);
                     row.append(header);
                     var input = undefined;
@@ -1131,7 +1136,7 @@ input:checked + .slider:before {
                             }
 
                             if(isDict(options) || hasElements(options)){
-                                input = $("<select>");
+                                input = $("<select>", {class:"width-fit"});
                                 if(Array.isArray(options)){
                                     //convert to a map
                                     options = _.zipObject(options, options);
@@ -1159,10 +1164,10 @@ input:checked + .slider:before {
                     var col = $('<td/>', {class: 'p-2'})
                     col.append(input);
                     row.append(col);
-                    col = $('<td/>', {class: 'p-2'})
+                    col = $('<td/>', {class: 'p-2 v-align-top'})
                     if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
                         const text = interpolatedDefaultText || info.interpolatedDefault;
-                        const button = $(`<button class="btn btn-sm Truncate v-align-top" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
+                        const button = $(`<button class="btn btn-sm Truncate" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
                         button.data('prompt', info);
                         button.data('source', input);
                         button.prop('disabled', info.interpolatedValue === info.interpolatedDefault);
@@ -1685,8 +1690,10 @@ ${variables.content}`;
         $('#srModal-body').html(body);
         $('#srModal').ready(new function() {
             $('#srModal').find("select").each(function(index, select) {
-                $(select).select2();
-            });
+                $(select).select2({
+                   dropdownAutoWidth : true,
+                   width:'copy'});
+                });
             $('#srModal-ok').focus();
         });
         document.querySelector('#srModal').open = true;
