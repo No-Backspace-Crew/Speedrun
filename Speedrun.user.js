@@ -10,6 +10,8 @@
 // @resource     select2css https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css
 // @require      https://unpkg.com/dayjs@1.10.8/dayjs.min.js
 // @require      https://unpkg.com/dayjs@1.10.8/plugin/utc.js
+// @require      https://unpkg.com/dayjs@1.10.8/plugin/duration.js
+// @require      https://unpkg.com/dayjs@1.10.8/plugin/relativeTime.js
 // @require      https://unpkg.com/xregexp/xregexp-all.js
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -24,8 +26,9 @@
 // @match        https://www.github.com/*
 // @match        https://*.console.aws.amazon.com/*
 // @match        https://console.aws.amazon.com/*
-// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFRklEQVR4Xu1aa2hURxRejVF8FI2JWWOK+IiNebBdotVCbcGCGDStREkpWBAVpX+UlvwpUhChCD5Kiz9KW0HBtrQQNfiKlhQimuALVxvTyFZLqxjtmqRJ0VSiRivn3G9xTu7Nnb27C4lz98/ZuXfm7J3v+86ZM3N3WMDwzzDD5x/wAfAVYDgCfggMVgFsLCx8OtCz7YpGU0JeSpykA0RjAcDEN+XkKLhmh29Su/PyVLJbOzrIJquEQacAYwFwmrgMr/Err9Olf38oSIkSBo0CfACsrL8oawwxW9/1n0I+rpfP4dh/XPJQUcLkpiZPZHoalM6sbywAFW8V0Lpf9CRM+L5fGiN7o/4B2ZMj7pGVSgAZ1b+wcnD/nbOXtMjV6pQOxqXPFw6AsjkriNHcIGfrE3XbbMF2mnje7CwaN6lopIJV9cYrCtOvZTDzF/o4ZyB36NYHaVOAcQDICV8Nr1GYK7q8h9p3Y7yORy4eIPCdFBCqDFK/4RM/YDt3Gdm1760nm32ni2xvOysCH13m0T9lCjAWAKeJh6a/xCCfjygMofGo7TR9hSKmjP2V2t8uLyaL2IcCpJNYEyvqi/2cI3Y07vdEpqdBzz+M8QAghg99vpNwWbr5jEIWGMZqYCuHZxcz89+kW0+jH5HdUpxHNry22nbIJx9/nxTzcJq0AowFQE4cMQlkK77LpK/I9riOkEE7v2w1fW2eNItsqP2arRJQF+jGPJ4vN7iQ/O2p2W1LtmcF+ABYtTuyNhhdf7CVvh49dX1AcKEEKCAwr0yJ9bdf5xzw5Y+/K8o4srtiQL8gBs8VfIPrkXXbj9kqIWkFGAvAmqp1VOvfjTUozOkyj1UBFWO8blC8BQK6SnBiHrnJSZmeFWA8AIIo7SZiv3PxVo5tVIzaHrhj29cblBEyl3zT8yHdd8tJnhWQ4PPGuw95ABBrmJFbzKOfa8ksERV7iHidIBWDflhFrHZbZC95lHWI/JmEFWAsAJj4gc9GKSCu+LSX2m5KkOu+G6NyvZcVZL8ckiDzmIS2AowFQE68MzKTwMsaeY5s1U+879dVAJCXewBcx17AreKTisB4t5hPOAcYC4CsrMA4EATzDdN4t1Xa3Ub23OE6Jazmv7uEKsaWCfkSfGoX/vYPWSgC2Tszn98HSH+2TpK46JgDjAUAE8eJTHGId2Otza+Q3dx6hyyYD5TyGR4+pY31tny0LFhE1zNmjbO9X7S3VrmO/tJfqhXRTwHGAoCJLwmVExOri2u0mA9W3Kd+HdHJZPuucRvMgUn02zBjFSvp+M9K/0ALnyNAUdlltxRFdEZeVvymSglxBfgAWCc8OEObG+SKr675BNnbPa+SjZZMVJhCTOcU/q0oAfThes1ofttb9YDf+MSOci6IKwWrhJVToIDamVxpOo1zUoJuyd5PAcYCAMbckEMFpquEhjC/8QGD8VxRe54VYNUP+P14vWApAbkDCqr8g5WZt+sqhpCFEpwKN+0TIeMBUGAdoKGrhMe3u8lL973ZZPss5lEBonaHP1SAWD2QC8ZN51Xm/p+ca7AqYPVY+BefTWK3ij0LpqCtAB8AXQSsflIJGZXzbD04MS87OykLSpDM9+zjNz69p0poz/Gkhf9F1vVwPtm0nwkaDwAYdGIOMSpj3k1obv6wepwsv6i4knsWt3MK7ROhZB/4hQfADSCv96USwPxXU/h/g067VTfm8TwpU4DXCbqNMx4AmWNQJ6yaOkPBDnsWXeaHjAJ8AESMyH9+4O10oswPOQXggY0HQALhlfkhqwAfALd1M8H7g74OSHA+CXf/HzCVTn1rk1w+AAAAAElFTkSuQmCC
+// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAE90lEQVR4Xu1aaWxNQRhtSxGCltYrtWtDlaapNRpiiWhoiV2CH0hFIoQ0EiQiQprYYkkImvADEVFELCG1BaWx1E5qi63hKWnsamnJNz2N+frmzX333Zc85t0/c+feud+bOed8y5t7w8MMP8INX39YCICQAgxHIOQCwSqAuZ07V3mb28aSEkfIc8RIIEA0FgAsfHFMjIRr89Tn1H93oy21uW/fUuuvEoJOAcYCoFo4d6+mkx/Rpfe7ExxRQtAoIARAddQfGt2QmC0o/yKRj+sZPYTv/0z+LikhrrDQFpm2Hgpk1DcWgMwBCZT3kypTCd9J3dzUPiv4Su3Zuh+p5UoAGTknhXJwP6vouiVyLQ0KBOPc5n8HQFqPscRoC5eI1sePrfQItmrhLbtE03OxSfUkrHLm3paY7lVHMH/ll4gZiB1W64OAKcA4APiC76dOl5hLurGd+m/cIo8XX9tP4KsUkDLaReMimk0Rbc9R1M6YMJPa5q/Kqa0oE4rAYZV5jHdMAcYCoFp4SofGAuTLxRJD6PwoPU+nUESrRjepv21MV2rh+1AAN+IuFIpaly9ixOoL+bbItPXQ35MxHgD48KG1awiXEUsvSWSBYWQDj3L4czEyvj/dqiqZR+2yri2pTZ2R4/GRhfN3+cU8jPqtAGMB4AuHTwLZzJ2RdIpoj+twGfTj06bR6a3YRGpTyh56VALqAqs+j/m1cA0ie9v35Xkk27YCQgBU1+6I2mB05oF7dHrk3COv4EIJUEBY7zTJ1wf3FTFg/Z4HkjIO52V6tQtiMC9XuqhHslcd9agEvxVgLADTx2dTrf/GfUZizirzyAqoGGvqhmprI6Ou0tmnLlmWlKBiHrFJpUzbCjAegNkDFpAChpTKCjgVL6LupnOrPYIL3383LFf4NipGSUf6TumWOdIgHku2fp5F93UxybYCjAPgQKee0puafnH1vdJ08XUF3R/z+CqBrC2ZuTX2H6KmTuCKwThkkep+afEOssjrEP4zlhVgLABYOGccDN+tSCJQk+vfpzYrQ+zl4Q0Oxq2IakfXa1V+CkZ5vucVZK0Y4iPzUIJWAcYD8Do9XfL9vGcdCbwlL3d6BG9566k0fmADsZub6HpF7fBvcZL7cSXgJv4LQAGwx333oEt+b4D7Op/3OQYYCwCXPo/qHEneVykBdjCexwZE7w3vhcC6J4tdZX6cvnNSuoRso5uXZQUYDwCXvq8KANJWlYDxuvoC3wlgPN4R1r0r9gYPHxe7yVYVocwCxgMAF0Be9xVZ7mvnE8ZJ2QTZgX/5gSyDukLFJJ8flBDRTXxZErH3A7WRm154TfXKm8YDAAa/bnYRc/AxVHi+vo/ngPJKERWlqr5QRXedEsoXRdGjqvlqK0HjAfgxuw0poHJiE8m3wAhnEvsB2CdAVOe+/tAt9vwQC+xmGcxDpQR8S2RbAcYDAIQ5EJV3xLc6OBAjuK8WnehDl8qqnlKLqI76ANEeSrGrBK4AzEOXvbQxIAQAoxQFEr7X49kBw60y6ZQSYCe73RNpxrpsZVkBsGo8ANzHneqrlLC8Tj/6CdUus4p5qwr0WQFOLZjbMR4AAKKLCagYMR4+3yBGfF+AfQK//w0GimmdXeMBUCkhNrw93ULliHGoMHX5XgV80MQAXUwwDgAOiN1XcTqXC1oFhADQUefQ/X9GAQ6tt5aZEACBQvZfsfsbh8EmfXZLs6IAAAAASUVORK5CYIIA
 // ==/UserScript==
+// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFRklEQVR4Xu1aa2hURxRejVF8FI2JWWOK+IiNebBdotVCbcGCGDStREkpWBAVpX+UlvwpUhChCD5Kiz9KW0HBtrQQNfiKlhQimuALVxvTyFZLqxjtmqRJ0VSiRivn3G9xTu7Nnb27C4lz98/ZuXfm7J3v+86ZM3N3WMDwzzDD5x/wAfAVYDgCfggMVgFsLCx8OtCz7YpGU0JeSpykA0RjAcDEN+XkKLhmh29Su/PyVLJbOzrIJquEQacAYwFwmrgMr/Err9Olf38oSIkSBo0CfACsrL8oawwxW9/1n0I+rpfP4dh/XPJQUcLkpiZPZHoalM6sbywAFW8V0Lpf9CRM+L5fGiN7o/4B2ZMj7pGVSgAZ1b+wcnD/nbOXtMjV6pQOxqXPFw6AsjkriNHcIGfrE3XbbMF2mnje7CwaN6lopIJV9cYrCtOvZTDzF/o4ZyB36NYHaVOAcQDICV8Nr1GYK7q8h9p3Y7yORy4eIPCdFBCqDFK/4RM/YDt3Gdm1760nm32ni2xvOysCH13m0T9lCjAWAKeJh6a/xCCfjygMofGo7TR9hSKmjP2V2t8uLyaL2IcCpJNYEyvqi/2cI3Y07vdEpqdBzz+M8QAghg99vpNwWbr5jEIWGMZqYCuHZxcz89+kW0+jH5HdUpxHNry22nbIJx9/nxTzcJq0AowFQE4cMQlkK77LpK/I9riOkEE7v2w1fW2eNItsqP2arRJQF+jGPJ4vN7iQ/O2p2W1LtmcF+ABYtTuyNhhdf7CVvh49dX1AcKEEKCAwr0yJ9bdf5xzw5Y+/K8o4srtiQL8gBs8VfIPrkXXbj9kqIWkFGAvAmqp1VOvfjTUozOkyj1UBFWO8blC8BQK6SnBiHrnJSZmeFWA8AIIo7SZiv3PxVo5tVIzaHrhj29cblBEyl3zT8yHdd8tJnhWQ4PPGuw95ABBrmJFbzKOfa8ksERV7iHidIBWDflhFrHZbZC95lHWI/JmEFWAsAJj4gc9GKSCu+LSX2m5KkOu+G6NyvZcVZL8ckiDzmIS2AowFQE68MzKTwMsaeY5s1U+879dVAJCXewBcx17AreKTisB4t5hPOAcYC4CsrMA4EATzDdN4t1Xa3Ub23OE6Jazmv7uEKsaWCfkSfGoX/vYPWSgC2Tszn98HSH+2TpK46JgDjAUAE8eJTHGId2Otza+Q3dx6hyyYD5TyGR4+pY31tny0LFhE1zNmjbO9X7S3VrmO/tJfqhXRTwHGAoCJLwmVExOri2u0mA9W3Kd+HdHJZPuucRvMgUn02zBjFSvp+M9K/0ALnyNAUdlltxRFdEZeVvymSglxBfgAWCc8OEObG+SKr675BNnbPa+SjZZMVJhCTOcU/q0oAfThes1ofttb9YDf+MSOci6IKwWrhJVToIDamVxpOo1zUoJuyd5PAcYCAMbckEMFpquEhjC/8QGD8VxRe54VYNUP+P14vWApAbkDCqr8g5WZt+sqhpCFEpwKN+0TIeMBUGAdoKGrhMe3u8lL973ZZPss5lEBonaHP1SAWD2QC8ZN51Xm/p+ca7AqYPVY+BefTWK3ij0LpqCtAB8AXQSsflIJGZXzbD04MS87OykLSpDM9+zjNz69p0poz/Gkhf9F1vVwPtm0nwkaDwAYdGIOMSpj3k1obv6wepwsv6i4knsWt3MK7ROhZB/4hQfADSCv96USwPxXU/h/g067VTfm8TwpU4DXCbqNMx4AmWNQJ6yaOkPBDnsWXeaHjAJ8AESMyH9+4O10oswPOQXggY0HQALhlfkhqwAfALd1M8H7g74OSHA+CXf/HzCVTn1rk1w+AAAAAElFTkSuQmCC
 // @icon         data:image/png;base64,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
 
 /* globals jQuery, $, _, dayjs, XRegExp */
@@ -37,6 +40,9 @@
     var sessionVariables = {};
     const STORAGE_NAMESPACE = 'SR:';
     const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`
+    dayjs.extend(window.dayjs_plugin_utc);
+    dayjs.extend(window.dayjs_plugin_duration);
+    dayjs.extend(window.dayjs_plugin_relativeTime);
 
     function addSpeedrunLink() {
         const ARN_REGEX = /^arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+)\/\w+/
@@ -115,7 +121,7 @@
         s = s.replaceAll(/'([^~\)]*)/g,"\"$1\"");
         //make =~();? into objects
         s = s.replaceAll(/.*?(\w+)=~\((\w.*)\)(;?)/g, '{"$1":{$2}}$3');
-        s = s.replaceAll(/(;?)(\w+)=(~[^~]+)/g, '$1{"$2":$3}');
+        s = s.replaceAll(/;(\w+)=(~[^~]+)/g, ';{"$2":$3}');
         let offset = s.indexOf('~(');
         while(offset>-1) {
             let matches = XRegExp.matchRecursive(s.substring(offset), '~\\(', '\\)');
@@ -125,12 +131,15 @@
             s = s.replace(toReplace,replacement);
             offset = s.indexOf('~(',offset);
         }
+
         //make keys that prefix an array
         s = s.replaceAll(/(\w+)\[/g,'\"$1\":[');
         //make keys into keys
         s = s.replaceAll(/([~\[{])(\w+)~/g,"$1\"$2\":");
         //replace any remaining ~ with ,
         s = s.replaceAll('~',',');
+        //replace straggling keys i.e. ,\w+{
+        s = s.replaceAll(/(,)(\w+)([{\[])/g,'$1"$2":$3');
         //replace any leading commas i.e. {, or [,
         s = s.replaceAll(/([{\[:]),/g,'$1');
         //insert comma between things like [] "[ and }{
@@ -140,6 +149,7 @@
             try {
                 $.extend(result, JSON.parse(seg));
             }catch(error) {
+                console.log(error);
             }
         }
         return unescapeCloudwatchQueryDetails(result);
@@ -147,7 +157,7 @@
     //console.log(unescapeCloudwatchLogs("#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255Ddf1b3ad5025b42aeb659fc10468fe964$3Fstart$3D1650006000000$26end$3D1650092399000$26filterPattern$3Da$253Db"));
     //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))")));
     //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~(expression~'SEARCH*28*27*7bAWS*2fApiGateway*2cApiName*7d*27*2c*20*27Average*27*2c*20300*29~id~'e1~period~300))~(~'AWS*2fApiGateway~'4XXError~'ApiName~'dev-serverless-api-sample~(id~'m1)))~region~'us-west-2~stat~'Average~period~300~start~'2022-04-14T20*3a13*3a00.988Z~end~'2022-04-14T20*3a26*3a00.741Z);query=~'*7bAWS*2fApiGateway*2cApiName*7d")));
-
+    //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)")));
 
     function getFormattedTimeUnit(relativeTimeInSeconds) {
         const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
@@ -182,6 +192,13 @@
         return `~~~srTimestampValue=Time Interval {"type":"select","cast":"json","options":${JSON.stringify(timestampsMap)},"default":${JSON.stringify(timestampsMap[timestamps[0].label])},"suppress":true}~~~`;
     }
 
+    function convertDuration(timestamp) {
+        if((timestamp+"").includes('P')) {
+            return (timestamp.startsWith("-") ? -1 : 1) * dayjs.duration(timestamp.replace("-","")).asSeconds();
+        }
+        return timestamp;
+    }
+
     function extractCloudWatchTime() {
         if (!/^\/cloudwatch\/home/.test(window.location.pathname)) {
             return;
@@ -194,6 +211,7 @@
                 obj = unescapeCloudwatchLogs(hash);
                 break;
             case 'logsV2:logs-insights':
+            case 'metricsV2:graph':
                 obj = unescapeCloudwatchInsights(unescapeCloudwatch(hash));
                 break;
             default:
@@ -203,17 +221,17 @@
         //unescape(unescape(s.replaceAll('$','%')))
         //#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255D456616728e3e40d093af1981cbe2d8b1$3Fstart$3D1649228400000$26end$3D1649235600000
         //#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))
-
-        let start = obj.queryDetail.start;
-        let end = obj.queryDetail.end;
-        let timeType = obj.queryDetail.timeType;
-        if(typeof start != 'undefined' && typeof end != 'undefined' && typeof timeType != 'undefined'){
+        //#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)
+        let start = firstNonNull(nullSafe(obj.queryDetail).start,nullSafe(obj.graph).start);
+        let end = firstNonNull(nullSafe(obj.queryDetail).end,nullSafe(obj.graph).end);
+        let timeType = nullSafe(obj.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
+        if(start != undefined && end != undefined && timeType != undefined){
             var timestamp = {};
             timestamp.start = start;
             timestamp.end = end;
             if(timeType === 'RELATIVE'){
                 timestamp.type = 'relative';
-                timestamp.label = `${getFormattedTimeUnit(start)} - ${getFormattedTimeUnit(end)}`;
+                timestamp.label = `${getFormattedTimeUnit(convertDuration(start))} - ${getFormattedTimeUnit(convertDuration(end))}`;
             }else{
                 timestamp.label = `${timestamp.start} - ${timestamp.end}`.replace(/T/g,' ').replace(/\.\d{3}Z/g,'Z');
                 timestamp.type = 'fixed';
@@ -278,10 +296,6 @@
     const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/credentials`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `export AWS_ACCESS_KEY_ID="";export AWS_SECRET_ACCESS_KEY="";export AWS_SESSION_TOKEN="";\ncredentials=$(CREDS_REQUEST | ${PERL_EXTRACT});$(echo $credentials);`;
-
-
-    dayjs.extend(window.dayjs_plugin_utc);
-
 
     let regionMap = {
         "US East (N. Virginia)": "us-east-1",
@@ -1105,13 +1119,13 @@ input:checked + .slider:before {
         let existingUserConfig = {};
         if (!preview) {
             if(hasElements(variables.internal.prompts)) {
-                const div = $('<div/>');
-                const table = $('<table/>');
+                const div = $('<div>');
+                const table = $('<table>');
                 div.append(table);
                 variables.internal.prompts.forEach(prompt => {
                     const info = getPromptInfo(prompt.prompt);
-                    const row = $('<tr/>');
-                    const header = $('<td/>', {class: 'p-2 text-right v-align-top'})
+                    const row = $('<tr>');
+                    const header = $('<td>', {class: 'p-2 text-right v-align-top'})
                     const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
                     header.append(label);
                     row.append(header);
@@ -1122,7 +1136,7 @@ input:checked + .slider:before {
                     let interpolatedDefaultText;
                     switch(info.configuration.type) {
                         case "checkbox":
-                            input = $(`<input type='checkbox'/>`);
+                            input = $('<input>', {type:'checkbox'});
                             setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
                             break;
                         case "select":
@@ -1152,19 +1166,19 @@ input:checked + .slider:before {
                             }
                             break;
                         case "textarea":
-                            input = $('<textarea/>', {rows:"5",cols:"40"});
+                            input = $('<textarea>', {rows:"5",cols:"40"});
                             input.val(info.interpolatedValue);
                             break;
                         default:
-                            input = $('<input/>');
+                            input = $('<input>', {size:40});
                             input.val(info.interpolatedValue);
                             break;
                     }
                     input.data('prompt', info);
-                    var col = $('<td/>', {class: 'p-2'})
+                    var col = $('<td>', {class: 'p-2'})
                     col.append(input);
                     row.append(col);
-                    col = $('<td/>', {class: 'p-2 v-align-top'})
+                    col = $('<td>', {class: 'p-2 v-align-top'})
                     if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
                         const text = interpolatedDefaultText || info.interpolatedDefault;
                         const button = $(`<button class="btn btn-sm Truncate" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
@@ -1587,13 +1601,13 @@ input:checked + .slider:before {
 
     function needsNewCreds(variables) {
         const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-        variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration < (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
+        variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
         return variables.internal.newCreds
     }
 
     function persistCreds(variables) {
         if(variables.internal.newCreds) {
-            GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, expiration: Date.now() + 360000});
+            GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, expiration: Date.now() + (60*60*1000)});
         }
     }
 
