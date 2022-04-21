@@ -718,7 +718,7 @@ input:checked + .slider:before {
     }
 
     function encodeCloudWatchInsightsParam(str) {
-        return encodeURIComponent(str).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
+        return escape(str).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
     }
 
 
