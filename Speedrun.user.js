@@ -226,7 +226,7 @@
         let end = firstNonNull(nullSafe(obj.queryDetail).end,nullSafe(obj.graph).end);
         let timeType = nullSafe(obj.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
         if(start != undefined && end != undefined && timeType != undefined){
-            var timestamp = {};
+            let timestamp = {};
             timestamp.start = start;
             timestamp.end = end;
             if(timeType === 'RELATIVE'){
@@ -409,7 +409,7 @@
     var pageConfig = {};
 
     //https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
-    RegExp.escape = function(s) {
+    function escapeRegex(s) {
         return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
 
@@ -751,11 +751,11 @@ input:checked + .slider:before {
     function interpolate(tpl, variables, suppressErrors) {
         try {
             sessionVariables = variables;
-            var keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
+            let keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
                 //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
                 fn = new Function(...keys,`return \`${tpl}\`;`);
 
-            var result = fn(...keys.map(x => variables[x]));
+            let result = fn(...keys.map(x => variables[x]));
             if(!suppressErrors && hasDOMContent(result)){
                 throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
             }
@@ -803,7 +803,7 @@ input:checked + .slider:before {
             return interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
         } else if(isDict(obj)){
             for (const [key, value] of Object.entries(obj)) {
-                var result = deepInterpolate(value, variables, suppressErrors);
+                let result = deepInterpolate(value, variables, suppressErrors);
                 if(result) {
                     obj[key] = result;
                 }
@@ -910,7 +910,7 @@ input:checked + .slider:before {
         let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
         let sPrompt = localStorage.getItem(text);
         //TODO add ability to override value with url search param getURLSearchParam. Figure out how to only use that value once.
-        var sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,sVariable,sPrompt,configuration.default,"");
+        let sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,sVariable,sPrompt,configuration.default,"");
         //override sessionValue if this is srTimestamp, we always want to set it to the default TODO make this a configuration option?
         if("srTimestampValue" === variable){
             sessionValue = configuration.default;
@@ -1129,7 +1129,7 @@ input:checked + .slider:before {
                     const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
                     header.append(label);
                     row.append(header);
-                    var input = undefined;
+                    let input = undefined;
                     info.interpolatedDefault = firstNonNull(interpolate(firstNonNull(info.default,""),variables, true), info.default);
                     info.interpolatedValue = firstNonNull(interpolate(firstNonNull(info.value,""),variables, true), info.value);
                     info.location = prompt.location;
@@ -1140,29 +1140,31 @@ input:checked + .slider:before {
                             setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
                             break;
                         case "select":
-                            var options = info.configuration.options;
-                            if(options && (typeof options === 'string')) {
-                                var literal = options.match(LITERAL);
-                                if(literal){
-                                    options = interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
-                                }
-                                options = parseJSON(options);
-                            }
-
-                            if(isDict(options) || hasElements(options)){
-                                input = $("<select>", {class:"width-fit"});
-                                if(Array.isArray(options)){
-                                    //convert to a map
-                                    options = _.zipObject(options, options);
-                                }
-                                Object.entries(options).forEach(([key, value]) => {
-                                    input.append($(`<option ${value===info.value ? "selected" : ""}>`).text(key).val(value));
-                                    if(info.interpolatedDefault && info.interpolatedDefault.length && value === info.interpolatedDefault) {
-                                        interpolatedDefaultText = key;
+                            {
+                                let options = info.configuration.options;
+                                if(options && (typeof options === 'string')) {
+                                    let literal = options.match(LITERAL);
+                                    if(literal){
+                                        options = interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
                                     }
-                                });
-                            } else {
-                                alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
+                                    options = parseJSON(options);
+                                }
+
+                                if(isDict(options) || hasElements(options)){
+                                    input = $("<select>", {class:"width-fit"});
+                                    if(Array.isArray(options)){
+                                        //convert to a map
+                                        options = _.zipObject(options, options);
+                                    }
+                                    Object.entries(options).forEach(([key, value]) => {
+                                        input.append($(`<option ${value===info.value ? "selected" : ""}>`).text(key).val(value));
+                                        if(info.interpolatedDefault && info.interpolatedDefault.length && value === info.interpolatedDefault) {
+                                            interpolatedDefaultText = key;
+                                        }
+                                    });
+                                } else {
+                                    alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
+                                }
                             }
                             break;
                         case "textarea":
@@ -1175,7 +1177,7 @@ input:checked + .slider:before {
                             break;
                     }
                     input.data('prompt', info);
-                    var col = $('<td>', {class: 'p-2'})
+                    let col = $('<td>', {class: 'p-2'})
                     col.append(input);
                     row.append(col);
                     col = $('<td>', {class: 'p-2 v-align-top'})
@@ -1208,7 +1210,7 @@ input:checked + .slider:before {
                             const prompt = $(this).data('prompt');
                             if(prompt) {
                                 const value = getInputValue($(this));
-                                var transformedValue = value;
+                                let transformedValue = value;
                                 if(prompt.configuration.transform){
                                     console.log('Transform:', prompt.configuration.transform);
                                     console.log('Value Before:', value);
@@ -1242,12 +1244,12 @@ input:checked + .slider:before {
                                     variables[prompt.variable] = transformedValue;
                                     prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
                                 }
-                                var suffix = "";
+                                let suffix = "";
                                 if(prompt.configuration.suppress){
                                     suffix = "\n?";
                                     transformedValue = "";
                                 }
-                                var replacement = new RegExp(RegExp.escape(prompt.raw)+suffix);
+                                let replacement = new RegExp(escapeRegex(prompt.raw)+suffix);
                                 if (prompt.location == 'content') {
                                     variables.content = variables.content.replace(replacement, transformedValue);
                                 } else {
@@ -1553,9 +1555,19 @@ input:checked + .slider:before {
         pageConfig = userConfig.services['${user}'].config.aws.account ? _.cloneDeep(userConfig) : {};
         const configs = [];
         if(enabled) {
-            for (const pre of $("div.markdown-body pre")){
+            let preBlocks = $("div.markdown-body pre");
+            for (const pre of preBlocks){
                 const details = parseContent($(pre).text(), SR_CONFIG);
                 if(details) {
+                    // hide sr config by default
+                    if(!$(pre).parent().find('summary').length && preBlocks.length > 1) {
+                          $(pre).parent().wrap('<details class="details-reset"></details>')
+                                     .before(`<summary class="btn">Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
+                                     .prev().on('click', function(event) {
+                          let text = $(event.delegateTarget).contents().get(0);
+                          text.nodeValue = `${text.nodeValue.includes('Show') ? 'Hide' : 'Show'} `;
+                      });
+                    }
                     if(details.variables && details.variables.transclude) {
                         for (const path of arrayify(details.variables.transclude)) {
                             const result = await retrieve(path);
@@ -1705,9 +1717,9 @@ ${variables.content}`;
         $('#srModal').ready(new function() {
             $('#srModal').find("select").each(function(index, select) {
                 $(select).select2({
-                   dropdownAutoWidth : true,
-                   width:'copy'});
-                });
+                    dropdownAutoWidth : true,
+                    width:'copy'});
+            });
             $('#srModal-ok').focus();
         });
         document.querySelector('#srModal').open = true;
