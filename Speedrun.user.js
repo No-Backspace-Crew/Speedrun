@@ -1120,7 +1120,7 @@ input:checked + .slider:before {
 
         let existingUserConfig = {};
         if (!preview) {
-            if(hasElements(variables.internal.prompts)) {
+            if(hasElements(variables.internal.prompts) && !(variables.prompts === false)) {
                 const div = $('<div>');
                 const table = $('<table>');
                 div.append(table);
@@ -1689,8 +1689,12 @@ input:checked + .slider:before {
 
     function colorizePrompts(content, variables) {
         return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
-            let groups = prompt.match(PROMPT);
-            return `<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`.replace(/\}/g,"&#125;");
+            if(variables.prompts === false) {
+                return prompt.replace(/\}/g,"&#125;");
+            } else {
+                let groups = prompt.match(PROMPT);
+                return `<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`.replace(/\}/g,"&#125;");
+            }
         }) : content;
     }
 
