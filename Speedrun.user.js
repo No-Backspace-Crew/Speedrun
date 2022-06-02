@@ -38,6 +38,7 @@
 (async function() {
     'use strict';
     let awsuserInfoCookieParsed = false;
+    const FEDERATION_ENDPOINT = 'https://fxdu768zp4.execute-api.us-west-2.amazonaws.com/dev/v1';
     var sessionVariables = {};
     const STORAGE_NAMESPACE = 'SR:';
     const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`
@@ -64,7 +65,7 @@
                             srLink.attr('title',`Speedrun Link in account: ${account} with role: ${role}`);
                             srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
                             srLink.on('click',(event)=>{
-                                let url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
+                                let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
                                 url.searchParams.append('role',arn.replace(':sts:',':iam:').replace(/:assumed-role\/(.*?)\/.*$/,':role/$1'));
                                 url.searchParams.append('destination',window.location.href.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
                                 let curHtml = srLink.html();
@@ -294,7 +295,7 @@
     const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`
     const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`
     const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`
-    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/credentials`
+    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `export AWS_ACCESS_KEY_ID="";export AWS_SECRET_ACCESS_KEY="";export AWS_SESSION_TOKEN="";\ncredentials=$(CREDS_REQUEST | ${PERL_EXTRACT});$(echo $credentials);`;
 
@@ -1328,7 +1329,7 @@ input:checked + .slider:before {
                     console.log('Console url', consoleURL);
                     let url = consoleURL;
                     if(needsNewCreds(variables)) {
-                        url = new URL('https://oynsydbhl3.execute-api.us-west-2.amazonaws.com/dev/v1/federate');
+                        url = new URL(`${FEDERATION_ENDPOINT}/federate`);
                         url.searchParams.append('role',variables.roleArn);
                         url.searchParams.append('destination',consoleURL);
                         url = url.toString();
