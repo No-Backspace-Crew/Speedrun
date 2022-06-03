@@ -28,9 +28,6 @@
 // @match        https://console.aws.amazon.com/*
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLUlEQVR4Xu1aWWhUSRRN2mhUGJcxsW3cNSFGQ2y01TDRMO5RDI4LKqgghoigBCSIG34pwoyKuMJE8EOdD1EUV8S4Ec3gqGiMSwhxiwsxdDREcYlLXG71Eev6qqt93YEe672fm1pe5dU55y5d78XGGH7FGr7/GAcARwGGI+C4QLQKID8l5WOwZ9tUURER8iKySFOAaCwA2PjyhAQJ1w7eB9R+WtqN7JraWrLhKiHqFGAsAKqNc/dqO/M2ddX/kxQRJUSNAhwAAlF/dPvWxGxR3SuJfPRnDxS+/77fW0kJnUpKbJFp66amjPrGAjAhK4nyfmqjl/CdkVZDtqroNdmzcS/IciWAjIKTQjkYz7lwNSRyQ5rUFIzzNX86ALIGjZEqueJLJ4KCvXjoVJoP5j192hNGiaktJKwK8q9LTA9qJpi/9EHEDMSOUOuDJlOAsQBg41WjN0vMva2poHZy2RayXBFcAemT3DTP9essYX0TyeZOm0e2Q3Ud2Qa/UASuUJnH/IgrwFgA+MbTe/5CIJfdE9EbF1cC+ofEt6E/F00V+R2+DwVIi3xu1JTsoK4N+0SMWHt+ny0ybd3EH+ZL21gAkL4Orl9HuPxRGEf23eNzZI8f+5NA9uQeoijfwp1C/VBC/+oSar/yXyULJSAbeHMLrPCOWbpod1jMY9GwFWAsAHzjjc8EI/5y4cPz9t8ie6T4NoGcPX4JKeCaJ5P6wTyYKPfOlZQxq2IntXldEKrP4/k6uofTOjv2brck27YCHAACtfuBFaJ2VzFv6cAWikBs4NkDscLnctFSPLbw9UFM4eS+NOTOFMrK++uopRLCVoCxAAB5II42fF7FPPp5VgDzqvtGZHho6PSFaqGEAxvJIsuomEe9wGMS/o9tBRgPwIKsxRTVRz4+I5F2qrOIuluL1wYFFwrwZfgsSUcFme6vFOODB5DhSqgvnEP9bb350ry/X86ntor5sBVgHAD7e/uk3/e/dYq3ZA6d/z5poD8n37lsqYScvCNivQCzuA/Mp5aKWh8VYmX6Qmp/p5iLVyTmYwLt+tJN1K87hwg5BhgLADbOGQfDNxtSCel+8eVkVfO4EqCAssRkug9ZgEd3KIMfsOC84Wv2+EHmQ44BxgPwJDNT8v3tVb0IvJWPdlm6z6ous2n+7y3FaW6yW+RtnNsPGDiFxju6xZud5p2HkYUSqtakBF0XzBV5xKkxv3Q+z+drY4CxAHDp66I6R1alBKyzul136RYoApXduSRxSgwFtUwQSsF1+sZJqa3KNpYy+aZTqQDjAeDS/1EFAGSdEjhDI9JGUdebWnGixC98J4B+vCOMuynOBvH9QKjvCpUKMB4AuEBOtoi2h4+Lc3q7vsaVkDH2P4lcMIcsg7pC9f/48zVOF6fKjTfE22N8P6BTgjYGGAsA6Hm9zU3R2K6PYR3OGBjnFaWqvrAMCJ87se64goc0xZUmvi2qW9aOrG0FOAAEEHi3oCspAD7m2vPc0nd5luBplH/lVVkjTniQ5+1mGa4wKAGKbb71YdBiT1sJGg8AEOZAINpiHIijDR8H0/6P92kIUR1Zgf+KtKsEHmPwHGErwAGAhV8USPhej2cHMIjbdHVDpJSAdfK635WeOOwswNOP8QBwQCLVtqsEu8zjubVZIFIb1K1jPAAASAUEssnZN60kLOHzOC/AOYEu9kSdAhwAmI9wJSTG9pAqR0xX1Rk6l4taBaiUYBwAnMFwX8WpFBE1WUAnWeMB0AFkd/x/owC7G9Td5wCgQ+hnH/8ERThofbOmWJUAAAAASUVORK5CYIIA
 // ==/UserScript==
-// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAE90lEQVR4Xu1aaWxNQRhtSxGCltYrtWtDlaapNRpiiWhoiV2CH0hFIoQ0EiQiQprYYkkImvADEVFELCG1BaWx1E5qi63hKWnsamnJNz2N+frmzX333Zc85t0/c+feud+bOed8y5t7w8MMP8INX39YCICQAgxHIOQCwSqAuZ07V3mb28aSEkfIc8RIIEA0FgAsfHFMjIRr89Tn1H93oy21uW/fUuuvEoJOAcYCoFo4d6+mkx/Rpfe7ExxRQtAoIARAddQfGt2QmC0o/yKRj+sZPYTv/0z+LikhrrDQFpm2Hgpk1DcWgMwBCZT3kypTCd9J3dzUPiv4Su3Zuh+p5UoAGTknhXJwP6vouiVyLQ0KBOPc5n8HQFqPscRoC5eI1sePrfQItmrhLbtE03OxSfUkrHLm3paY7lVHMH/ll4gZiB1W64OAKcA4APiC76dOl5hLurGd+m/cIo8XX9tP4KsUkDLaReMimk0Rbc9R1M6YMJPa5q/Kqa0oE4rAYZV5jHdMAcYCoFp4SofGAuTLxRJD6PwoPU+nUESrRjepv21MV2rh+1AAN+IuFIpaly9ixOoL+bbItPXQ35MxHgD48KG1awiXEUsvSWSBYWQDj3L4czEyvj/dqiqZR+2yri2pTZ2R4/GRhfN3+cU8jPqtAGMB4AuHTwLZzJ2RdIpoj+twGfTj06bR6a3YRGpTyh56VALqAqs+j/m1cA0ie9v35Xkk27YCQgBU1+6I2mB05oF7dHrk3COv4EIJUEBY7zTJ1wf3FTFg/Z4HkjIO52V6tQtiMC9XuqhHslcd9agEvxVgLADTx2dTrf/GfUZizirzyAqoGGvqhmprI6Ou0tmnLlmWlKBiHrFJpUzbCjAegNkDFpAChpTKCjgVL6LupnOrPYIL3383LFf4NipGSUf6TumWOdIgHku2fp5F93UxybYCjAPgQKee0puafnH1vdJ08XUF3R/z+CqBrC2ZuTX2H6KmTuCKwThkkep+afEOssjrEP4zlhVgLABYOGccDN+tSCJQk+vfpzYrQ+zl4Q0Oxq2IakfXa1V+CkZ5vucVZK0Y4iPzUIJWAcYD8Do9XfL9vGcdCbwlL3d6BG9566k0fmADsZub6HpF7fBvcZL7cSXgJv4LQAGwx333oEt+b4D7Op/3OQYYCwCXPo/qHEneVykBdjCexwZE7w3vhcC6J4tdZX6cvnNSuoRso5uXZQUYDwCXvq8KANJWlYDxuvoC3wlgPN4R1r0r9gYPHxe7yVYVocwCxgMAF0Be9xVZ7mvnE8ZJ2QTZgX/5gSyDukLFJJ8flBDRTXxZErH3A7WRm154TfXKm8YDAAa/bnYRc/AxVHi+vo/ngPJKERWlqr5QRXedEsoXRdGjqvlqK0HjAfgxuw0poHJiE8m3wAhnEvsB2CdAVOe+/tAt9vwQC+xmGcxDpQR8S2RbAcYDAIQ5EJV3xLc6OBAjuK8WnehDl8qqnlKLqI76ANEeSrGrBK4AzEOXvbQxIAQAoxQFEr7X49kBw60y6ZQSYCe73RNpxrpsZVkBsGo8ANzHneqrlLC8Tj/6CdUus4p5qwr0WQFOLZjbMR4AAKKLCagYMR4+3yBGfF+AfQK//w0GimmdXeMBUCkhNrw93ULliHGoMHX5XgV80MQAXUwwDgAOiN1XcTqXC1oFhADQUefQ/X9GAQ6tt5aZEACBQvZfsfsbh8EmfXZLs6IAAAAASUVORK5CYIIA
-// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFRklEQVR4Xu1aa2hURxRejVF8FI2JWWOK+IiNebBdotVCbcGCGDStREkpWBAVpX+UlvwpUhChCD5Kiz9KW0HBtrQQNfiKlhQimuALVxvTyFZLqxjtmqRJ0VSiRivn3G9xTu7Nnb27C4lz98/ZuXfm7J3v+86ZM3N3WMDwzzDD5x/wAfAVYDgCfggMVgFsLCx8OtCz7YpGU0JeSpykA0RjAcDEN+XkKLhmh29Su/PyVLJbOzrIJquEQacAYwFwmrgMr/Err9Olf38oSIkSBo0CfACsrL8oawwxW9/1n0I+rpfP4dh/XPJQUcLkpiZPZHoalM6sbywAFW8V0Lpf9CRM+L5fGiN7o/4B2ZMj7pGVSgAZ1b+wcnD/nbOXtMjV6pQOxqXPFw6AsjkriNHcIGfrE3XbbMF2mnje7CwaN6lopIJV9cYrCtOvZTDzF/o4ZyB36NYHaVOAcQDICV8Nr1GYK7q8h9p3Y7yORy4eIPCdFBCqDFK/4RM/YDt3Gdm1760nm32ni2xvOysCH13m0T9lCjAWAKeJh6a/xCCfjygMofGo7TR9hSKmjP2V2t8uLyaL2IcCpJNYEyvqi/2cI3Y07vdEpqdBzz+M8QAghg99vpNwWbr5jEIWGMZqYCuHZxcz89+kW0+jH5HdUpxHNry22nbIJx9/nxTzcJq0AowFQE4cMQlkK77LpK/I9riOkEE7v2w1fW2eNItsqP2arRJQF+jGPJ4vN7iQ/O2p2W1LtmcF+ABYtTuyNhhdf7CVvh49dX1AcKEEKCAwr0yJ9bdf5xzw5Y+/K8o4srtiQL8gBs8VfIPrkXXbj9kqIWkFGAvAmqp1VOvfjTUozOkyj1UBFWO8blC8BQK6SnBiHrnJSZmeFWA8AIIo7SZiv3PxVo5tVIzaHrhj29cblBEyl3zT8yHdd8tJnhWQ4PPGuw95ABBrmJFbzKOfa8ksERV7iHidIBWDflhFrHZbZC95lHWI/JmEFWAsAJj4gc9GKSCu+LSX2m5KkOu+G6NyvZcVZL8ckiDzmIS2AowFQE68MzKTwMsaeY5s1U+879dVAJCXewBcx17AreKTisB4t5hPOAcYC4CsrMA4EATzDdN4t1Xa3Ub23OE6Jazmv7uEKsaWCfkSfGoX/vYPWSgC2Tszn98HSH+2TpK46JgDjAUAE8eJTHGId2Otza+Q3dx6hyyYD5TyGR4+pY31tny0LFhE1zNmjbO9X7S3VrmO/tJfqhXRTwHGAoCJLwmVExOri2u0mA9W3Kd+HdHJZPuucRvMgUn02zBjFSvp+M9K/0ALnyNAUdlltxRFdEZeVvymSglxBfgAWCc8OEObG+SKr675BNnbPa+SjZZMVJhCTOcU/q0oAfThes1ofttb9YDf+MSOci6IKwWrhJVToIDamVxpOo1zUoJuyd5PAcYCAMbckEMFpquEhjC/8QGD8VxRe54VYNUP+P14vWApAbkDCqr8g5WZt+sqhpCFEpwKN+0TIeMBUGAdoKGrhMe3u8lL973ZZPss5lEBonaHP1SAWD2QC8ZN51Xm/p+ca7AqYPVY+BefTWK3ij0LpqCtAB8AXQSsflIJGZXzbD04MS87OykLSpDM9+zjNz69p0poz/Gkhf9F1vVwPtm0nwkaDwAYdGIOMSpj3k1obv6wepwsv6i4knsWt3MK7ROhZB/4hQfADSCv96USwPxXU/h/g067VTfm8TwpU4DXCbqNMx4AmWNQJ6yaOkPBDnsWXeaHjAJ8AESMyH9+4O10oswPOQXggY0HQALhlfkhqwAfALd1M8H7g74OSHA+CXf/HzCVTn1rk1w+AAAAAElFTkSuQmCC
-// @icon         data:image/png;base64,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
 
 /* globals jQuery, $, _, dayjs, XRegExp */
 
@@ -45,6 +42,13 @@
     dayjs.extend(window.dayjs_plugin_utc);
     dayjs.extend(window.dayjs_plugin_duration);
     dayjs.extend(window.dayjs_plugin_relativeTime);
+
+    function getFederationLink(roleArn, destination) {
+        let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
+        url.searchParams.append('role',roleArn.replace(':sts:',':iam:').replace(/:assumed-role\/(.*?)\/.*$/,':role/$1'));
+        url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+        return url.toString();
+    }
 
     function addSpeedrunLink() {
         const ARN_REGEX = /^arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+)\/\w+/
@@ -65,12 +69,10 @@
                             srLink.attr('title',`Speedrun Link in account: ${account} with role: ${role}`);
                             srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
                             srLink.on('click',(event)=>{
-                                let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
-                                url.searchParams.append('role',arn.replace(':sts:',':iam:').replace(/:assumed-role\/(.*?)\/.*$/,':role/$1'));
-                                url.searchParams.append('destination',window.location.href.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+                                let url = getFederationLink(arn,window.location.href);
                                 let curHtml = srLink.html();
-                                console.log('Speedrun link',url.toString());
-                                GM_setClipboard(url.toString());
+                                console.log('Speedrun link',url);
+                                GM_setClipboard(url);
                                 srLink.html('Copied!');
                                 setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
@@ -905,6 +907,22 @@ input:checked + .slider:before {
         throw new Error(`Unsupported srTimestamp type: ${type} or format: ${timestamp.type}`);
     }
 
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+            json = prettyJSON(json);
+        }
+        json = json.replace(/[&<>]/g, m => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'}[m]));
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'pl-c1';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'pl-s';
+                }
+            }
+            return '<span class="' + cls + '">' + match + '</span>';
+        });
+    }
+
     function getPromptInfo(prompt) {
         let variable = prompt[1];
         let text = prompt[2];
@@ -945,6 +963,10 @@ input:checked + .slider:before {
         JSON.stringify(str).slice(1, -1);
     }
 
+    function bashEscape(str) {
+        return str ? str.replaceAll("'","'\\''") : str;
+    }
+
     var exposedFunctions = {
         window : noop,
         alert : noop,
@@ -969,6 +991,7 @@ input:checked + .slider:before {
         arrayify: arrayify,
         XRegExp: XRegExp,
         stringify: stringify,
+        bashEscapeForSingleQuotes: bashEscape,
         _ : _
     }
 
@@ -1284,11 +1307,7 @@ input:checked + .slider:before {
                     })});
             }
 
-            if(variables.ignoreErrors) {
-                variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors);
-            } else {
-                variables.internal.result = interpolate(variables.internal.template, variables, preview);
-            }
+            variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors ? preview : true);
 
             if(variables.creds) {
                 if(variables.account && variables.role && variables.partition) {
@@ -1329,10 +1348,7 @@ input:checked + .slider:before {
                     console.log('Console url', consoleURL);
                     let url = consoleURL;
                     if(needsNewCreds(variables)) {
-                        url = new URL(`${FEDERATION_ENDPOINT}/federate`);
-                        url.searchParams.append('role',variables.roleArn);
-                        url.searchParams.append('destination',consoleURL);
-                        url = url.toString();
+                        url = getFederationLink(variables.roleArn, consoleURL);
                         console.log('Federation url', url);
                     }
                     window.open(url);
@@ -1499,7 +1515,7 @@ input:checked + .slider:before {
             const btn = $(this);
             const variables = await nope(btn.data('code'), true);
             btn.data('previewTab').first("code").html(buildPreview(variables));
-            btn.data('debugTab').first("code").html(jsonWithoutInternalVariables(variables));
+            btn.data('debugTab').first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
             setButtonDanger(btn, variables);
             switch(variables.internal.templateType) {
                 case 'link':
@@ -1678,7 +1694,7 @@ input:checked + .slider:before {
                 $(pre).attr('id',`Preview-${block}`);
                 runBtn.data('previewTab', $(pre));
                 const codeTab = $(`<pre id='Code-${block}'><code>${code}</code></pre>`).hide();
-                const debugTab = $(`<pre id='Debug-${block}'><code></code></pre>`).hide();
+                const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
                 runBtn.data('debugTab', debugTab);
                 $(pre).after(codeTab);
                 codeTab.after(debugTab);
