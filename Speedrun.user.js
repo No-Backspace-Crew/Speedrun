@@ -8,10 +8,10 @@
 // @require      https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
 // @require      https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js
 // @resource     select2css https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css
-// @require      https://unpkg.com/dayjs@1.10.8/dayjs.min.js
-// @require      https://unpkg.com/dayjs@1.10.8/plugin/utc.js
-// @require      https://unpkg.com/dayjs@1.10.8/plugin/duration.js
-// @require      https://unpkg.com/dayjs@1.10.8/plugin/relativeTime.js
+// @require      https://unpkg.com/dayjs@1.11.2/dayjs.min.js
+// @require      https://unpkg.com/dayjs@1.11.2/plugin/utc.js
+// @require      https://unpkg.com/dayjs@1.11.2/plugin/duration.js
+// @require      https://unpkg.com/dayjs@1.11.2/plugin/relativeTime.js
 // @require      https://unpkg.com/xregexp/xregexp-all.js
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -300,7 +300,7 @@
     const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `export AWS_ACCESS_KEY_ID="";export AWS_SECRET_ACCESS_KEY="";export AWS_SESSION_TOKEN="";\ncredentials=$(CREDS_REQUEST | ${PERL_EXTRACT});$(echo $credentials);`;
-
+    const USED_SEARCH_PARAMS = new Set();
     let regionMap = {
         "US East (N. Virginia)": "us-east-1",
         "US East (Ohio)": "us-east-2",
@@ -585,7 +585,7 @@ input:checked + .slider:before {
     `);
 
     $("body").prepend(toolbar).append(`
-<div class="position-fixed top-0 right-0 d-none" style='"top":"0","left": "50%","transform":"translate(-50%, 0)"' id='snackbar'>
+<div class="position-fixed top-0 right-0" hidden style='"top":"0","left": "50%","transform":"translate(-50%, 0)"' id='snackbar'>
   <div class="Toast Toast--success anim-fade-in fast">
     <span class="Toast-icon">
       <!-- <%= octicon "check" %> -->
@@ -608,7 +608,7 @@ input:checked + .slider:before {
     </div>
     <div class="Box-body overflow-auto" id='srModal-body'>
     </div>
-    <div class="Box-footer float-right">
+    <div class="Box-footer text-right">
       <button id="srModal-ok" type="button" class="btn btn-primary" autofocus data-close-dialog>Ok</button>
     </div>
   </details-dialog>
@@ -621,8 +621,8 @@ input:checked + .slider:before {
     function toast(str) {
         let snackbar = $("#snackbar");
         $('#toast').html(str);
-        snackbar.removeClass('d-none');
-        setTimeout(function(){ snackbar.addClass('d-none')}, 2500);
+        snackbar.attr('hidden',false);
+        setTimeout(function(){ snackbar.attr('hidden',true); }, 2500);
     }
 
     function nullSafe(obj) {
@@ -880,6 +880,10 @@ input:checked + .slider:before {
         return new URLSearchParams(window.location.search).get(key);
     }
 
+    function getURLSearchParamOnce(key){
+        return USED_SEARCH_PARAMS.has(key)? undefined : new URLSearchParams(window.location.search).get(key);
+    }
+
     //touch the timestamp if a timestamp matches this label
     function touchTimestamp(label, key){
         let timestamps = GM_getValue(key,[]);
@@ -930,8 +934,8 @@ input:checked + .slider:before {
         let isGlobal = variable && variable.startsWith(GLOBAL_PREFIX);
         let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
         let sPrompt = localStorage.getItem(text);
-        //TODO add ability to override value with url search param getURLSearchParam. Figure out how to only use that value once.
-        let sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,sVariable,sPrompt,configuration.default,"");
+        let urlValue = getURLSearchParamOnce(text);
+        let sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,urlValue, sVariable,sPrompt,configuration.default,"");
         //override sessionValue if this is srTimestamp, we always want to set it to the default TODO make this a configuration option?
         if("srTimestampValue" === variable){
             sessionValue = configuration.default;
@@ -1091,7 +1095,7 @@ input:checked + .slider:before {
         }
     }
 
-    async function nope(content, preview) {
+    async function nope(content, preview = false, anchor) {
         let pageVariables = _.cloneDeep(nullSafe(pageConfig));
         delete pageVariables.templates;
         delete pageVariables.services;
@@ -1235,6 +1239,27 @@ input:checked + .slider:before {
                     if(isSettings) {
                         existingUserConfig = getUserConfig();
                     }
+                    var deeplink = undefined;
+                    if(anchor) {
+                        deeplink = $('<button id="modal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
+                        deeplink.click(function () {
+                            let url = new URL(`${window.location.origin}${window.location.pathname}`)
+                            url.hash = anchor.attr('href').substring(1);
+                            let parameters = new URLSearchParams();
+                            parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
+                            parameters.append('srService', getValue('#service'));
+                            $('#srModal :input' ).not(':input[type=button],button').each(function() {
+                            const prompt = $(this).data('prompt');
+                            if(prompt) {
+                                const value = getInputValue($(this));
+                                parameters.append(prompt.prompt,value);
+                            }
+                            url.search = parameters.toString();
+                            GM_setClipboard(url.toString());
+                            toast("📋 Deeplink Copied");
+                        });
+                        });
+                    }
                     await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : 'Input', function() {
                         $('#srModal :input' ).not(':input[type=button],button').each(function() {
                             const prompt = $(this).data('prompt');
@@ -1270,6 +1295,9 @@ input:checked + .slider:before {
                                     }
                                 }
                                 localStorage.setItem(prompt.prompt,value);
+                                if(getURLSearchParam(prompt.prompt)) {
+                                   USED_SEARCH_PARAMS.add(prompt.prompt);
+                                }
                                 if(prompt.variable) {
                                     variables[prompt.variable] = transformedValue;
                                     prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
@@ -1287,9 +1315,9 @@ input:checked + .slider:before {
                                 }
                             }
                         });
-                    })}
+                    }, deeplink)}
                 catch(err) {
-                    //TODO alert and throw?
+                    //TODO this needs to be moved up a level and alert and throw?
                     console.log(err);
                     return;
                 }
@@ -1360,7 +1388,7 @@ input:checked + .slider:before {
 
             }
             //persist last region and service
-            let lastRegion = getValue('#select2-region-container', true);
+            let lastRegion = extractRegion(getValue('#select2-region-container', true));
             if(lastRegion) {
                 localStorage.setItem(LAST_REGION_KEY, lastRegion);
             }
@@ -1379,7 +1407,7 @@ input:checked + .slider:before {
     });
 
     $('#srFederate,#srFederateService').click(async (event) => {
-        await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`, false);
+        await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`);
     });
 
     $("#service").on('change', function() {
@@ -1403,7 +1431,7 @@ input:checked + .slider:before {
         }
     });
     $("#srSettings").on('click', async () => {
-        await nope('#settings', false);
+        await nope('#settings');
     });
 
     $("#srEnabled").on('change', async (event) => {
@@ -1416,11 +1444,11 @@ input:checked + .slider:before {
     });
 
     $("#srCopyAccount").on('click', async () => {
-        await nope('#copy\n${account}', false);
+        await nope('#copy\n${account}');
     });
 
     $("#srGetCreds").on('click', async () => {
-        await nope('#copy.withCreds {"forceNewCreds": true}\necho $credentials', false);
+        await nope('#copy.withCreds {"forceNewCreds": true}\necho $credentials');
     });
 
     $("#srFlush").on('click', async () => {
@@ -1439,6 +1467,17 @@ input:checked + .slider:before {
         $('#service,#region').select2({
             dropdownAutoWidth : true,
             width:'copy'});
+        if(window.location.hash) {
+            const el = document.getElementById('user-content-' + window.location.hash.substring(1));
+            if(el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'start'});
+                const runBtn = $(el).parent().next().find('.srRunBtn');
+                if(runBtn) {
+                    runBtn.addClass('anim-pulse');
+                    setTimeout(()=>{runBtn.removeClass('anim-pulse');}, 6000);
+                }
+            }
+        }
     });
 
     showToolbarOnWiki();
@@ -1451,14 +1490,23 @@ input:checked + .slider:before {
         return undefined;
     }
 
+    function extractRegion(textRegionValue) {
+        return textRegionValue ? textRegionValue.replace(/ - [\w ]+$/,'') : textRegionValue;
+    }
+
     function updateRegions() {
         let service = $('#service')
-        let lastRegion = getValue('#select2-region-container', true) || localStorage.getItem(LAST_REGION_KEY);
+        let lastRegion = extractRegion(getValue('#select2-region-container', true)) || getURLSearchParam('srRegion') || localStorage.getItem(LAST_REGION_KEY);
         let regions = [];
+        let currentOptGroup = undefined;
         for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
             let splits = region.split(' ', 2);
             let suffix = splits.length > 1 ? splits[1] : '';
-            regions.push(`<option title='${regionNameMap[splits[0]].name}' value="${splits[0]}" ${region == lastRegion ? 'selected' : ''}>${region}</option>`);
+            if(!currentOptGroup || currentOptGroup.attr('label') !== regionNameMap[splits[0]].area) {
+                currentOptGroup = $(`<optgroup label='${regionNameMap[splits[0]].area}'/>`);
+                regions.push(currentOptGroup);
+            }
+            currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${splits[0]}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
         }
         $('#region').empty().append(regions).prop('disabled',regions.length==1);
     }
@@ -1479,7 +1527,7 @@ input:checked + .slider:before {
 
         let hadServices = serviceDropdown.children().length > 0;
         let newServices = [];
-        let lastService = getValue('#service') || localStorage.getItem(LAST_SERVICE_KEY);
+        let lastService = getValue('#service') || getURLSearchParam('srService') || localStorage.getItem(LAST_SERVICE_KEY);
 
         for (const [key, value] of Object.entries(getServices(pageConfig))) {
             newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
@@ -1516,6 +1564,7 @@ input:checked + .slider:before {
             const variables = await nope(btn.data('code'), true);
             btn.data('previewTab').first("code").html(buildPreview(variables));
             btn.data('debugTab').first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
+            btn.data('anchor', btn.closest("nav").prevAll(":header").find('a.anchor').last());
             setButtonDanger(btn, variables);
             switch(variables.internal.templateType) {
                 case 'link':
@@ -1699,7 +1748,7 @@ input:checked + .slider:before {
                 $(pre).after(codeTab);
                 codeTab.after(debugTab);
                 runBtn.click(async function() {
-                    await nope($(this).data('code'), false);
+                    await nope(runBtn.data('code'), false, runBtn.data('anchor'));
                 });
             }
         }
@@ -1749,9 +1798,13 @@ ${variables.content}`;
         document.querySelector('#srModal').open = true;
     }
 
-    function dialog(body, title, callback) {
+    function dialog(body, title, callback, footerContent) {
         $('#srModal-title').text(title || 'Input');
         $('#srModal-body').html(body);
+        $('#srModal-ok').prevAll().remove();
+        if(footerContent) {
+            $('#srModal-ok').before(footerContent);
+        }
         $('#srModal').ready(new function() {
             $('#srModal').find("select").each(function(index, select) {
                 $(select).select2({
@@ -1776,7 +1829,6 @@ ${variables.content}`;
             $('#srModal').on("details-dialog-close.sr", function(event) {
                 $('#srModal-ok').off("click.sr");
                 $(this).off("details-dialog-close.sr");
-
                 if(!isResolved) {
                     reject('User cancelled run');
                 }
