@@ -13,6 +13,7 @@
 // @require      https://unpkg.com/dayjs@1.11.2/plugin/duration.js
 // @require      https://unpkg.com/dayjs@1.11.2/plugin/relativeTime.js
 // @require      https://unpkg.com/xregexp/xregexp-all.js
+// @require      http://andywer.github.io/jquery-dim-background/jquery.dim-background.min.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -1480,9 +1481,19 @@ input:checked + .slider:before {
             if(el) {
                 el.scrollIntoView({behavior: 'smooth', block: 'start'});
                 const runBtn = $(el).parent().next().find('.srRunBtn');
-                if(runBtn) {
+                if(runBtn && runBtn.length) {
+                    runBtn.dimBackground();
+                    runBtn.focus();
                     runBtn.addClass('anim-pulse');
-                    setTimeout(()=>{runBtn.removeClass('anim-pulse');}, 6000);
+                    let cleanup = (stopPulsing=false)=>{
+                        runBtn.undim();
+                        if(stopPulsing) {
+                            runBtn.removeClass('anim-pulse');
+                        }
+                    };
+                    runBtn.click(cleanup);
+                    runBtn.hover(cleanup);
+                    setTimeout(()=>{cleanup(false)}, 3000);
                 }
             }
         }
