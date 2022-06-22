@@ -27,7 +27,7 @@
 // @match        https://www.github.com/*
 // @match        https://*.console.aws.amazon.com/*
 // @match        https://console.aws.amazon.com/*
-// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFLUlEQVR4Xu1aWWhUSRRN2mhUGJcxsW3cNSFGQ2y01TDRMO5RDI4LKqgghoigBCSIG34pwoyKuMJE8EOdD1EUV8S4Ec3gqGiMSwhxiwsxdDREcYlLXG71Eev6qqt93YEe672fm1pe5dU55y5d78XGGH7FGr7/GAcARwGGI+C4QLQKID8l5WOwZ9tUURER8iKySFOAaCwA2PjyhAQJ1w7eB9R+WtqN7JraWrLhKiHqFGAsAKqNc/dqO/M2ddX/kxQRJUSNAhwAAlF/dPvWxGxR3SuJfPRnDxS+/77fW0kJnUpKbJFp66amjPrGAjAhK4nyfmqjl/CdkVZDtqroNdmzcS/IciWAjIKTQjkYz7lwNSRyQ5rUFIzzNX86ALIGjZEqueJLJ4KCvXjoVJoP5j192hNGiaktJKwK8q9LTA9qJpi/9EHEDMSOUOuDJlOAsQBg41WjN0vMva2poHZy2RayXBFcAemT3DTP9essYX0TyeZOm0e2Q3Ud2Qa/UASuUJnH/IgrwFgA+MbTe/5CIJfdE9EbF1cC+ofEt6E/F00V+R2+DwVIi3xu1JTsoK4N+0SMWHt+ny0ybd3EH+ZL21gAkL4Orl9HuPxRGEf23eNzZI8f+5NA9uQeoijfwp1C/VBC/+oSar/yXyULJSAbeHMLrPCOWbpod1jMY9GwFWAsAHzjjc8EI/5y4cPz9t8ie6T4NoGcPX4JKeCaJ5P6wTyYKPfOlZQxq2IntXldEKrP4/k6uofTOjv2brck27YCHAACtfuBFaJ2VzFv6cAWikBs4NkDscLnctFSPLbw9UFM4eS+NOTOFMrK++uopRLCVoCxAAB5II42fF7FPPp5VgDzqvtGZHho6PSFaqGEAxvJIsuomEe9wGMS/o9tBRgPwIKsxRTVRz4+I5F2qrOIuluL1wYFFwrwZfgsSUcFme6vFOODB5DhSqgvnEP9bb350ry/X86ntor5sBVgHAD7e/uk3/e/dYq3ZA6d/z5poD8n37lsqYScvCNivQCzuA/Mp5aKWh8VYmX6Qmp/p5iLVyTmYwLt+tJN1K87hwg5BhgLADbOGQfDNxtSCel+8eVkVfO4EqCAssRkug9ZgEd3KIMfsOC84Wv2+EHmQ44BxgPwJDNT8v3tVb0IvJWPdlm6z6ous2n+7y3FaW6yW+RtnNsPGDiFxju6xZud5p2HkYUSqtakBF0XzBV5xKkxv3Q+z+drY4CxAHDp66I6R1alBKyzul136RYoApXduSRxSgwFtUwQSsF1+sZJqa3KNpYy+aZTqQDjAeDS/1EFAGSdEjhDI9JGUdebWnGixC98J4B+vCOMuynOBvH9QKjvCpUKMB4AuEBOtoi2h4+Lc3q7vsaVkDH2P4lcMIcsg7pC9f/48zVOF6fKjTfE22N8P6BTgjYGGAsA6Hm9zU3R2K6PYR3OGBjnFaWqvrAMCJ87se64goc0xZUmvi2qW9aOrG0FOAAEEHi3oCspAD7m2vPc0nd5luBplH/lVVkjTniQ5+1mGa4wKAGKbb71YdBiT1sJGg8AEOZAINpiHIijDR8H0/6P92kIUR1Zgf+KtKsEHmPwHGErwAGAhV8USPhej2cHMIjbdHVDpJSAdfK635WeOOwswNOP8QBwQCLVtqsEu8zjubVZIFIb1K1jPAAASAUEssnZN60kLOHzOC/AOYEu9kSdAhwAmI9wJSTG9pAqR0xX1Rk6l4taBaiUYBwAnMFwX8WpFBE1WUAnWeMB0AFkd/x/owC7G9Td5wCgQ+hnH/8ERThofbOmWJUAAAAASUVORK5CYIIA
+// @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
 /* globals jQuery, $, _, dayjs, XRegExp */
@@ -371,10 +371,12 @@
             //Sort object by keys https://github.com/lodash/lodash/issues/1459
             value:"~~~path=Service {\"type\":\"select\",\"options\":\"${_(consoleOptions).toPairs().sortBy(0).fromPairs().value()}\",\"suppress\":true}~~~\n${path.includes('?') ? path : `${path}/home?region=${region}`}",
             consoleOptions: {
-                "API Gateway" : "apigateway",
+                "API Gateway": "apigateway",
                 "Athena": "athena/home?region=${region}#query",
+                "Auto Scaling": "awsautoscaling",
                 "CloudFormation": "cloudformation",
                 "CloudFront": "cloudfront",
+                "CloudShell": "cloudshell",
                 "CloudWatch Alarms": "cloudwatch/home?region=${region}#alarmsV2:",
                 "CloudWatch Dashboards": "cloudwatch/home?region=${region}#dashboards:",
                 "CloudWatch Logs": "cloudwatch/home?region=${region}#logsV2:log-groups",
@@ -384,16 +386,24 @@
                 "CodeDeploy": "codedeploy",
                 "DynamoDB": "dynamodbv2",
                 "EC2": "ec2",
-                "ECS" : "ecs",
+                "ECS": "ecs",
+                "EKS": "eks",
+                "Elastic Beanstalk": "elasticbeanstalk",
+                "EventBridge": "events",
                 "Home": "console",
                 "IAM": "iamv2",
-                "Kinesis" : "kinesis",
+                "Kinesis": "kinesis",
+                "KMS": "kms",
                 "Lambda": "lambda",
                 "Route 53": "route53",
-                "RDS" : "rds",
-                "S3": "s3",
+                "RDS": "rds",
+                "Secrets Manager": "secretsmanager",
+                "SNS": "sns",
                 "SQS": "sqs",
-                "Step Functions":"states/home?region=${region}#/statemachines"
+                "Step Functions":"states/home?region=${region}#/statemachines",
+                "S3": "s3",
+                "Systems Manager": "systems-manager",
+                "VPC": "vpc"
             }
         },
         link : "${lastLine(content)}",
@@ -587,7 +597,7 @@ input:checked + .slider:before {
 </details>
       <div class='BtnGroup'>
       <a class="btn btn-sm BtnGroup-item" id="srSettings" title="Settings"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.4288 1.52471C7.61685 1.50836 7.80736 1.5 8 1.5C8.19264 1.5 8.38315 1.50836 8.5712 1.52471C8.60669 1.52779 8.67932 1.56149 8.70795 1.67093L8.99702 2.77622C9.14363 3.33676 9.54617 3.74277 9.99429 3.96473C10.1678 4.05067 10.3351 4.14753 10.4952 4.25443C10.9118 4.53261 11.4652 4.67836 12.0243 4.52497L13.1272 4.22235C13.2361 4.19246 13.3017 4.23831 13.3223 4.26758C13.5408 4.57848 13.7326 4.90924 13.8946 5.25654C13.9094 5.2884 13.9167 5.36792 13.8362 5.44746L13.0214 6.25258C12.6099 6.65921 12.4591 7.21008 12.4908 7.70918C12.4969 7.80524 12.5 7.9022 12.5 8C12.5 8.0978 12.4969 8.19476 12.4908 8.29082C12.4591 8.78992 12.6099 9.34079 13.0214 9.74742L13.8362 10.5525C13.9167 10.6321 13.9094 10.7116 13.8946 10.7435C13.7326 11.0908 13.5408 11.4215 13.3223 11.7324C13.3017 11.7617 13.2361 11.8075 13.1272 11.7777L12.0243 11.475C11.4652 11.3216 10.9118 11.4674 10.4952 11.7456C10.3351 11.8525 10.1678 11.9493 9.99429 12.0353C9.54617 12.2572 9.14363 12.6632 8.99702 13.2238L8.70795 14.3291C8.67932 14.4385 8.60669 14.4722 8.5712 14.4753C8.38315 14.4916 8.19264 14.5 8 14.5C7.80736 14.5 7.61685 14.4916 7.4288 14.4753C7.3933 14.4722 7.32067 14.4385 7.29205 14.3291L7.00296 13.2237C6.85636 12.6632 6.45383 12.2572 6.00572 12.0353C5.83221 11.9493 5.66496 11.8525 5.50487 11.7456C5.08825 11.4674 4.53481 11.3216 3.97577 11.475L2.87278 11.7777C2.76387 11.8075 2.69826 11.7617 2.67768 11.7324C2.45921 11.4215 2.26738 11.0908 2.10543 10.7435C2.09057 10.7116 2.08328 10.6321 2.16377 10.5525L2.97865 9.74736C3.39017 9.34074 3.541 8.78987 3.50924 8.29078C3.50314 8.19474 3.50003 8.09778 3.50003 8C3.50003 7.90222 3.50314 7.80526 3.50924 7.70922C3.541 7.21013 3.39017 6.65926 2.97865 6.25264L2.16377 5.44746C2.08328 5.36793 2.09057 5.28841 2.10543 5.25655C2.26738 4.90924 2.45921 4.57848 2.67769 4.26758C2.69826 4.23831 2.76387 4.19247 2.87278 4.22235L3.97577 4.52498C4.53481 4.67837 5.08825 4.53262 5.50487 4.25444C5.66496 4.14755 5.83221 4.05069 6.00572 3.96475C6.45382 3.74279 6.85636 3.33678 7.00296 2.77625L7.29205 1.67093C7.32067 1.56149 7.3933 1.52779 7.4288 1.52471ZM8 0C7.76394 0 7.53009 0.010245 7.29889 0.0303435C6.55611 0.0949143 6.00991 0.645042 5.84086 1.29138L5.55177 2.39671C5.53431 2.46349 5.47287 2.55476 5.33993 2.62061C5.10832 2.73533 4.88526 2.86452 4.67192 3.00697C4.54894 3.08908 4.43933 3.09674 4.37267 3.07845L3.26968 2.77581C2.62644 2.59932 1.87827 2.79629 1.45041 3.40515C1.18168 3.78757 0.945496 4.19473 0.745967 4.62262C0.430999 5.29808 0.634823 6.04545 1.10948 6.51446L1.92436 7.31963C1.9735 7.36819 2.02164 7.46677 2.01227 7.61399C2.00415 7.74171 2.00003 7.87043 2.00003 8C2.00003 8.12957 2.00415 8.25829 2.01227 8.38601C2.02164 8.53323 1.9735 8.63181 1.92436 8.68037L1.10948 9.48555C0.634822 9.95455 0.430999 10.7019 0.745967 11.3774C0.945495 11.8053 1.18168 12.2124 1.45041 12.5948C1.87827 13.2037 2.62644 13.4007 3.26968 13.2242L4.37267 12.9216C4.43933 12.9033 4.54895 12.9109 4.67192 12.993C4.88526 13.1355 5.10832 13.2647 5.33993 13.3794C5.47287 13.4452 5.53431 13.5365 5.55177 13.6033L5.84086 14.7086C6.00991 15.355 6.55611 15.9051 7.29889 15.9697C7.53009 15.9898 7.76394 16 8 16C8.23606 16 8.46991 15.9898 8.7011 15.9697C9.44388 15.9051 9.99009 15.355 10.1591 14.7086L10.4482 13.6033C10.4657 13.5365 10.5271 13.4453 10.6601 13.3794C10.8917 13.2647 11.1148 13.1355 11.3281 12.993C11.4511 12.9109 11.5607 12.9033 11.6274 12.9216L12.7303 13.2242C13.3736 13.4007 14.1217 13.2037 14.5496 12.5949C14.8183 12.2124 15.0545 11.8053 15.254 11.3774C15.569 10.7019 15.3652 9.95456 14.8905 9.48555L14.0757 8.68042C14.0265 8.63187 13.9784 8.53328 13.9878 8.38606C13.9959 8.25832 14 8.12959 14 8C14 7.87041 13.9959 7.74168 13.9878 7.61394C13.9784 7.46672 14.0265 7.36813 14.0757 7.31958L14.8905 6.51445C15.3652 6.04544 15.569 5.29807 15.254 4.62261C15.0545 4.19472 14.8183 3.78756 14.5496 3.40515C14.1217 2.79628 13.3736 2.59932 12.7303 2.77581L11.6274 3.07843C11.5607 3.09672 11.4511 3.08907 11.3281 3.00696C11.1148 2.8645 10.8917 2.7353 10.6601 2.62057C10.5271 2.55473 10.4657 2.46346 10.4482 2.39667L10.1591 1.29138C9.99009 0.64504 9.44388 0.0949126 8.7011 0.0303426C8.46991 0.0102447 8.23606 0 8 0ZM9.5 8C9.5 8.82843 8.82843 9.5 8 9.5C7.17157 9.5 6.5 8.82843 6.5 8C6.5 7.17157 7.17157 6.5 8 6.5C8.82843 6.5 9.5 7.17157 9.5 8ZM11 8C11 9.65685 9.65685 11 8 11C6.34315 11 5 9.65685 5 8C5 6.34315 6.34315 5 8 5C9.65685 5 11 6.34315 11 8Z"></path></svg></a>
-      <a class="btn btn-sm BtnGroup-item" href='/No-Backspace-Crew/Warp/wiki/Speedrun Help' target='_blank' title="Speedrun V${GM_info.script.version} Help"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20"  class="octicon octicon-tools"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zM6.92 6.085c.081-.16.19-.299.34-.398.145-.097.371-.187.74-.187.28 0 .553.087.738.225A.613.613 0 019 6.25c0 .177-.04.264-.077.318a.956.956 0 01-.277.245c-.076.051-.158.1-.258.161l-.007.004a7.728 7.728 0 00-.313.195 2.416 2.416 0 00-.692.661.75.75 0 001.248.832.956.956 0 01.276-.245 6.3 6.3 0 01.26-.16l.006-.004c.093-.057.204-.123.313-.195.222-.149.487-.355.692-.662.214-.32.329-.702.329-1.15 0-.76-.36-1.348-.863-1.725A2.76 2.76 0 008 4c-.631 0-1.155.16-1.572.438-.413.276-.68.638-.849.977a.75.75 0 101.342.67z"></path></svg></a>
+      <a class="btn btn-sm BtnGroup-item" href='/No-Backspace-Crew/Speedrun/wiki/Speedrun-Help' target='_blank' title="Speedrun V${GM_info.script.version} Help"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20"  class="octicon octicon-tools"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zM6.92 6.085c.081-.16.19-.299.34-.398.145-.097.371-.187.74-.187.28 0 .553.087.738.225A.613.613 0 019 6.25c0 .177-.04.264-.077.318a.956.956 0 01-.277.245c-.076.051-.158.1-.258.161l-.007.004a7.728 7.728 0 00-.313.195 2.416 2.416 0 00-.692.661.75.75 0 001.248.832.956.956 0 01.276-.245 6.3 6.3 0 01.26-.16l.006-.004c.093-.057.204-.123.313-.195.222-.149.487-.355.692-.662.214-.32.329-.702.329-1.15 0-.76-.36-1.348-.863-1.725A2.76 2.76 0 008 4c-.631 0-1.155.16-1.572.438-.413.276-.68.638-.849.977a.75.75 0 101.342.67z"></path></svg></a>
       </div>
       </span>
     `);
@@ -614,7 +624,11 @@ input:checked + .slider:before {
       </button>
       <h3 class="Box-title" id='srModal-title'>Dialog</h3>
     </div>
-    <div class="Box-body overflow-auto" id='srModal-body'>
+    <div class="Box-body overflow-auto">
+    <div id="srModal-error" class="flash mt-2 flash-error" hidden>
+    </div>
+    <div id="srModal-body">
+    </div>
     </div>
     <div class="Box-footer text-right">
       <button id="srModal-ok" type="button" class="btn btn-primary" autofocus data-close-dialog>Ok</button>
@@ -761,7 +775,7 @@ input:checked + .slider:before {
     }
 
     //https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
-    function interpolate(tpl, variables, suppressErrors) {
+    function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
         try {
             sessionVariables = variables;
             let keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
@@ -776,8 +790,10 @@ input:checked + .slider:before {
         } catch(err) {
             if(suppressErrors) {
                 return undefined;
-            } else {
+            } else if(throwErrors) {
                 alertAndThrow(`${err} while parsing:\n${tpl}`, err);
+            } else {
+                throw new Error(`${err} while parsing:\n${tpl}`, err);
             }
         }
     };
@@ -867,7 +883,7 @@ input:checked + .slider:before {
     }
 
     function escapeHTMLQuotesAnd$(str){
-        return str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m]));
+        return str ? str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m])) : str;
     }
 
     function escapeHTMLStartTags(str){
@@ -1083,7 +1099,8 @@ input:checked + .slider:before {
         let regex = isWiki();
         if (regex) {
             let [,path] = regex;
-            return GM_getValue(SR_ENABLED_PATHS, {})[path];
+            path = path.toLowerCase();
+            return GM_getValue(SR_ENABLED_PATHS, {})[path] || path === '/no-backspace-crew/speedrun' || path === '/no-backspace-crew/warp';
         }
 
         return false;
@@ -1093,6 +1110,7 @@ input:checked + .slider:before {
         let regex = isWiki();
         if (regex) {
             let [,path] = regex;
+            path = path.toLowerCase();
             let currentEnabledPaths = GM_getValue(SR_ENABLED_PATHS, {});
             if(!enabled) {
                 delete currentEnabledPaths[path];
@@ -1257,15 +1275,15 @@ input:checked + .slider:before {
                             parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
                             parameters.append('srService', getValue('#service'));
                             $('#srModal :input' ).not(':input[type=button],button').each(function() {
-                            const prompt = $(this).data('prompt');
-                            if(prompt) {
-                                const value = getInputValue($(this));
-                                parameters.append(prompt.prompt,value);
-                            }
-                            url.search = parameters.toString();
-                            GM_setClipboard(url.toString());
-                            toast("📋 Deeplink Copied");
-                        });
+                                const prompt = $(this).data('prompt');
+                                if(prompt) {
+                                    const value = getInputValue($(this));
+                                    parameters.append(prompt.prompt,value);
+                                }
+                                url.search = parameters.toString();
+                                GM_setClipboard(url.toString());
+                                toast("📋 Deeplink Copied");
+                            });
                         });
                     }
                     await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : 'Input', function() {
@@ -1278,37 +1296,46 @@ input:checked + .slider:before {
                                     console.log('Transform:', prompt.configuration.transform);
                                     console.log('Value Before:', value);
                                     variables.value = value;
-                                    transformedValue = interpolate(`\${${prompt.configuration.transform}}`, variables, false);
+                                    try {
+                                        transformedValue = interpolate(`\${${prompt.configuration.transform}}`, variables, false, false);
+                                    } catch(e) {
+                                        throw new Error(`Unable to run transform: ${prompt.configuration.transform} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
+                                    }
                                     console.log('Value After:', transformedValue);
                                 }
-                                if(prompt.configuration.cast){
-                                    switch(prompt.configuration.cast){
-                                        case "json":
-                                            transformedValue = parseJSON(transformedValue);
-                                            break;
-                                        case "Number":
-                                            transformedValue = Number(transformedValue);
-                                            break;
-                                        case "Boolean":
-                                            transformedValue = Boolean(transformedValue);
-                                            break;
-                                        case "dayjs":
-                                            transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                            break;
-                                        case "dayjs.utc":
-                                            transformedValue = dayjs.utc(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                            break;
-                                        default:
-                                            throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
+                                try {
+                                    if(prompt.configuration.cast){
+                                        switch(prompt.configuration.cast){
+                                            case "json":
+                                                transformedValue = parseJSON(transformedValue);
+                                                break;
+                                            case "Number":
+                                                transformedValue = Number(transformedValue);
+                                                break;
+                                            case "Boolean":
+                                                transformedValue = Boolean(transformedValue);
+                                                break;
+                                            case "dayjs":
+                                                transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                break;
+                                            case "dayjs.utc":
+                                                transformedValue = dayjs.utc(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                break;
+                                            default:
+                                                throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
+                                        }
                                     }
+                                } catch(e) {
+                                    throw new Error(`Unable to run cast: ${prompt.configuration.cast} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
                                 }
-                                localStorage.setItem(prompt.prompt,value);
                                 if(getURLSearchParam(prompt.prompt)) {
-                                   USED_SEARCH_PARAMS.add(prompt.prompt);
+                                    USED_SEARCH_PARAMS.add(prompt.prompt);
                                 }
                                 if(prompt.variable) {
                                     variables[prompt.variable] = transformedValue;
                                     prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
+                                } else {
+                                    localStorage.setItem(prompt.prompt, value);
                                 }
                                 let suffix = "";
                                 if(prompt.configuration.suppress){
@@ -1325,7 +1352,6 @@ input:checked + .slider:before {
                         });
                     }, deeplink)}
                 catch(err) {
-                    //TODO this needs to be moved up a level and alert and throw?
                     console.log(err);
                     return;
                 }
@@ -1565,7 +1591,7 @@ input:checked + .slider:before {
 
         serviceDropdown.trigger('change');
 
-        for(const block of $("p > code")) {
+        for(const block of $("p > code, li > code")) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
 
@@ -1667,12 +1693,15 @@ input:checked + .slider:before {
                 if(details) {
                     // hide sr config by default
                     if(!$(pre).parent().find('summary').length && preBlocks.length > 1) {
-                          $(pre).parent().wrap('<details class="details-reset"></details>')
-                                     .before(`<summary class="btn">Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
-                                     .prev().on('click', function(event) {
-                          let text = $(event.delegateTarget).contents().get(0);
-                          text.nodeValue = `${text.nodeValue.includes('Show') ? 'Hide' : 'Show'} `;
-                      });
+                        $(pre).parent().wrap('<details class="details-reset"></details>')
+                            .before(`<summary class="btn" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
+                            .prev().on('click', function(event) {
+                            let btn = $(event.delegateTarget);
+                            let text = btn.contents().get(0);
+                            let toggleText = text.nodeValue.includes('Show') ? 'Hide' : 'Show';
+                            btn.attr('title', `${toggleText} Speedrun Config`);
+                            text.nodeValue = `${toggleText} `;
+                        });
                     }
                     if(details.variables && details.variables.transclude) {
                         for (const path of arrayify(details.variables.transclude)) {
@@ -1818,12 +1847,15 @@ ${variables.content}`;
     function alert(body, title) {
         $('#srModal-title').text(title || 'Alert');
         $('#srModal-body').html($('<p/>',{class:'text-mono'}).append(body));
+        $('#srModal-error').attr('hidden',true);
+        $('#srModal-ok').prevAll().remove();
         document.querySelector('#srModal').open = true;
     }
 
     function dialog(body, title, callback, footerContent) {
         $('#srModal-title').text(title || 'Input');
         $('#srModal-body').html(body);
+        $('#srModal-error').attr('hidden',true);
         $('#srModal-ok').prevAll().remove();
         if(footerContent) {
             $('#srModal-ok').before(footerContent);
@@ -1839,20 +1871,27 @@ ${variables.content}`;
         document.querySelector('#srModal').open = true;
         return new Promise((resolve,reject) => {
             let isResolved = false;
-            $('#srModal-ok').on( "click.sr", function() {
-                //remove any existing listener
-                isResolved = true;
+            $('#srModal-ok').on( "click.sr", function(event) {
                 if(callback) {
-                    callback();
+                    try {
+                        callback();
+                    }catch(e) {
+                        $('#srModal-error').html(`<span class:'text-mono'>${escapeHTMLQuotesAnd$(e.message || e)}</span>`).attr('hidden',false);
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return;
+                    }
                 }
-                $(this).off("click.sr");
+                isResolved = true;
+                //remove any existing listener
+                $('#srModal-ok').off("click.sr");
                 $('#srModal').off("details-dialog-close.sr");
                 resolve();
             });
             $('#srModal').on("details-dialog-close.sr", function(event) {
                 $('#srModal-ok').off("click.sr");
-                $(this).off("details-dialog-close.sr");
                 if(!isResolved) {
+                    $('srModal').off("details-dialog-close.sr");
                     reject('User cancelled run');
                 }
             });
