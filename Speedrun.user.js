@@ -274,8 +274,8 @@
             } else if (!$('.srRunBtn').length && isWiki()) {
                 //only update the page if it doesn't have run buttons and is a wiki
                 await updatePage();
-                showToolbarOnWiki();
             }
+            showToolbarOnWiki();
         });
     }
 
