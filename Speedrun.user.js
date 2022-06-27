@@ -271,9 +271,9 @@
             let location = new URL(info.url);
             if(lastPath !== location.pathname) {
                 lastPath = location.pathname;
-            } else if (!$('.srRunBtn').length && isWiki()) {
+            } else if (isWiki()) {
                 //only update the page if it doesn't have run buttons and is a wiki
-                await updatePage();
+                await updatePage('urlchange');
             }
             showToolbarOnWiki();
         });
@@ -671,10 +671,8 @@ input:checked + .slider:before {
             $("#srEnabled").on('change', async (event) => {
                 setEnabledWikiPath(event.target.checked);
                 if(event.target.checked) {
-                    console.log('checked');
-                    await updatePage();
+                    await updatePage('srEnabled');
                 } else {
-                    console.log('reloading');
                     location.reload();
                 }
             });
@@ -1498,7 +1496,7 @@ input:checked + .slider:before {
     }
 
     if(isWiki()){
-        await updatePage();
+        await updatePage('page load');
     } else {
         persistIfIssue();
     }
@@ -1559,7 +1557,12 @@ input:checked + .slider:before {
     }
 
 
-    async function updatePage() {
+    async function updatePage(reason) {
+        console.log(`Updating page due to: ${reason}`);
+        if($('.srRunBtn').length){
+            console.log("Page already at latest");
+            return;
+        }
         sessionVariables = {};
         let [,path] = isWiki();
         injectToolbar();
