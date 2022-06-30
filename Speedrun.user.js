@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.0
+// @version      1.01
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -27,6 +27,8 @@
 // @match        https://www.github.com/*
 // @match        https://*.console.aws.amazon.com/*
 // @match        https://console.aws.amazon.com/*
+// @updateURL    https://github.com/No-Backspace-Crew/Warp/raw/main/Speedrun.user.js
+// @downloadURL  https://github.com/No-Backspace-Crew/Warp/raw/main/Speedrun.user.js
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
@@ -35,6 +37,7 @@
 //eval(Babel.transform((<><![CDATA[
 (async function() {
     'use strict';
+    let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     const FEDERATION_ENDPOINT = 'https://fxdu768zp4.execute-api.us-west-2.amazonaws.com/dev/v1';
     var sessionVariables = {};
@@ -43,6 +46,7 @@
     dayjs.extend(window.dayjs_plugin_utc);
     dayjs.extend(window.dayjs_plugin_duration);
     dayjs.extend(window.dayjs_plugin_relativeTime);
+    var lastPath = location.pathname;
 
     function getFederationLink(roleArn, destination) {
         let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
@@ -262,18 +266,18 @@
         extractCloudWatchTime();
         return;
     }
-    var lastPath = location.pathname;
+
     const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
     if (window.onurlchange === null) {
         //this gets invoked twice on page change, only update page on 2nd call
         window.addEventListener('urlchange', async (info) => {
-            persistIfIssue();
             let location = new URL(info.url);
             if(lastPath !== location.pathname) {
+                persistIfIssue();
+                console.log(`Changing lastpath to ${location.pathname} from ${lastPath}` );
                 lastPath = location.pathname;
             } else if (isWiki()) {
-                //only update the page if it doesn't have run buttons and is a wiki
-                await updatePage('urlchange');
+                await updatePage(`urlchange ${location.pathname}`);
             }
             showToolbarOnWiki();
         });
@@ -374,6 +378,7 @@
                 "API Gateway": "apigateway",
                 "Athena": "athena/home?region=${region}#query",
                 "Auto Scaling": "awsautoscaling",
+                "Certificate Manager": "acm",
                 "CloudFormation": "cloudformation",
                 "CloudFront": "cloudfront",
                 "CloudShell": "cloudshell",
@@ -1496,7 +1501,7 @@ input:checked + .slider:before {
     }
 
     if(isWiki()){
-        await updatePage('page load');
+        await updatePage(`page load: ${lastPath}`);
     } else {
         persistIfIssue();
     }
@@ -1558,47 +1563,56 @@ input:checked + .slider:before {
 
 
     async function updatePage(reason) {
-        console.log(`Updating page due to: ${reason}`);
-        if($('.srRunBtn').length){
-            console.log("Page already at latest");
+        console.log(`Updating page due to ${reason}`);
+        if(updatingPage) {
+            console.log("Page update in progress, ignoring");
             return;
         }
-        sessionVariables = {};
-        let [,path] = isWiki();
-        injectToolbar();
-        let pageEnabled = isEnabledWikiPath();
-        setInputValue($('#srEnabled'), pageEnabled);
-        $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for wikis on: ${path.substring(1)}`);
-        // first pass to build page config
-        pageConfig = await buildConfig(pageEnabled);
+        try {
+            updatingPage = true;
+            if($('.srRunBtn').length){
+                console.log("Page already current, ignoring");
+                return;
+            }
+            sessionVariables = {};
+            let [,path] = isWiki();
+            injectToolbar();
+            let pageEnabled = isEnabledWikiPath();
+            setInputValue($('#srEnabled'), pageEnabled);
+            $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for wikis on: ${path.substring(1)}`);
+            // first pass to build page config
+            pageConfig = await buildConfig(pageEnabled);
 
 
-        let serviceDropdown = $("#service");
-        let regionDropdown = $("#region");
+            let serviceDropdown = $("#service");
+            let regionDropdown = $("#region");
 
-        let hadServices = serviceDropdown.children().length > 0;
-        let newServices = [];
-        let lastService = getValue('#service') || getURLSearchParam('srService') || localStorage.getItem(LAST_SERVICE_KEY);
+            let hadServices = serviceDropdown.children().length > 0;
+            let newServices = [];
+            let lastService = getValue('#service') || getURLSearchParam('srService') || localStorage.getItem(LAST_SERVICE_KEY);
 
-        for (const [key, value] of Object.entries(getServices(pageConfig))) {
-            newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
-        };
-        serviceDropdown.empty().append(newServices);
-        if(hadServices != newServices.length>0) {
-            $('.needsService').each((index, element)=>{newServices.length>0 ? $(element).show() : $(element).hide()});
-        }
+            for (const [key, value] of Object.entries(getServices(pageConfig))) {
+                newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
+            };
+            serviceDropdown.empty().append(newServices);
+            if(hadServices != newServices.length>0) {
+                $('.needsService').each((index, element)=>{newServices.length>0 ? $(element).show() : $(element).hide()});
+            }
 
-        serviceDropdown.prop('disabled', newServices.length == 1);
+            serviceDropdown.prop('disabled', newServices.length == 1);
 
-        // second pass to wire up content
-        if(pageEnabled) {
-            await wireUpContent();
-        }
+            // second pass to wire up content
+            if(pageEnabled) {
+                await wireUpContent();
+            }
 
-        serviceDropdown.trigger('change');
+            serviceDropdown.trigger('change');
 
-        for(const block of $("p > code, li > code")) {
-            $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
+            for(const block of $("p > code, li > code")) {
+                $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
+            }
+        } finally {
+            updatingPage = false;
         }
 
     }
