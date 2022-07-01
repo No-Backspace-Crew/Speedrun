@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.01
+// @version      1.02
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -1281,8 +1281,8 @@ input:checked + .slider:before {
                                         options = _.zipObject(options, options);
                                     }
                                     Object.entries(options).forEach(([key, value]) => {
-                                        input.append($(`<option ${value===info.value ? "selected" : ""}>`).text(key).val(value));
-                                        if(info.interpolatedDefault && info.interpolatedDefault.length && value === info.interpolatedDefault) {
+                                        input.append($(`<option ${String(value)===info.value ? "selected" : ""}>`).text(key).val(value));
+                                        if(info.interpolatedDefault && info.interpolatedDefault.length && String(value) === info.interpolatedDefault) {
                                             interpolatedDefaultText = key;
                                         }
                                     });
@@ -1377,7 +1377,7 @@ input:checked + .slider:before {
                                                 transformedValue = Number(transformedValue);
                                                 break;
                                             case "Boolean":
-                                                transformedValue = Boolean(transformedValue);
+                                                transformedValue = (String(transformedValue).toLowerCase() == "true")
                                                 break;
                                             case "dayjs":
                                                 transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
@@ -1433,7 +1433,7 @@ input:checked + .slider:before {
                     })});
             }
 
-            variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors ? preview : true);
+            variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
 
             if(variables.creds) {
                 if(variables.account && variables.role && variables.partition) {
@@ -1869,7 +1869,8 @@ ${variables.content}`;
         $('#srModal-body').html($('<p/>',{class:'text-mono'}).append(body));
         $('#srModal-error').attr('hidden',true);
         $('#srModal-ok').prevAll().remove();
-        document.querySelector('#srModal').open = true;
+        //todo make this a separate modal?
+        setTimeout(() => {document.querySelector('#srModal').open = true}, 100);
     }
 
     function dialog(body, title, callback, footerContent) {
