@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.05
+// @version      1.06
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -39,7 +39,14 @@
     'use strict';
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
-    let originalFavIcon = window.location.hostname == 'github.com' || 'www.github.com' ? document.querySelector("link[rel~='icon']").href : undefined;
+    let favIcons = {false:{},true:{}};
+    if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
+        $('link[rel~="icon"]').each((i,el) => {
+            el = $(el);
+            favIcons.false[el.attr('rel')] = {href: el.attr('href'), type: el.attr('type')};
+            favIcons.true[el.attr('rel')] = {href: GM_info.script.icon, type: 'image/png'};
+        });
+    }
     const FEDERATION_ENDPOINT = 'https://fxdu768zp4.execute-api.us-west-2.amazonaws.com/dev/v1';
     var sessionVariables = {};
     const STORAGE_NAMESPACE = 'SR:';
@@ -930,7 +937,12 @@ input:checked + .slider:before {
 
     function showToolbarOnWiki() {
         isWiki() ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show()}` : `${$("#toolbar").hide()}`) + $("#srToolbar").show() : $("#srToolbar").hide()
-        $('link[rel="icon"]').attr('href', $('#srToolbar').is(':visible') ? GM_info.script.icon : originalFavIcon);
+        let isVisible = $('#srToolbar').is(':visible');
+        $('link[rel~="icon"]').each((i,el) => {
+            el = $(el);
+            let details = favIcons[isVisible+''][el.attr('rel')];
+            el.attr('href', details.href);
+        });
     }
 
     function getUserConfig() {
