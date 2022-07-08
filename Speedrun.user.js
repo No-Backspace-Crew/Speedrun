@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.04
+// @version      1.05
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -1566,6 +1566,7 @@ input:checked + .slider:before {
         let lastRegion = extractRegion(getValue('#select2-region-container', true)) || getURLSearchParam('srRegion') || localStorage.getItem(LAST_REGION_KEY);
         let regions = [];
         let currentOptGroup = undefined;
+        let numRegions = 0;
         for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
             let splits = region.split(' ', 2);
             let suffix = splits.length > 1 ? splits[1] : '';
@@ -1573,14 +1574,15 @@ input:checked + .slider:before {
                 currentOptGroup = $(`<optgroup label='${regionNameMap[splits[0]].area}'/>`);
                 regions.push(currentOptGroup);
             }
-            currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${splits[0]}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
+            currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${region}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
+            numRegions++;
         }
         const region = $('#region');
         let hadRegions = region.children().length > 0;
         if(hadRegions != regions.length>0) {
                 $('.needsRegion').each((index, element)=>{regions.length>0 ? $(element).show() : $(element).hide()});
         }
-        region.empty().append(regions).prop('disabled',regions.length==1).attr('hidden',regions.length==0);
+        region.empty().append(regions).prop('disabled',numRegions == 1).attr('hidden',numRegions ==0);
         regions.length > 0 ? region.next().show() : region.next().hide();
     }
 
