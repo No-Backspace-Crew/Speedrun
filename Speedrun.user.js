@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.06
+// @version      1.07
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -707,6 +707,16 @@ input:checked + .slider:before {
                 dropdownAutoWidth : true,
                 width:'copy'
             });
+            $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
+            $("#srWikiSearch").on('click', async () => {
+                let searchTerm = getValue('#wiki-pages-filter');
+                if(searchTerm) {
+                    let searchURL = new URL('https://www.github.com/search?type=wikis');
+                    let [,path] = isWiki();
+                    searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
+                    window.location.href = searchURL.href;
+                }
+            });
         }
     }
 
@@ -937,11 +947,20 @@ input:checked + .slider:before {
 
     function showToolbarOnWiki() {
         isWiki() ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show()}` : `${$("#toolbar").hide()}`) + $("#srToolbar").show() : $("#srToolbar").hide()
+        setFavIcon();
+    }
+
+    function setFavIcon() {
         let isVisible = $('#srToolbar').is(':visible');
+        let head = $('head');
         $('link[rel~="icon"]').each((i,el) => {
             el = $(el);
             let details = favIcons[isVisible+''][el.attr('rel')];
-            el.attr('href', details.href);
+            if(details.href != el.attr('href')){
+              el.remove();
+              el.attr('href', details.href);
+              head.append(el);
+            }
         });
     }
 
@@ -1535,6 +1554,8 @@ input:checked + .slider:before {
         persistIfIssue();
     }
 
+    showToolbarOnWiki();
+
     $(document).ready(function() {
         if(window.location.hash) {
             const el = document.getElementById('user-content-' + window.location.hash.substring(1));
@@ -1557,9 +1578,9 @@ input:checked + .slider:before {
                 }
             }
         }
+        setFavIcon();
     });
 
-    showToolbarOnWiki();
 
     function getValue(selector, useText) {
         let element = $(selector);
