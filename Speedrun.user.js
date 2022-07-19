@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.07
+// @version      1.08
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -424,6 +424,10 @@
             type : "federate",
             value : "dynamodbv2/home?region=${region}#edit-item?table=${tableName}&itemMode=2&pk=${key}&sk${typeof searchKey === 'undefined' ? '' : `=${searchKey}`}&route=ROUTE_ITEM_EXPLORER"
         },
+        DDBTable: {
+            type : "federate",
+            value : "dynamodbv2/home?region=${region}#item-explorer?initialTagKey=&table=${tableName}"
+        },
         CWLInsights: {
             type : "federate",
             value : "cloudwatch/home?region=${region}#logsV2:logs-insights$3FqueryDetail$3D$257E$2528end$257E0$257Estart$257E${typeof start === 'undefined' ? '-3600' : start}$257EtimeType$257E$2527RELATIVE$257Eunit$257E$2527seconds$257EeditorString$257E$2527${encodeCloudWatchInsightsParam(content)}$257EisLiveTail$257Efalse$257Esource$257E$2528${encodeCloudWatchURL(prepend(`~'`,arrayify(logGroups).map(x => encodeCloudWatchInsightsParam(x))).join(''))}$2529$2529"
@@ -431,6 +435,10 @@
         CWLInsightsSRTimestamp: {
             type : "federate",
             value : "cloudwatch/home?region=${region}#logsV2:logs-insights$3FqueryDetail$3D$257E$2528${srTimestamp()}$257EeditorString$257E$2527${encodeCloudWatchInsightsParam(content)}$257EisLiveTail$257Efalse$257Esource$257E$2528${encodeCloudWatchURL(prepend(`~'`,arrayify(logGroups).map(x => encodeCloudWatchInsightsParam(x))).join(''))}$2529$2529"
+        },
+        CloudWatchLogs : {
+            type: "federate",
+            value : "cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeCloudWatchURL(logGroup)}"
         }
     };
 
@@ -827,12 +835,12 @@ input:checked + .slider:before {
     }
 
     function encodeCloudWatchInsightsParam(str) {
-        return escape(str).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
+        return encodeURIComponent(str).replace(/['()]/g, m => ({'\'':'%27', '(':'%28', ')':'%29'}[m])).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
     }
 
 
     function encodeCloudWatchURL(str, passes=2) {
-        [...Array(passes)].forEach(() => {str = escape(str)});
+        [...Array(passes)].forEach(() => {str = encodeURIComponent(str).replace(/['()]/g, m => ({'\'':'%27', '(':'%28', ')':'%29'}[m]))});
         return str.replaceAll('%','$');
     }
 
