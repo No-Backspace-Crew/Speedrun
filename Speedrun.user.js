@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.09
+// @version      1.10
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -1716,7 +1716,6 @@ input:checked + .slider:before {
             btn.data('previewTab').first("code").html(buildPreview(variables));
             btn.data('debugTab').first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
             btn.data('anchor', btn.closest("nav").prevAll(":header").find('a.anchor').last());
-            setButtonDanger(btn, variables);
             switch(variables.internal.templateType) {
                 case 'link':
                     btn.text('Open');
@@ -1728,11 +1727,8 @@ input:checked + .slider:before {
                     btn.text('Copy');
                     break;
             }
+            setButtonDanger(btn, variables);
             if(variables.creds) {
-                //btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.srServiceName}${variables.service != getService()? " 📌":""}: ${variables.region} (${variables.role})`);
-                //btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
-                //btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
-                //btn.prop('disabled', !hasService);
                 if(!pageNeedsCreds) {
                     $('#accountRequired').attr('hidden',hasService);
                     pageNeedsCreds = true;
