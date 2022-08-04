@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.10
+// @version      1.11
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -47,7 +47,7 @@
             favIcons.true[el.attr('rel')] = {href: GM_info.script.icon, type: 'image/png'};
         });
     }
-    const FEDERATION_ENDPOINT = 'https://fxdu768zp4.execute-api.us-west-2.amazonaws.com/dev/v1';
+    const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpoint', false)?"-beta":""}.us-west-2.nobackspacecrew.com/v1`
     var sessionVariables = {};
     const STORAGE_NAMESPACE = 'SR:';
     const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`
@@ -58,13 +58,14 @@
 
     function getFederationLink(roleArn, destination) {
         let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
-        url.searchParams.append('role',roleArn.replace(':sts:',':iam:').replace(/:assumed-role\/(.*?)\/.*$/,':role/$1'));
+        url.searchParams.append('account',roleArn.split(':')[4]);
+        url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
         url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
         return url.toString();
     }
 
     function addSpeedrunLink() {
-        const ARN_REGEX = /^arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+)\/\w+/
+        const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
         if($('#awsc-navigation__more-menu--list')) {
             if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
                 GM_cookie('list', { name: 'aws-userInfo' }, (cookies) => {
@@ -74,7 +75,7 @@
                         let result = ARN_REGEX.exec(userInfo.arn);
                         if(result) {
                             console.log('Adding speedrun link');
-                            let [arn, account, role] = result;
+                            let [,arn, account, role] = result;
                             let navBar = $('#awsc-navigation__more-menu--list');
                             let helpButton = navBar.first().find('button').first();
                             let srLink = helpButton.clone();
@@ -310,7 +311,7 @@
     const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`
     const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`
     const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`
-    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{roleArn}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
+    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"account": "$\{account}","role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials);`;
     const USED_SEARCH_PARAMS = new Set();
@@ -363,7 +364,8 @@
     let templates = {
         settings : `~~~g_usernameOverride=Username Override~~~
                     ~~~g_role=Role {"default":"speedrun-ReadOnly"}~~~
-                    ~~~g_aws-accountId=AWS Account Id for Classic~~~`,
+                    ~~~g_aws-accountId=AWS Account Id for Classic~~~
+                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean"}~~~`,
         copy : "${content}",
         raw : {
             type: 'copy',
@@ -981,7 +983,7 @@ input:checked + .slider:before {
         return {
             "services" : {
                 "${user}" : {
-                    "role" : GM_getValue('g_role', 'speedrun-ViewOnly'),
+                    "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
                     "config" : {
                         "aws" : {
                             "account" : GM_getValue('g_aws-accountId')
@@ -1521,8 +1523,7 @@ input:checked + .slider:before {
                     window.open(variables.internal.result);
                     break;
                 case "settings" :
-                    if(!_.isEqual(existingUserConfig,getUserConfig()) || variables.user != GM_getValue("g_usernameOverride")) {
-                        //toast("Settings updated");
+                    if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false)) {
                         location.reload();
                     }
                     break;
@@ -1675,7 +1676,7 @@ input:checked + .slider:before {
 
             serviceDropdown.trigger('change');
 
-            for(const block of $("p > code, li > code")) {
+            for(const block of $("p > code, li > code").not('.copyCursor')) {
                 $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
             }
         } finally {
