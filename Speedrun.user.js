@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.11
+// @version      1.12
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
@@ -1489,6 +1489,9 @@ input:checked + .slider:before {
                 // interpolate variables using 2 passes to account for variables that are defined later
                 [1,2].forEach((pass) => {
                     Object.entries(variables).forEach(([key, value]) => {
+                        if(key == 'internal') {
+                            return;
+                        }
                         const result = deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
                         if(result) {
                             variables[key] = result;
