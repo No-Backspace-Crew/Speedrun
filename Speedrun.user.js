@@ -1,19 +1,19 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://www.nobackspacecrew.com/
-// @version      1.12
+// @version      1.13
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
-// @require      https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js
-// @require      https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js
-// @require      https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js
-// @resource     select2css https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css
-// @require      https://unpkg.com/dayjs@1.11.2/dayjs.min.js
-// @require      https://unpkg.com/dayjs@1.11.2/plugin/utc.js
-// @require      https://unpkg.com/dayjs@1.11.2/plugin/duration.js
-// @require      https://unpkg.com/dayjs@1.11.2/plugin/relativeTime.js
-// @require      https://unpkg.com/xregexp/xregexp-all.js
-// @require      http://andywer.github.io/jquery-dim-background/jquery.dim-background.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
+// @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/dayjs.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/utc.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/duration.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/relativeTime.js
+// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp-all.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -22,6 +22,7 @@
 // @grant        GM_getResourceText
 // @grant        GM_info
 // @grant        GM_cookie
+// @grant        GM_download
 // @grant        window.onurlchange
 // @match        https://github.com/*
 // @match        https://www.github.com/*
@@ -292,6 +293,10 @@
         });
     }
 
+    addEventListener('popstate', async (event) => {
+        console.log('State popped');
+    });
+
     const HEADER = /#(\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
     const LITERAL = /\$\{.+?\}/
     const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/
@@ -367,6 +372,11 @@
                     ~~~g_aws-accountId=AWS Account Id for Classic~~~
                     ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean"}~~~`,
         copy : "${content}",
+        download : {
+            value: "data:${contentType};base64,${btoa(unescape(encodeURIComponent(content)))}",
+            filename: "${dayjs().format()}.txt",
+            contentType: "text/plain"
+        },
         raw : {
             type: 'copy',
             raw: true,
@@ -1185,6 +1195,8 @@ input:checked + .slider:before {
             } else {
                 if(arr[index].startsWith('federate')) {
                     templateValues.type = firstNonNull(templateValues.type, 'federate');
+                } else {
+                    templateValues.type = firstNonNull(templateValues.type, arr[index]);
                 }
             }
             //make sure creds is set if this is federate
@@ -1546,6 +1558,13 @@ input:checked + .slider:before {
                     persistCreds(variables);
                     break;
                 }
+                case "download" : {
+                    GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
+                               onerror: (download)=>{alertAndThrow(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
+                               onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
+
+                    break;
+                }
                 default:
                     alertAndThrow(`Unknown template type ${variables.internal.templateType}`);
 
@@ -1645,7 +1664,7 @@ input:checked + .slider:before {
         }
         try {
             updatingPage = true;
-            if($('.srRunBtn').length){
+            if($('.srRunBtn, .copyCursor').length){
                 console.log("Page already current, ignoring");
                 return;
             }
@@ -1662,7 +1681,7 @@ input:checked + .slider:before {
 
 
             let serviceDropdown = $("#service");
-            
+
             let newServices = [];
             let lastService = getValue('#service') || getURLSearchParam('srService') || localStorage.getItem(LAST_SERVICE_KEY);
 
@@ -1679,7 +1698,7 @@ input:checked + .slider:before {
 
             serviceDropdown.trigger('change');
 
-            for(const block of $("p > code, li > code").not('.copyCursor')) {
+            for(const block of $("p > code, li > code").not('code + span.copyCursor')) {
                 $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
             }
         } finally {
@@ -1713,8 +1732,8 @@ input:checked + .slider:before {
     function updateTabs() {
         let hasService = document.querySelector("#region").length > 0
         $('#accountRequired').attr('hidden',true);
+        let pageNeedsCreds = false;
         $('.srRunBtn').each(async function (item) {
-            let pageNeedsCreds = false;
             const btn = $(this);
             const variables = await nope(btn.data('code'), true);
             btn.data('previewTab').first("code").html(buildPreview(variables));
@@ -1729,6 +1748,9 @@ input:checked + .slider:before {
                     break;
                 case 'copy':
                     btn.text('Copy');
+                    break;
+                case 'download':
+                    btn.text('Download');
                     break;
             }
             setButtonDanger(btn, variables);
