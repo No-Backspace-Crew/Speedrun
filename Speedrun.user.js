@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.14
+// @version      1.15
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1109,8 +1109,8 @@ input:checked + .slider:before {
         }
     }
 
-    function stringify(str) {
-        JSON.stringify(str).slice(1, -1);
+    function stringify(o) {
+        return JSON.stringify(o).replaceAll(/^"(.*)"$/g,"$1");
     }
 
     function bashEscape(str) {
@@ -1139,7 +1139,6 @@ input:checked + .slider:before {
         encodeCloudWatchURL: encodeCloudWatchURL,
         nullSafe: nullSafe,
         arrayify: arrayify,
-        XRegExp: XRegExp,
         stringify: stringify,
         bashEscapeForSingleQuotes: bashEscape,
         _ : _
