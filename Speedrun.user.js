@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.17
+// @version      1.18
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -994,7 +994,7 @@ input:checked + .slider:before {
             "services" : {
                 "${user}" : {
                     "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
-                    "config" : {
+                    "regions" : {
                         "aws" : {
                             "account" : GM_getValue('g_aws-accountId')
                         }
@@ -1291,9 +1291,9 @@ input:checked + .slider:before {
 
         variables.internal.templateName = details.template
         variables.partition = getPartition(variables.region, true);
-        let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.config)[variables.partition]) : {};
-        let regionVariables = variables.internal.region ? nullSafe(nullSafe(serviceVariables.config)[variables.internal.region]) : {};
-        delete serviceVariables.config
+        let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.regions)[variables.partition]) : {};
+        let regionVariables = variables.internal.region ? nullSafe(nullSafe(serviceVariables.regions)[variables.internal.region]) : {};
+        delete serviceVariables.regions
 
         const entryVariables = nullSafe(details.variables);
 
@@ -1793,7 +1793,7 @@ input:checked + .slider:before {
         let regionSet = new Set();
         let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
         let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
-        for (const [region, config] of Object.entries(nullSafe(nullSafe(nullSafe(pageConfig.services)[service]).config))){
+        for (const [region, config] of Object.entries(nullSafe(nullSafe(nullSafe(pageConfig.services)[service]).regions))){
             let regions = isPartition(region) ? partitionMap[region] : [region];
             regions.forEach(region => {
                 if(!regionFilter.length || regionFilter.includes(region)) {
@@ -1818,7 +1818,7 @@ input:checked + .slider:before {
 
     async function buildConfig(enabled) {
         let userConfig = getUserConfig();
-        pageConfig = userConfig.services['${user}'].config.aws.account ? _.cloneDeep(userConfig) : {};
+        pageConfig = userConfig.services['${user}'].regions.aws.account ? _.cloneDeep(userConfig) : {};
         const configs = [];
         if(enabled) {
             let preBlocks = $("div.markdown-body pre");
