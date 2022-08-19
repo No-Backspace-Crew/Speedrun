@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.15
+// @version      1.16
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -298,7 +298,7 @@
     });
 
     const HEADER = /#(\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
-    const LITERAL = /\$\{.+?\}/
+    const LITERAL = /\$\{.+?\}/s
     const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/
     const PROMPT_G = new RegExp(PROMPT, 'g');
     const COMMENT = /(^\s*|[^\s](\s+))((\/\/.*)(\n)?)/;
@@ -1006,6 +1006,10 @@ input:checked + .slider:before {
 
     function escapeHTMLQuotesAnd$(str){
         return str ? str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m])) : str;
+    }
+
+    function whitespaceToHTML(str){
+        return str ? str.replace(/[\n ]/g, m => ({'\n':'<br>', ' ':'&nbsp;'}[m])) : str;
     }
 
     function escapeHTMLStartTags(str){
@@ -1956,7 +1960,8 @@ input:checked + .slider:before {
     function colorizeLiterals(content, variables) {
         return interpolateLiteralsInString(content, variables, true,
                                            (result, match) =>
-                                           {return `<span title="${escapeHTMLQuotesAnd$(match)}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${firstNonNull(result, escapeHTMLQuotesAnd$(match))}</span>`});
+                                           {let escaped = escapeHTMLQuotesAnd$(match);
+                                           return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${firstNonNull(whitespaceToHTML(result), whitespaceToHTML(escaped))}</span>`});
     }
 
     function buildPreview(variables) {
