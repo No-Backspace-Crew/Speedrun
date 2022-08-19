@@ -1303,7 +1303,7 @@ input:checked + .slider:before {
         variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables, entryVariables);
         variables = overlayExposedFunctions(variables);
 
-        if(!preview && (variables.stripComments || !firstNonNull(variables.raw, false))) {
+        if(!preview && firstNonNull(variables.stripComments, !variables.raw)) {
             //rip out comments
             variables.content = variables.content.replace(COMMENT_G, function(prompt) {
                 const [,before,,,,after] = prompt.match(COMMENT);
@@ -1941,11 +1941,11 @@ input:checked + .slider:before {
     }
 
     function colorizeComments(content, variables) {
-        return firstNonNull(variables.internal.raw, false) && !firstNonNull(variables.stripComments, true) ? content :
+        return firstNonNull(variables.stripComments, !variables.raw) ?
         content.replace(COMMENT_G,function(comment) {
             let [,before,,,content,after] = comment.match(COMMENT);
             return `${before}<span class="Label Label--inline Label--secondary"><i>${escapeHTMLQuotesAnd$(content)}</i></span>${firstNonNull(after,"")}`;
-        });
+        }) : content;
     }
 
     function colorizePrompts(content, variables) {
