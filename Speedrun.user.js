@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.18
+// @version      1.19
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -452,6 +452,10 @@
         CloudWatchLogs : {
             type: "federate",
             value : "cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeCloudWatchURL(logGroup)}"
+        },
+        NewGitHubWiki : {
+            type: "link",
+            value: "https://github.com/${org}/${repo}/wiki/_new?wiki[name]=${encodeURIComponent(title)}&wiki[body]=${encodeURIComponent(content)}"
         }
     };
 
@@ -1121,6 +1125,10 @@ input:checked + .slider:before {
         return str ? str.replaceAll("'","'\\''") : str;
     }
 
+    function throwError() {
+        throw Error();
+    }
+
     var exposedFunctions = {
         window : noop,
         alert : noop,
@@ -1171,7 +1179,13 @@ input:checked + .slider:before {
     }
 
     function overlayExposedFunctions(variables) {
-        return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions);
+        return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions, getUndefinedGlobals(variables));
+    }
+
+    function getUndefinedGlobals(variables) {
+        //There are a few variables that are always defined on web pages like name status and title, make them throw an error if used and but not set
+        //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
+        return {name: variables.name||throwError,title: variables.title||throwError,status: variables.status||throwError};
     }
 
     // get variables for service and smash them together allowing for extension
@@ -1296,9 +1310,6 @@ input:checked + .slider:before {
         delete serviceVariables.regions
 
         const entryVariables = nullSafe(details.variables);
-
-        //Note, there are a few variables that are always defined on web pages like name.
-        //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
 
         variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables, entryVariables);
         variables = overlayExposedFunctions(variables);
