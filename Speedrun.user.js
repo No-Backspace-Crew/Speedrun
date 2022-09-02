@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.20
+// @version      1.21
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1966,7 +1966,7 @@ input:checked + .slider:before {
                 $(pre).parent().before(nav);
                 $(pre).attr('id',`Preview-${block}`);
                 runBtn.data('previewTab', $(pre));
-                const codeTab = $(`<pre id='Code-${block}'><code>${code}</code></pre>`).hide();
+                const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
                 const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
                 runBtn.data('debugTab', debugTab);
                 $(pre).after(codeTab);
