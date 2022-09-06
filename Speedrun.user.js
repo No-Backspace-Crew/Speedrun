@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.22
+// @version      1.23
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -946,7 +946,7 @@ input:checked + .slider:before {
             let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
             let toReplace = "${" + matches[0] + "}";
             let replacement = wrap(interpolate(toReplace, variables, suppressErrors), toReplace);
-            str = str.replace(toReplace,replacement);
+            str = str.replace(toReplace,()=>replacement);
             offset = str.indexOf('${',offset+replacement.length);
         }
         return str;
@@ -1137,7 +1137,7 @@ input:checked + .slider:before {
     }
 
     function bashEscape(str) {
-        return str ? str.replaceAll("'","'\\''") : str;
+        return str ? stringify(str).replaceAll("'","\\'") : str;
     }
 
     function throwError() {
@@ -1172,7 +1172,7 @@ input:checked + .slider:before {
         arrayify: arrayify,
         slugify: slugify,
         stringify: stringify,
-        bashEscapeForSingleQuotes: bashEscape,
+        bashEscape: bashEscape,
         _ : _
     }
 
@@ -1548,7 +1548,6 @@ input:checked + .slider:before {
                 variables.raw = false;
             }
             variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
-
             if(variables.creds) {
                 if(variables.account && variables.role && variables.partition) {
                     //prepend speedrun to role name
