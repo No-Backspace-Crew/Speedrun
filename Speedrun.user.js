@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.21
+// @version      1.22
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1144,6 +1144,10 @@ input:checked + .slider:before {
         throw Error();
     }
 
+    function isNumeric(n) {
+        return _.isNumber(n) || (!_.isEmpty(n) && !_.isNaN(parseFloat(n)));
+    }
+
     var exposedFunctions = {
         window : noop,
         alert : noop,
@@ -1485,10 +1489,10 @@ input:checked + .slider:before {
                                                 transformedValue = (String(transformedValue).toLowerCase() == "true")
                                                 break;
                                             case "dayjs":
-                                                transformedValue = dayjs(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                transformedValue = dayjs(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
                                                 break;
                                             case "dayjs.utc":
-                                                transformedValue = dayjs.utc(_.isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                transformedValue = dayjs.utc(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
                                                 break;
                                             default:
                                                 throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
