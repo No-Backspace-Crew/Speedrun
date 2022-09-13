@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.23
+// @version      1.24
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -41,11 +41,18 @@
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
+    let codeBlocks = [];
     if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
         $('link[rel~="icon"]').each((i,el) => {
             el = $(el);
             favIcons.false[el.attr('rel')] = {href: el.attr('href'), type: el.attr('type')};
             favIcons.true[el.attr('rel')] = {href: GM_info.script.icon, type: 'image/png'};
+        });
+        $('body').click(function(event) {
+          //when you click on the body, close the github issues if visible.
+          if($('#githubIssuesList').is(":visible") && ($(event.target).parents('#githubIssuesDetailsCloseBtn,#srToolbar').length==0 || $(event.target).parents('#githubIssuesList').length > 0)) {
+              $('#githubIssuesDetails').removeAttr("open");
+          }
         });
     }
     const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpoint', false)?"-beta":""}.us-west-2.nobackspacecrew.com/v1`
@@ -293,9 +300,17 @@
         });
     }
 
-    addEventListener('popstate', async (event) => {
-        console.log('State popped');
-    });
+    /*addEventListener('popstate', async (event) => {
+        console.log('State popped', event, codeBlocks);
+        setTimeout(()=> {
+            $('.srRunBtn').each((index, element) => {
+                console.log($(element).attr('id'));
+            //runBtn.click(async function() {
+            //        await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
+            //});
+
+        })}, 10);
+    });*/
 
     const HEADER = /#(\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
     const LITERAL = /\$\{.+?\}/s
@@ -311,7 +326,7 @@
     const SR_SERVICE_FILTER = "srServiceFilter";
     const varNameCache = new Map();
     const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/
-    const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?/
+    const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?.*(?<!\/_(edit|new))$/
     const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`
     const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`
     const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`
@@ -631,7 +646,7 @@ input:checked + .slider:before {
 
   <h3 class="SelectMenu-title">Recent Github issues</h3>
 
-  <button class="SelectMenu-closeButton" type="button" aria-label="Close menu" data-toggle-for="githubIssuesDetails">
+  <button id="githubIssuesDetailsCloseBtn" class="SelectMenu-closeButton" type="button" aria-label="Close menu" data-toggle-for="githubIssuesDetails">
     <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-x">
     <path fill-rule="evenodd" d="M3.72 3.72a.75.75 0 011.06 0L8 6.94l3.22-3.22a.75.75 0 111.06 1.06L9.06 8l3.22 3.22a.75.75 0 11-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 01-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 010-1.06z"></path>
 </svg>
@@ -1925,10 +1940,10 @@ input:checked + .slider:before {
     async function wireUpContent() {
         let block = 0;
         for (const pre of $("div.markdown-body pre")) {
-            block++;
             const code = $(pre).text();
             const groups = code.match(HEADER);
             if(groups && groups[1] && hasTemplate(groups[1])) {
+                block++;
                 //wrap the copy content with ticks.
                 const copy = $(pre).parent().find('clipboard-copy');
                 if(copy.length && !copy.data('wrapped')){
@@ -1940,12 +1955,13 @@ input:checked + .slider:before {
                   copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
                   copy.data('wrapped',true);
                 }
-                const nav = $('<nav class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">');
+                const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
                 const actions = $('<div class="UnderlineNav-actions">');
-                const runBtn = $('<button type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>');
+                const runBtn = $(`<button id="sr-btn-${block}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
                 actions.append(runBtn);
                 nav.append(actions);
                 runBtn.data('code', code);
+                codeBlocks.push(code);
                 const navBody = $('<div class="UnderlineNav-body">');
                 var index = 0;
                 for (const [key, value] of Object.entries(tabNames)) {
