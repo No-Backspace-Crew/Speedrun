@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.26
+// @version      1.27
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1741,6 +1741,8 @@ input:checked + .slider:before {
             };
             serviceDropdown.empty().append(newServices);
             serviceDropdown.prop('disabled', newServices.length == 1);
+            newServices.length > 0 ? serviceDropdown.next().show() : serviceDropdown.next().hide();
+            newServices.length<1 ? serviceDropdown.hide() : serviceDropdown.show();
 
             // second pass to wire up content
             if(pageEnabled) {
