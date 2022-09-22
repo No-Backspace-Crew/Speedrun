@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.30
+// @version      1.31
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -371,6 +371,7 @@ const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`
     const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"account": "$\{account}","role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials);`;
+    const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
 let regionMap = {
     "US East (N. Virginia)": "us-east-1",
@@ -1620,6 +1621,8 @@ async function nope(content, preview = false, anchor, runBtn) {
                 //refactor to show key if creds are needed
                 if(needsNewCreds(variables)) {
                     variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+                } else if(variables.internal.newRegion) {
+                    variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                 }
                 GM_setClipboard(variables.internal.result);
                 toast("📋 Copied");
@@ -1973,12 +1976,13 @@ function hasTemplate(name) {
 function needsNewCreds(variables) {
     const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
     variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
+    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.region != variables.region);
     return variables.internal.newCreds
 }
 
 function persistCreds(variables) {
     if(variables.internal.newCreds) {
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, expiration: Date.now() + (60*60*1000)});
+        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, region: variables.region, expiration: Date.now() + (60*60*1000)});
     }
 }
 
