@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.29
+// @version      1.30
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -42,6 +42,7 @@
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
+    let curRegion = undefined;
  let dataAndEvents = {};
 if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
     $('link[rel~="icon"]').each((i,el) => {
@@ -746,14 +747,16 @@ input:checked + .slider:before {
             await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`,false, undefined, $(event.delegateTarget));
         }}};
 
+        dataAndEvents.region = {events: {'change': function() {
+            updateTabs();
+            curRegion = extractRegion($('#region option:selected').text());
+        }}};
+
         dataAndEvents.service = {events: {'change': function() {
             updateRegions();
             $("#region").trigger('change');
         }}};
 
-        dataAndEvents.region = {events: {'change': function() {
-            updateTabs();
-        }}};
 
         dataAndEvents.githubIssues = { events: {'click.sr': () => {
             if(!$('#githubIssuesList').is(':visible')){
@@ -1497,7 +1500,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         let url = new URL(`${window.location.origin}${window.location.pathname}`)
                         url.hash = anchor.attr('href').substring(1);
                         let parameters = new URLSearchParams();
-                        parameters.append('srRegion', extractRegion(getValue('#region', true)));
+                        parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
                         parameters.append('srService', getValue('#service'));
                         $('#srModal :input' ).not(':input[type=button],button').each(function() {
                             const prompt = $(this).data('prompt');
@@ -1661,7 +1664,7 @@ async function nope(content, preview = false, anchor, runBtn) {
 
         }
         //persist last region and service
-        let lastRegion = extractRegion(getValue('#region', true));
+        let lastRegion = extractRegion(getValue('#select2-region-container', true));
         if(lastRegion) {
             localStorage.setItem(LAST_REGION_KEY, lastRegion);
         }
@@ -1718,12 +1721,12 @@ function getValue(selector, useText) {
 }
 
 function extractRegion(textRegionValue) {
-    return textRegionValue ? textRegionValue.replace(/ - [\w ]+$/,'') : textRegionValue;
+    return textRegionValue ? textRegionValue.replace(/ - [\w \.]+$/,'') : textRegionValue;
 }
 
 function updateRegions() {
-    let service = $('#service')
-    let lastRegion = extractRegion(getValue('#region', true)) || getURLSearchParam('srRegion') || localStorage.getItem(LAST_REGION_KEY);
+    let service = $('#service');
+    let lastRegion = curRegion || getURLSearchParam('srRegion') || localStorage.getItem(LAST_REGION_KEY);
     let regions = [];
     let currentOptGroup = undefined;
     let numRegions = 0;
@@ -2026,8 +2029,7 @@ async function wireUpContent() {
                 }}};
                 nav.append(navBody);
                 $(pre).parent().before(nav);
-                const anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
-                dataAndEvents[runBtnId].data.anchor;
+                dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
                 $(pre).attr('id',`Preview-${block}`);
                 dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
 
