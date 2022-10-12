@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.31
+// @version      1.32
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -67,8 +67,7 @@ dayjs.extend(window.dayjs_plugin_relativeTime);
 var lastPath = location.pathname;
 
 function getFederationLink(roleArn, destination) {
-    let url = new URL(`${FEDERATION_ENDPOINT}/federate`);
-    url.searchParams.append('account',roleArn.split(':')[4]);
+    let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
     url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
     return url.toString();
@@ -368,7 +367,7 @@ const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`
     const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`
     const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`
     const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`
-    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"account": "$\{account}","role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials`
+    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`
     const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials);`;
     const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\n`;
