@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    http://speedrun.nobackspacecrew.com/
-// @version      1.32
+// @version      1.33
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1084,7 +1084,7 @@ function escapeHTMLQuotesAnd$(str){
 }
 
 function whitespaceToHTML(str){
-    return str ? str.replace(/[\n ]/g, m => ({'\n':'<br>', ' ':'&nbsp;'}[m])) : str;
+    return str ? str.replace('\n','<br>').replace('  ',' &nbsp;') : str;
 }
 
 function escapeHTMLStartTags(str){
@@ -1834,7 +1834,11 @@ function updateTabs() {
     $('.srRunBtn').each(async function (item) {
         const btn = $(this);
         const variables = await nope(btn.data('code'), true);
-        $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
+        try {
+            $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
+        } catch(e) {
+            alertAndThrow(e.message, e);
+        }
         $(`#${btn.data('debugTab')}`).first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
         switch(variables.internal.templateType) {
             case 'link':
@@ -1858,6 +1862,7 @@ function updateTabs() {
             }
         }
     });
+    
     let variables = undefined;
     $('.canBeDangerous').each(async function(item) {
         variables = variables ? variables : await nope('#copy.withCreds', true);
@@ -2057,13 +2062,18 @@ function colorizeComments(content, variables) {
     }) : content;
 }
 
+//html encode curly braces
+function encodeCurlies(str) {
+    return str == undefined ? str : str.replace(/[\{\}]/g, m => ({'{':'&#123;', '}':'&#125;'}[m]));
+}
+
 function colorizePrompts(content, variables) {
     return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
         if(variables.prompts === false) {
-            return prompt.replace(/\}/g,"&#125;");
+            return encodeCurlies(prompt)
         } else {
             let groups = prompt.match(PROMPT);
-            return `<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`.replace(/\}/g,"&#125;");
+            return encodeCurlies(`<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`);
         }
     }) : content;
 }
@@ -2072,7 +2082,7 @@ function colorizeLiterals(content, variables) {
     return interpolateLiteralsInString(content, variables, true,
                                        (result, match) =>
                                        {let escaped = escapeHTMLQuotesAnd$(match);
-                                        return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${firstNonNull(whitespaceToHTML(result), whitespaceToHTML(escaped))}</span>`});
+                                        return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${whitespaceToHTML(firstNonNull(result, match))}</span>`});
 }
 
 function buildPreview(variables) {
