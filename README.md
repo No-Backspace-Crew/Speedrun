@@ -1,6 +1,5 @@
 <img alt="Speedrun" src="https://speedrun.nobackspacecrew.com/images/speedrun.png" align="right">
 
-# Speedrun
 [Speedrun](https://github.com/No-Backspace-Crew/Speedrun/wiki) lets you build tools and documentation at the same time with Github wikis.  
 It's a powerup for GitHub markdown that infuses your documentation with the ability to:
 
