@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.34
+// @version      1.35
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -335,6 +335,9 @@ function bindDataAndEvents() {
                     width:'copy'
 
     });
+    if(!$('#service').is(":visible")) {
+       $('#service').next().hide();
+    }
 }
 
 addEventListener('popstate', async (event) => {
