@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.35
+// @version      1.36
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1327,7 +1327,7 @@ function isAlwaysOnWikiPath(path) {
         }
     }
     path = applyIfNotNull(path, String.prototype.toLowerCase);
-    return path === '/no-backspace-crew/speedrun' || path === '/no-backspace-crew/warp' || path === `/${user}/${user}`;
+    return path === '/no-backspace-crew/speedrun' || path === `/${user}/${user}`;
 }
 
 function isEnabledWikiPath() {
@@ -1918,7 +1918,7 @@ function hasElements(arr) {
 
 async function buildConfig(enabled) {
     let userConfig = getUserConfig();
-    pageConfig = userConfig.services['${user}'].regions.aws.account ? _.cloneDeep(userConfig) : {};
+    pageConfig = user && userConfig.services['${user}'].regions.aws.account ? _.cloneDeep(userConfig) : {};
     const configs = [];
     if(enabled) {
         let preBlocks = $("div.markdown-body pre");
