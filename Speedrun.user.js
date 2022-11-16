@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.37
+// @version      1.38
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1620,6 +1620,9 @@ async function nope(content, preview = false, anchor, runBtn) {
             case "copy" :
                 //refactor to show key if creds are needed
                 if(needsNewCreds(variables)) {
+                    if(String(variables.account).startsWith('-')) {
+                       alertAndThrow(`Getting credentials not enabled on demo accounts`);
+                    }
                     variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
                 } else if(variables.internal.newRegion) {
                     variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
