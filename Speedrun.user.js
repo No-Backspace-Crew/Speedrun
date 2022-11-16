@@ -494,6 +494,14 @@ let templates = {
         type : "federate",
         value : "dynamodbv2/home?region=${region}#item-explorer?initialTagKey=&table=${tableName}"
     },
+    S3Bucket: {
+        type : "federate",
+        value : "s3/buckets/${bucket}?region=${region}&tab=objects"
+    },
+    S3Object: {
+        type : "federate",
+        value : "s3/object/${bucket}?region=${region}&prefix=${key}"
+    },
     CWLInsights: {
         type : "federate",
         value : "cloudwatch/home?region=${region}#logsV2:logs-insights$3FqueryDetail$3D$257E$2528end$257E0$257Estart$257E${typeof start === 'undefined' ? '-3600' : start}$257EtimeType$257E$2527RELATIVE$257Eunit$257E$2527seconds$257EeditorString$257E$2527${encodeCloudWatchInsightsParam(content)}$257EisLiveTail$257Efalse$257Esource$257E$2528${encodeCloudWatchURL(prepend(`~'`,arrayify(logGroups).map(x => encodeCloudWatchInsightsParam(x))).join(''))}$2529$2529"
