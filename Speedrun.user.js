@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.38
+// @version      1.39
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -389,6 +389,7 @@ let regionMap = {
     "Asia Pacific (Tokyo)": "ap-northeast-1",
     "Canada (Central)": "ca-central-1",
     "Europe (Frankfurt)": "eu-central-1",
+    "Europe (Zurich)": "eu-central-2",
     "Europe (Ireland)": "eu-west-1",
     "Europe (London)": "eu-west-2",
     "Europe (Milan)": "eu-south-1",
@@ -936,12 +937,12 @@ function isValidVarName( name ) {
 }
 
 function encodeCloudWatchInsightsParam(str) {
-    return encodeURIComponent(str).replace(/['()]/g, m => ({'\'':'%27', '(':'%28', ')':'%29'}[m])).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
+    return encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m])).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
 }
 
 
 function encodeCloudWatchURL(str, passes=2) {
-    [...Array(passes)].forEach(() => {str = encodeURIComponent(str).replace(/['()]/g, m => ({'\'':'%27', '(':'%28', ')':'%29'}[m]))});
+    [...Array(passes)].forEach(() => {str = encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m]))});
     return str.replaceAll('%','$');
 }
 
