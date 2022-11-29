@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.41
+// @version      1.42
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -994,9 +994,10 @@ function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
 function retrieve(path) {
     return new Promise((resolve,reject) => {
         let [,root] = window.location.href.match(/^(.*?.com\/[^\/]+\/[^\/]+(\/(blob\/[^\/]+|wiki))?)/i);
+        let url = path.startsWith('https://') ? path : `${root}/${path.replaceAll(/^\//g,'')}`;
         GM_xmlhttpRequest({
             method: 'GET',
-            url: `${root}/${path.replaceAll(/^\//g,'')}`,
+            url,
             onload: function(response) {
                 resolve(response.responseText);
             },
