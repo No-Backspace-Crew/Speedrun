@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.42
+// @version      1.43
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -364,7 +364,7 @@ const SR_SERVICE_FILTER = "srServiceFilter";
 const varNameCache = new Map();
 const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
 const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?.*(?<!\/_(edit|new))$/;
-const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)([^\.]*?)(\/blob\/.*\/\w+.md)?$/i;
+const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|\/blob\/.*\/\w+.md)?$/i;
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
@@ -1042,7 +1042,8 @@ function hasDOMContent(str) {
 }
 
 function isSRPage() {
-    return WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
+    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
+    return result && !result.groups.path.match(/^\/(login|settings)\//i) ? result : null;
 }
 
 function persistIfIssue() {
