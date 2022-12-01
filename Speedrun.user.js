@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.43
+// @version      1.44
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -42,7 +42,7 @@
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
-    let curRegion = undefined;
+ let curRegion = undefined;
  let dataAndEvents = {};
 if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
     $('link[rel~="icon"]').each((i,el) => {
@@ -305,7 +305,7 @@ function destroySelect2(...selectors) {
     selectors.forEach(selector => {
         let element = $(selector);
         if (element && element.hasClass("select2-hidden-accessible")) {
-           element.next().remove();
+            element.next().remove();
         }});
 }
 
@@ -330,11 +330,11 @@ function bindDataAndEvents() {
         }
     })
     $('#service,#region').select2(
-            {
-                    dropdownAutoWidth : true,
-                    width:'copy'
+        {
+            dropdownAutoWidth : true,
+            width:'copy'
 
-    });
+        });
     $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
 }
 
@@ -345,11 +345,11 @@ addEventListener('popstate', async (event) => {
             bindDataAndEvents();
             updateTabs();
         }
-    , 10);
+                   , 10);
     }
 });
 
-const HEADER = /#(\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
+const HEADER = /#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
 const LITERAL = /\$\{.+?\}/s;
 const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
 const PROMPT_G = new RegExp(PROMPT, 'g');
@@ -360,7 +360,9 @@ const SR_CONFIG = "srConfig";
 const GLOBAL_PREFIX = "g_";
 const SR_ENABLED_PATHS = `${STORAGE_NAMESPACE}enabledPaths`;
 const SR_REGION_FILTER = "srRegionFilter";
+const SR_HIDE_USER_SERVICE = "srHideUserService";
 const SR_SERVICE_FILTER = "srServiceFilter";
+const USER_SERVICE = "${user}";
 const varNameCache = new Map();
 const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
 const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?.*(?<!\/_(edit|new))$/;
@@ -523,6 +525,18 @@ let templates = {
     EditGitHubWiki : {
         type: "link",
         value: "https://github.com/${slugify(org)}/${slugify(repo)}/wiki/${slugify(title)}/_edit"
+    },
+    '!CWDashboard' : {
+        type: "iframe",
+        value: "https://cloudwatch.amazonaws.com/dashboard.html?dashboard=${dashboardName}&context=${content}"
+    },
+    '!YouTube' : {
+        type: "iframe",
+        width: 560,
+        height: 340,
+        value: "https://www.youtube.com/embed/${content}",
+        allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+        allowfullscreen:'true'
     }
 };
 
@@ -806,7 +820,7 @@ input:checked + .slider:before {
             GM_deleteValue(`${LAST_CREDS}copy`);
             toast('Credentials flushed');
         }}};
-        
+
         $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
         dataAndEvents.srWikiSearch = { events: {'click': async () => {
             let searchTerm = getValue('#wiki-pages-filter');
@@ -1080,7 +1094,7 @@ function setFavIcon() {
 function getUserConfig() {
     return {
         "services" : {
-            "${user}" : {
+            [USER_SERVICE] : {
                 "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
                 "regions" : {
                     "aws" : {
@@ -1322,7 +1336,7 @@ function getServiceDropdownName(serviceName) {
     //Only pretty up final name in extension as service name for dropdown
     //A = A
     //A.B.C = C
-    return prettyCamelCase(serviceName.replace('${user}',GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
+    return prettyCamelCase(serviceName.replace(USER_SERVICE,GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
 }
 
 function applyIfNotNull(obj, f) {
@@ -1633,7 +1647,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 //refactor to show key if creds are needed
                 if(needsNewCreds(variables)) {
                     if(String(variables.account).startsWith('-')) {
-                       alertAndThrow(`Getting credentials not enabled on demo accounts`);
+                        alertAndThrow(`Getting credentials not enabled on demo accounts`);
                     }
                     variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
                 } else if(variables.internal.newRegion) {
@@ -1675,6 +1689,10 @@ async function nope(content, preview = false, anchor, runBtn) {
                              onerror: (download)=>{alertAndThrow(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
                              onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
 
+                break;
+            }
+            case "iframe" : {
+                $(`#${runBtn.data('previewTab')}`).first("code").html(buildIFrame(variables));
                 break;
             }
             default:
@@ -1729,6 +1747,15 @@ $(document).ready(function() {
     setFavIcon();
 });
 
+function buildIFrame(variables) {
+    const validAttributes = ['allow','allowfullscreen','height','loading','name','sandbox','allow-top-navigation','src','width','frameBorder'];
+    let overlay = {'name':'Speedrun Content'}
+    if(!variables.name instanceof Function){
+        delete overlay.name;
+    }
+    const attributes = $.extend({'width':'100%', frameBorder:0, height:480, 'src':deepInterpolate(variables.internal.template,variables,false)},variables, overlay);
+    return $('<iframe>',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
+}
 
 function getValue(selector, useText) {
     let element = $(selector);
@@ -1851,9 +1878,14 @@ function updateTabs() {
         const btn = $(this);
         const variables = await nope(btn.data('code'), true);
         try {
-            $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
+            if(variables.internal.templateType != 'iframe' || (variables.internal.templateType == 'iframe' && variables.internal.prompts && variables.internal.prompts.length)) {
+                $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
+            } else {
+                btn.hide();
+                $(`#${btn.data('previewTab')}`).first("code").html(buildIFrame(variables));
+            }
         } catch(e) {
-            alertAndThrow(e.message, e);
+            alertAndThrow(`Unable to preview: ${e.message}`, e);
         }
         $(`#${btn.data('debugTab')}`).first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
         switch(variables.internal.templateType) {
@@ -1869,6 +1901,9 @@ function updateTabs() {
             case 'download':
                 btn.text('Download');
                 break;
+            case 'iframe':
+                btn.text('Load');
+                break;
         }
         setButtonDanger(btn, variables);
         if(variables.creds) {
@@ -1878,7 +1913,7 @@ function updateTabs() {
             }
         }
     });
-    
+
     let variables = undefined;
     $('.canBeDangerous').each(async function(item) {
         variables = variables ? variables : await nope('#copy.withCreds', true);
@@ -1891,7 +1926,7 @@ function getServices(pageConfig) {
     if(services) {
         let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
         for(const [service, config] of Object.entries(services)) {
-            if(!serviceFilter.length || serviceFilter.includes(service)) {
+            if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && pageConfig[SR_HIDE_USER_SERVICE])) {
                 result[service] = {name : service,
                                    dropdownName:getServiceDropdownName(service),
                                    config: getServiceVariables(service, services),
@@ -1931,7 +1966,7 @@ function hasElements(arr) {
 
 async function buildConfig(enabled) {
     let userConfig = getUserConfig();
-    pageConfig = (user && userConfig.services['${user}'].regions.aws.account) ? _.cloneDeep(userConfig) : {};
+    pageConfig = (user && userConfig.services[USER_SERVICE].regions.aws.account) ? _.cloneDeep(userConfig) : {};
     const configs = [];
     if(enabled) {
         let preBlocks = $(".markdown-body pre");
@@ -2012,36 +2047,37 @@ async function wireUpContent() {
         const code = $(pre).text();
         const groups = code.match(HEADER);
         if(groups && groups[1] && hasTemplate(groups[1])) {
+            const isEmbed = groups[1].startsWith('!');
             block++;
-            //wrap the copy content with ticks.
-            const copy = $(pre).parent().find('clipboard-copy');
-            if(copy.length && !copy.data('wrapped')){
-                let codeFence = "```";
-                let content = copy.attr("value");
-                while(content.includes(codeFence)){
-                    codeFence+='`';
+                //wrap the copy content with ticks.
+                const copy = $(pre).parent().find('clipboard-copy');
+                if(copy.length && !copy.data('wrapped')){
+                    let codeFence = "```";
+                    let content = copy.attr("value");
+                    while(content.includes(codeFence)){
+                        codeFence+='`';
+                    }
+                    copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
+                    copy.data('wrapped',true);
                 }
-                copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
-                copy.data('wrapped',true);
-            }
-            const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
-            const actions = $('<div class="UnderlineNav-actions">');
-            const runBtnId = `sr-btn-${block}`;
-            const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
-            actions.append(runBtn);
-            nav.append(actions);
-            dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
+                const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
+                const actions = $('<div class="UnderlineNav-actions">');
+                const runBtnId = `sr-btn-${block}`;
+                const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
+                actions.append(runBtn);
+                nav.append(actions);
+                dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
 
 
-            const navBody = $('<div class="UnderlineNav-body">');
-            var index = 0;
-            for (const [key, value] of Object.entries(tabNames)) {
-                const localBlock = block;
-                let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
-                navBody.append(tab);
-                dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
-                    for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
-                        let tabId = `${oTabKey}-${localBlock}`
+                const navBody = $('<div class="UnderlineNav-body">');
+                var index = 0;
+                for (const [key, value] of Object.entries(tabNames)) {
+                    const localBlock = block;
+                    let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
+                    navBody.append(tab);
+                    dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
+                        for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
+                            let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
                                 $(this).attr('aria-current','page');
                                 $(`#${tabId}`).show();
@@ -2049,23 +2085,23 @@ async function wireUpContent() {
                                 $(`#${tabId}`).hide();
                                 $(`#tab-${tabId}`).removeAttr('aria-current');
                             }
-                    }
-                }}};
-                nav.append(navBody);
-                $(pre).parent().before(nav);
-                dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
-                $(pre).attr('id',`Preview-${block}`);
-                dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
+                        }
+                    }}};
+                    nav.append(navBody);
+                    $(pre).parent().before(nav);
+                    dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
+                    $(pre).attr('id',`Preview-${block}`);
+                    dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
 
-                const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
-                const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
-                dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
-                $(pre).after(codeTab);
-                codeTab.after(debugTab);
-                dataAndEvents[runBtnId].events.click = async function() {
-                    await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
-                };
-            }
+                    const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
+                    const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
+                    dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
+                    $(pre).after(codeTab);
+                    codeTab.after(debugTab);
+                    dataAndEvents[runBtnId].events.click = async function() {
+                        await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
+                    };
+                }
         }
     }
 }
