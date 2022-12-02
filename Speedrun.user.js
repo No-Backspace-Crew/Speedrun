@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.44
+// @version      1.45
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1028,7 +1028,7 @@ function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
         let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
         let toReplace = "${" + matches[0] + "}";
         let replacement = wrap(interpolate(toReplace, variables, suppressErrors), toReplace);
-        str = str.replace(toReplace,()=>replacement);
+        str = str.substring(0,offset) + str.substring(offset).replace(toReplace,()=>replacement);
         offset = str.indexOf('${',offset+replacement.length);
     }
     return str;
@@ -2142,6 +2142,9 @@ function buildPreview(variables) {
 ${variables.content}`;
     preview = colorizeComments(preview, variables);
     preview = colorizePrompts(preview, variables);
+    if(variables.content == variables.internal.template){
+        variables.content = "";
+    }
     return colorizeLiterals(preview, variables);
 }
 
