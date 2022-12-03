@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.45
+// @version      1.46
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1968,15 +1968,17 @@ async function buildConfig(enabled) {
     let userConfig = getUserConfig();
     pageConfig = (user && userConfig.services[USER_SERVICE].regions.aws.account) ? _.cloneDeep(userConfig) : {};
     const configs = [];
+    let numPreBlocks = 0;
     if(enabled) {
         let preBlocks = $(".markdown-body pre");
         for (const pre of preBlocks){
+            numPreBlocks++;
             const details = parseContent($(pre).text(), SR_CONFIG);
             if(details) {
                 // hide sr config by default
-                if(!$(pre).parent().find('summary').length && preBlocks.length > 1) {
+                if(!$(pre).parent().find('summary').length) {
                     $(pre).parent().wrap('<details class="details-reset"></details>')
-                        .before(`<summary class="btn" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
+                        .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
                         .prev().on('click', function(event) {
                         let btn = $(event.delegateTarget);
                         let text = btn.contents().get(0);
@@ -2012,6 +2014,9 @@ async function buildConfig(enabled) {
                 }
                 pageConfig = $.extend(true, pageConfig, config);
             });
+        }
+        if(pageConfig.srShowConfig || numPreBlocks == 1){
+            $('.srConfig[title^="Show"]').trigger('click');
         }
     }
     return pageConfig;
