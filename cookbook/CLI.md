@@ -26,7 +26,7 @@ aws dynamodb get-item --table-name nickleback-lyrics \
 If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the srConfig below for the definition of `CLIDDBQuery`
 
 ```
-#CLIDDBQuery {tableName='nickleback-lyrics', primaryKey='word'}
+#CLIDDBQuery {tableName:'nickleback-lyrics', primaryKey:'word'}
 ~~~keyValue=Lyric {transform:'value.toLowerCase().trim()', default:'photograph'}~~~
 ```
 
