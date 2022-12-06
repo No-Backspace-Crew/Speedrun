@@ -11,7 +11,7 @@ Using Speedrun to build command lines has a few advantages
 > **💡 Tip**
 > Click the Code tab to see the underlying Markdown for an entry.  Click the ![copy](https://user-images.githubusercontent.com/97474956/201821050-e1acc9f6-d41f-4485-9616-0b694f211d4e.svg) icon to copy the underlying Markdown to the clipboard.
 
-Here, we are using the `copy` template with the extension `withCreds` to query a table in dynamodb for a song lyric.  We transform the lyric to be lowercase, escape it and trim it.  We set the default value to `photograph`.  Then we use the `--query` feature of the AWS CLI to use JMESPath to extract just the `occurences` attribute of the result.  Speedrun takes care of wrapping the command with the code necessary to get credentials.
+Here, we are using the [copy](https://github.com/No-Backspace-Crew/Speedrun/wiki/Templates#copy) template with the extension `withCreds` to query a table in dynamodb for a song lyric.  We transform the lyric to be lowercase, escape it and trim it.  We set the default value to `photograph`.  Then we use the `--query` feature of the AWS CLI to use JMESPath to extract just the `occurences` attribute of the result.  Speedrun takes care of wrapping the command with the code necessary to get credentials.
 
 ```
 #copy.withCreds
@@ -21,7 +21,7 @@ aws dynamodb get-item --table-name nickleback-lyrics \
 --output text
 ```
 
-If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the `#srConfig` below for the definition of `CLIDDBQuery`
+If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the `#srConfig` below for the definition of `CLIDDBQuery`.  Note this doesn't do any filtering of the output like the first example and will display the whole item.
 
 ```
 #CLIDDBQuery {tableName:'nickleback-lyrics', primaryKey:'word'}
