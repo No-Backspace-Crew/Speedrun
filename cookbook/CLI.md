@@ -42,7 +42,7 @@ If you wanted to do this with a template instead of writing out the whole comman
       type : "copy", //we want it to copy to the clipboard
       credentials :  true, //we want to get credentials
       //the value is set to the command line we want to run with parameterized tablename, primary key and key value the user supplies
-      value : "aws dynamodb get-item --table-name ${tableName} --key '${\"${primaryKey}\":{\"S\":\"${bashEscape(keyValue)}\"}}'"
+      value : "aws dynamodb get-item --table-name ${tableName} --key '{\"${primaryKey}\":{\"S\":\"${bashEscape(keyValue)}\"}}'"
     }
   },
   services:
