@@ -37,7 +37,7 @@ CWLInsightsSRTimestamp: {
 ```
 #srConfig
 {
-  role: 'ReadOnly', //you can leave off the speerun- prefix and it will prepend it for you
+  role: 'ReadOnly', //you can leave off the speedrun- prefix and it will prepend it for you
   services:
   {
     WingWalker: {
