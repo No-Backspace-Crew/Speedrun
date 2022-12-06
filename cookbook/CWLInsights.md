@@ -5,6 +5,8 @@ One of the best reasons to use Speedrun is to run CloudWatch Insights queries.  
 > **💡 Tip**
 > Click the Code tab to see the underlying Markdown for an entry.  Click the ![copy](https://user-images.githubusercontent.com/97474956/201821050-e1acc9f6-d41f-4485-9616-0b694f211d4e.svg) icon to copy the underlying Markdown to the clipboard.
 
+Here, we make a query that looks back 2 hours for a particular request id.
+
 ```
 #CWLInsights {start:-7200}
 filter requestId='~~~Request Id~~~' |
