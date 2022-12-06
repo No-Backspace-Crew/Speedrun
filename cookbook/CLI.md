@@ -11,8 +11,6 @@ Using Speedrun to build command lines has a few advantages
 > **💡 Tip**
 > Click the Code tab to see the underlying Markdown for an entry.  Click the ![copy](https://user-images.githubusercontent.com/97474956/201821050-e1acc9f6-d41f-4485-9616-0b694f211d4e.svg) icon to copy the underlying Markdown to the clipboard.
 
-> **
-
 Here, we are using the `copy` template with the extension `withCreds` to query a table in dynamodb for a song lyric.  We transform the lyric to be lowercase, escape it and trim it.  We set the default value to `photograph`.  Then we use the `--query` feature of the AWS CLI to use JMESPath to extract just the `occurences` attribute of the result.  Speedrun takes care of wrapping the command with the code necessary to get credentials.
 
 ```
@@ -23,7 +21,7 @@ aws dynamodb get-item --table-name nickleback-lyrics \
 --output text
 ```
 
-If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the srConfig below for the definition of `CLIDDBQuery`
+If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the `#srConfig` below for the definition of `CLIDDBQuery`
 
 ```
 #CLIDDBQuery {tableName:'nickleback-lyrics', primaryKey:'word'}
@@ -50,10 +48,10 @@ If you wanted to do this with a template instead of writing out the whole comman
     LyricsDatabase: {
       regions: {
         'us-west-2' : {
-           account:-111111111111 //at the minimum you need an account and role to be able to federate into the console
+           account:111111111111 //at the minimum you need an account and role to be able to federate into the console
           },
         'us-east-2' : {
-          account:-222222222222 //demo accounts start with -, the script will throw an error instead of attempting to federate into the account
+          account:222222222222 //the credentials broker won't let you get credentials for this demo account but will build the command
         }
       }
     }
