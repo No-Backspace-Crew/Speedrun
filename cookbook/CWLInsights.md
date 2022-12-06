@@ -1,3 +1,5 @@
+#CloudWatch Logs Insights
+
 One of the best use-cases to use Speedrun is to build CloudWatch Insights queries.  To do this you need config somewhere that defines the `account`, `role`, `logGroups` and optional `start` and `end`.  Use the built-in [CWLInsights template](https://github.com/No-Backspace-Crew/Speedrun/wiki/Templates#cwlinsights).
 
 Here, we make a query that looks back 2 hours for a particular request id.
