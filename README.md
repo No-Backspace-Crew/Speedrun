@@ -8,6 +8,6 @@ It's a powerup for GitHub markdown that infuses your documentation with the abil
 - [x] 🔑 Get AWS credentials
 - [x] ⚙️ Reference configuration
 - [x] 🚀 Federate into the AWS console
-- [x] 🛸 Build an exact command line
+- [x] :godmode: Build an exact command line
 
 [Start speedrunning now](https://github.com/No-Backspace-Crew/Speedrun/wiki/Getting-Started)
