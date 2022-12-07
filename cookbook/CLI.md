@@ -21,7 +21,7 @@ aws dynamodb get-item --table-name nickleback-lyrics \
 --output text
 ```
 
-If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the `#srConfig` below for the [definition of `CLIDDBQuery`](#configuration).  Note this doesn't do any filtering of the output like the first example and will display the whole item.
+If you wanted to do this with a template instead of writing out the whole command you might do it like this.  Look at the `#srConfig` below for the [definition](#configuration) of `CLIDDBQuery`.  Note this doesn't do any filtering of the output like the first example and will display the whole item.
 
 ```
 #CLIDDBQuery {tableName:'nickleback-lyrics', primaryKey:'word'}
