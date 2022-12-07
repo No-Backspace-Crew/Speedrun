@@ -29,7 +29,7 @@ If you wanted to do this with a template instead of writing out the whole comman
 ```
 
 > **:star_struck: Pro Tip**
-> To use the AWS CLI effectively, learn about the AWS CLI option [--query](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html#cli-usage-filter-client-side) and JMESPath to extract just the data you want from the results.  Also familiarize yourself with the [$() and `` syntax](https://www.redhat.com/sysadmin/backtick-operator-vs-parens)
+> To use the AWS CLI effectively, learn about the AWS CLI option [--query](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html#cli-usage-filter-client-side) and [JMESPath](https://jmespath.org/) to extract just the data you want from the results.  Also familiarize yourself with the [$() and `` syntax](https://www.redhat.com/sysadmin/backtick-operator-vs-parens) for subshells.
 
 
 This is one is :fire: hot :fire: it combines prompts, JMESPath, JavaScript and bash to let you query your CloudWatch logs.
