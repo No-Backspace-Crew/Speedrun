@@ -11,8 +11,6 @@ Using Speedrun to build command lines has a few advantages
 > **💡 Tip**
 > Click the Code tab to see the underlying Markdown for an entry.  Click the ![copy](https://user-images.githubusercontent.com/97474956/201821050-e1acc9f6-d41f-4485-9616-0b694f211d4e.svg) icon to copy the underlying Markdown to the clipboard.
 
-> **
-
 Here, we are using the `copy` template with the extension `withCreds` to query a table in dynamodb for a song lyric.  We transform the lyric to be lowercase, escape it and trim it.  We set the default value to `photograph`.  Then we use the `--query` feature of the AWS CLI to use JMESPath to extract just the `occurences` attribute of the result.  Speedrun takes care of wrapping the command with the code necessary to get credentials.
 
 ```
@@ -33,6 +31,27 @@ If you wanted to do this with a template instead of writing out the whole comman
 > **:star_struck: Pro Tip**
 > To use the AWS CLI effectively, learn about the AWS CLI option [--query](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-filter.html#cli-usage-filter-client-side) and JMESPath to extract just the data you want from the results.  Also familiarize yourself with the [$() and `` syntax](https://www.redhat.com/sysadmin/backtick-operator-vs-parens)
 
+
+This is one is :fire: hot :fire: it combines prompts, JMESPath, JavaScript and bash to let you query your CloudWatch logs.
+
+```
+#copy.withCreds
+LOG_GROUP_NAME=`aws logs describe-log-groups \
+  --query "logGroups[?starts_with(logGroupName,'~~~Prefix~~~')].logGroupName" --output text`
+QUERY_ID=`aws logs start-query --log-group-names $LOG_GROUP_NAME \
+--end-time '~~~endTime=End Time {"default":"${dayjs().format('YYYY-MM-DD')}", "transform":"dayjs(value,'YYYY-MM-DD').unix()"}~~~' \
+--start-time '${dayjs.unix(endTime).subtract(~~~Lookback {type:'select', options:{'1 day': 1, '3 days': 3, '7 days': 7}}~~~,'day').unix()}' \
+--query-string $'~~~Query {"type":"textarea","transform":"bashEscape(value)"}~~~' \
+--query 'queryId' --output text`
+while [ `aws logs get-query-results --query-id $QUERY_ID --query "status=='Scheduled' || status=='Running'" --output text` = "True" ]
+do
+  sleep 1;
+done 
+aws logs get-query-results --query-id $QUERY_ID --query "[@][?status=='Complete'].results[*][?field!='@ptr'].[field,value]|[][*][0] | [0]" --output text
+aws logs get-query-results --query-id $QUERY_ID --query "[@][?status=='Complete'].results[*][?field!='@ptr'].[field,value]|[][*][1]" --output text
+```
+
+## Configuration
 ```
 #srConfig
 {
