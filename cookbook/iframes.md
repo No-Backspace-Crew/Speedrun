@@ -37,7 +37,7 @@ This uses the built-in `#!YouTube` template.  This shows a prompt to select the 
 
 ## CodePen
 
-This uses the raw #iframe template.  It overrides the `height` to `300`, and sets the body to the full `src` for the `iframe`.  The `title` sets the title of the `iframe`.
+This uses the raw `#iframe` template.  It overrides the `height` to `300`, and sets the body to the full `src` for the `iframe`.  The `title` sets the title of the `iframe`.
 
 ```
 #iframe {title:'Confetti Button', height:300}
