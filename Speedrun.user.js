@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.47
+// @version      1.48
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -823,7 +823,9 @@ input:checked + .slider:before {
             toast('Credentials flushed');
         }}};
 
-        $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
+        if($('#srWikiSearch').length == 0) {
+            $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
+        }
         dataAndEvents.srWikiSearch = { events: {'click': async () => {
             let searchTerm = getValue('#wiki-pages-filter');
             if(searchTerm) {
@@ -1615,24 +1617,26 @@ async function nope(content, preview = false, anchor, runBtn) {
             }
 
         }
+    }
+    if(!variables.raw){
+        // interpolate variables using 2 passes to account for variables that are defined later
+        [1,2].forEach((pass) => {
+            Object.entries(variables).forEach(([key, value]) => {
+                if(key == 'internal') {
+                    return;
+                }
+                const result = deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
+                if(result) {
+                    variables[key] = result;
+                }
+            })});
+    } else {
+        //turn off raw so variables get interpolated in the template
+        variables.raw = false;
+    }
+    variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
 
-        if(!variables.raw){
-            // interpolate variables using 2 passes to account for variables that are defined later
-            [1,2].forEach((pass) => {
-                Object.entries(variables).forEach(([key, value]) => {
-                    if(key == 'internal') {
-                        return;
-                    }
-                    const result = deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
-                    if(result) {
-                        variables[key] = result;
-                    }
-                })});
-        } else {
-            //turn off raw so variables get interpolated in the template
-            variables.raw = false;
-        }
-        variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
+    if(!preview) {
         if(variables.creds) {
             if(variables.account && variables.role && variables.partition) {
                 //prepend speedrun to role name
@@ -1755,7 +1759,7 @@ function buildIFrame(variables) {
     if(!variables.name instanceof Function){
         delete overlay.name;
     }
-    const attributes = $.extend({'width':'100%', frameBorder:0, height:480, 'src':deepInterpolate(variables.internal.template,variables,false)},variables, overlay);
+    const attributes = $.extend({'width':'100%', frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
     return $('<iframe>',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
 }
 
@@ -2056,35 +2060,35 @@ async function wireUpContent() {
         if(groups && groups[1] && hasTemplate(groups[1])) {
             const isEmbed = groups[1].startsWith('!');
             block++;
-                //wrap the copy content with ticks.
-                const copy = $(pre).parent().find('clipboard-copy');
-                if(copy.length && !copy.data('wrapped')){
-                    let codeFence = "```";
-                    let content = copy.attr("value");
-                    while(content.includes(codeFence)){
-                        codeFence+='`';
-                    }
-                    copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
-                    copy.data('wrapped',true);
+            //wrap the copy content with ticks.
+            const copy = $(pre).parent().find('clipboard-copy');
+            if(copy.length && !copy.data('wrapped')){
+                let codeFence = "```";
+                let content = copy.attr("value");
+                while(content.includes(codeFence)){
+                    codeFence+='`';
                 }
-                const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
-                const actions = $('<div class="UnderlineNav-actions">');
-                const runBtnId = `sr-btn-${block}`;
-                const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
-                actions.append(runBtn);
-                nav.append(actions);
-                dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
+                copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
+                copy.data('wrapped',true);
+            }
+            const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
+            const actions = $('<div class="UnderlineNav-actions">');
+            const runBtnId = `sr-btn-${block}`;
+            const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
+            actions.append(runBtn);
+            nav.append(actions);
+            dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
 
 
-                const navBody = $('<div class="UnderlineNav-body">');
-                var index = 0;
-                for (const [key, value] of Object.entries(tabNames)) {
-                    const localBlock = block;
-                    let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
-                    navBody.append(tab);
-                    dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
-                        for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
-                            let tabId = `${oTabKey}-${localBlock}`
+            const navBody = $('<div class="UnderlineNav-body">');
+            var index = 0;
+            for (const [key, value] of Object.entries(tabNames)) {
+                const localBlock = block;
+                let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
+                navBody.append(tab);
+                dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
+                    for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
+                        let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
                                 $(this).attr('aria-current','page');
                                 $(`#${tabId}`).show();
