@@ -57,7 +57,8 @@ https://codepen.io/marcobiedermann/embed/ExvvyLQ?default-tab=html%2Cresult
       video: 'LXboNl2vWH8'
     }
   },
-  srShowConfig: true
+  srShowConfig: true,
+  srHideUserService: true
 }
 
 ```
