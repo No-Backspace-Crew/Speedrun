@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.48
+// @version      1.49
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -1404,6 +1404,7 @@ async function nope(content, preview = false, anchor, runBtn) {
 
     variables.internal.template = templateVariables.value || "${content}";
     variables.internal.templateType = templateVariables.type;
+    variables.internal.preview = variables.internal.content = variables.content;
     delete templateVariables.value;
     delete templateVariables.type;
 
@@ -1714,8 +1715,9 @@ async function nope(content, preview = false, anchor, runBtn) {
         if(lastService) {
             localStorage.setItem(LAST_SERVICE_KEY, lastService);
         }
-    } else if(!variables.content.trim().length) {
+    } else if(!variables.internal.content.trim().length) {
         variables.content = variables.internal.template;
+        variables.internal.preview = variables.internal.template == '${content}' ? '' : variables.internal.template;
     }
     return variables;
 }
@@ -2150,7 +2152,7 @@ function colorizeLiterals(content, variables) {
 
 function buildPreview(variables) {
     let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
-${variables.content}`;
+${variables.internal.preview}`;
     preview = colorizeComments(preview, variables);
     preview = colorizePrompts(preview, variables);
     if(variables.content == variables.internal.template){
