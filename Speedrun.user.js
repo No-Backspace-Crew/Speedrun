@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.49
+// @version      1.50
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
@@ -349,7 +349,7 @@ addEventListener('popstate', async (event) => {
     }
 });
 
-const HEADER = /#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)?(\w+(?:\.\w+)*))?([ \t]*{.*})?(?:[ \t]*\n)?/;
+const HEADER = /#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
 const LITERAL = /\$\{.+?\}/s;
 const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
 const PROMPT_G = new RegExp(PROMPT, 'g');
@@ -821,19 +821,6 @@ input:checked + .slider:before {
             GM_deleteValue(`${LAST_CREDS}federate`);
             GM_deleteValue(`${LAST_CREDS}copy`);
             toast('Credentials flushed');
-        }}};
-
-        if($('#srWikiSearch').length == 0) {
-            $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
-        }
-        dataAndEvents.srWikiSearch = { events: {'click': async () => {
-            let searchTerm = getValue('#wiki-pages-filter');
-            if(searchTerm) {
-                let searchURL = new URL('https://www.github.com/search?type=wikis');
-                let [,path] = isSRPage();
-                searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
-                window.location.href = searchURL.href;
-            }
         }}};
     }
 }
@@ -1389,6 +1376,7 @@ async function nope(content, preview = false, anchor, runBtn) {
     delete pageVariables.services;
     let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService(), content: content.replace(HEADER,"").replace(/\s+$/,"")};
     let details = parseContent(content);
+    variables.internal.showPin = details.service != undefined;
     variables.service = firstNonNull(details.service, variables.service);
     if(variables.service) {
         variables.srServiceName = getServiceDropdownName(variables.service);
@@ -1643,7 +1631,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 //prepend speedrun to role name
                 if(!variables.role.startsWith('speedrun-')) {
                     variables.role = `speedrun-${variables.role}`
-                    }
+                }
                 variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
             } else {
                 alertAndThrow("Unable to determine role arn, role, account and partition must be defined");
@@ -1811,6 +1799,25 @@ async function updatePage(reason) {
     }
     try {
         updatingPage = true;
+        // TODO see if this can be cleaned up, it works, but dirty
+        if($('#srWikiSearch').length == 0) {
+            $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
+            $('#srWikiSearch').on('click', async () => {
+            let searchTerm = getValue('#wiki-pages-filter');
+            if(searchTerm) {
+                let searchURL = new URL('https://www.github.com/search?type=wikis');
+                let [,path] = isSRPage();
+                searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
+                window.location.href = searchURL.href;
+            }
+            });
+            $('#wiki-pages-filter').keypress(function(event) {
+                if (event.key === "Enter") {
+                    $('#srWikiSearch').click();
+                }
+            });
+        }
+
         if($('.srRunBtn, .copyCursor').length){
             console.log("Page already current, ignoring");
             return;
@@ -1869,7 +1876,7 @@ function setButtonDanger(btn, variables) {
 
     if(variables.creds) {
         let hasService = document.querySelector("#region").length > 0
-        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.srServiceName}${variables.service != getService()? " 📌":""}: ${variables.region} (${variables.role})`);
+        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.srServiceName}${variables.internal.showPin? " 📌":""}: ${variables.region} (${variables.role})`);
         if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
             btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
             btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
