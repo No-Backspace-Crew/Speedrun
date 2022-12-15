@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.50
+// @version      1.51
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
-// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.0/jquery.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
 // @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
