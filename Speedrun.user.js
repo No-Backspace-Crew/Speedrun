@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.51
+// @version      1.52
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -1048,7 +1048,7 @@ function hasDOMContent(str) {
 
 function isSRPage() {
     let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
-    return result && !result.groups.path.match(/^\/(login|settings)\//i) ? result : null;
+    return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
 }
 
 function persistIfIssue() {
