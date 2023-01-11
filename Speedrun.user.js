@@ -64,7 +64,7 @@ const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
 dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
-var lastPath = location.pathname;
+var lastPath = location.pathname + location.search;
 
 function getFederationLink(roleArn, destination) {
     let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
@@ -287,18 +287,33 @@ if(location.host.endsWith('console.aws.amazon.com')) {
 
 const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
 if (window.onurlchange === null) {
-    //this gets invoked twice on page change, only update page on 2nd call
     window.addEventListener('urlchange', async (info) => {
         let location = new URL(info.url);
-        if(lastPath !== location.pathname) {
+        if(lastPath !== location.pathname + location.search) {
             persistIfIssue();
-            console.log(`Changing lastpath to ${location.pathname} from ${lastPath}` );
-            lastPath = location.pathname;
-        } else if (isSRPage()) {
-            await updatePage(`urlchange ${location.pathname}`);
+            if(isSRPage()) {
+                //wait for page to render
+                await sleep(100);
+                if($('.markdown-body').length && $('.srDone').length==0) {
+                   console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
+                   lastPath = location.pathname + location.search;
+                   await updatePage(`urlchange ${lastPath}`);
+                }
+            } else {
+                console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
+                lastPath = location.pathname + location.search;
+            }
+            showToolbarOnPage();
         }
-        showToolbarOnPage();
+        if(isSRPage()){
+            await sleep(500);
+            setFavIcon();
+        }
     });
+}
+
+async function sleep(interval=500) {
+    return new Promise(resolve => setTimeout(resolve, interval));
 }
 
 function destroySelect2(...selectors) {
@@ -1048,6 +1063,9 @@ function hasDOMContent(str) {
 
 function isSRPage() {
     let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
+    if(REPO_REGEX.exec(location.pathname) && location.search) {
+        return false;
+    }
     return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
 }
 
@@ -1800,7 +1818,7 @@ async function updatePage(reason) {
     try {
         updatingPage = true;
         // TODO see if this can be cleaned up, it works, but dirty
-        if($('#srWikiSearch').length == 0) {
+        if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 0) {
             $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
             $('#srWikiSearch').on('click', async () => {
             let searchTerm = getValue('#wiki-pages-filter');
@@ -1818,7 +1836,7 @@ async function updatePage(reason) {
             });
         }
 
-        if($('.srRunBtn, .copyCursor').length){
+        if($('.srDone').length){
             console.log("Page already current, ignoring");
             return;
         }
@@ -1857,6 +1875,7 @@ async function updatePage(reason) {
         for(const block of $(".markdown-body > p > code, .markdown-body > li > code, .markdown-body > td > code, .markdown-body > :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
+        $('.markdown-body').append($('<span>', { class : 'srDone'}));
     } finally {
         updatingPage = false;
     }
