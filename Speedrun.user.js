@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.54
+// @version      1.55
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -1818,7 +1818,7 @@ async function updatePage(reason) {
     try {
         updatingPage = true;
         // TODO see if this can be cleaned up, it works, but dirty
-        if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 0) {
+        if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 1) {
             $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
             $('#srWikiSearch').on('click', async () => {
             let searchTerm = getValue('#wiki-pages-filter');
