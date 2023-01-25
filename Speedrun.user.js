@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.55
+// @version      1.56
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -61,6 +61,8 @@ const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpo
 var sessionVariables = {};
 const STORAGE_NAMESPACE = 'SR:';
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
+const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
+
 dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
@@ -79,12 +81,15 @@ function addSpeedrunLink() {
         if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
             GM_cookie('list', { name: 'aws-userInfo' }, (cookies) => {
                 awsuserInfoCookieParsed = true;
+                let lastRolePersisted = false;
                 if(cookies && cookies.length) {
                     let userInfo = JSON.parse(unescape(cookies[0].value));
                     let result = ARN_REGEX.exec(userInfo.arn);
                     if(result) {
                         console.log('Adding speedrun link');
                         let [,arn, account, role] = result;
+                        persistIfNewRole(arn,$("meta[name='awsc-mezz-region']").attr("content"));
+                        lastRolePersisted=true;
                         let navBar = $('#awsc-navigation__more-menu--list');
                         let helpButton = navBar.first().find('button').first();
                         let srLink = helpButton.clone();
@@ -102,6 +107,9 @@ function addSpeedrunLink() {
                         });
                         helpButton.after(srLink);
                     }
+                }
+                if(!lastRolePersisted) {
+                    persistIfNewRole();
                 }
             });
         }
@@ -385,7 +393,6 @@ const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|\/blob\/.*\/\w+.md)?$/i;
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
-const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
 const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
 const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials);`;
@@ -1668,7 +1675,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 GM_setClipboard(variables.internal.result);
                 toast("📋 Copied");
-                persistCreds(variables);
+                persistLastRole(variables);
                 break;
             case "link" :
                 window.open(variables.internal.result);
@@ -1694,7 +1701,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     alertAndThrow(`Federation not enabled on demo accounts`);
                 }
                 window.open(url);
-                persistCreds(variables);
+                persistLastRole(variables);
                 break;
             }
             case "download" : {
@@ -2067,6 +2074,19 @@ function hasTemplate(name) {
     return true;
 }
 
+function persistIfNewRole(roleArn, region) {
+    if(!roleArn) {
+        console.log('Console role changed');
+        GM_deleteValue(`${LAST_CREDS}federate`);
+    } else {
+        const lastCreds = GM_getValue(LAST_CREDS, undefined);
+        if(lastCreds && lastCreds.role && lastCreds.role != roleArn) {
+            console.log('Console role changed');
+            persistLastRole({internal: {newCreds:true, templateType:'federate'}, roleArn, region});
+        }
+    }
+}
+
 function needsNewCreds(variables) {
     const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
     variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
@@ -2074,7 +2094,7 @@ function needsNewCreds(variables) {
     return variables.internal.newCreds
 }
 
-function persistCreds(variables) {
+function persistLastRole(variables) {
     if(variables.internal.newCreds) {
         GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, region: variables.region, expiration: Date.now() + (60*60*1000)});
     }
