@@ -80,15 +80,19 @@ function addSpeedrunLink() {
     if($('#awsc-navigation__more-menu--list')) {
         if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
             GM_cookie('list', { name: 'aws-userInfo' }, (cookies) => {
+                if(awsuserInfoCookieParsed) {
+                    return;
+                }
                 awsuserInfoCookieParsed = true;
                 let lastRolePersisted = false;
-                if(cookies && cookies.length) {
+                let region = $("meta[name='awsc-mezz-region']").attr("content");
+                if(cookies && cookies.length && region) {
                     let userInfo = JSON.parse(unescape(cookies[0].value));
                     let result = ARN_REGEX.exec(userInfo.arn);
                     if(result) {
                         console.log('Adding speedrun link');
                         let [,arn, account, role] = result;
-                        persistIfNewRole(arn,$("meta[name='awsc-mezz-region']").attr("content"));
+                        persistIfNewRole(arn, region);
                         lastRolePersisted=true;
                         let navBar = $('#awsc-navigation__more-menu--list');
                         let helpButton = navBar.first().find('button').first();
@@ -108,8 +112,9 @@ function addSpeedrunLink() {
                         helpButton.after(srLink);
                     }
                 }
-                if(!lastRolePersisted) {
+                if(!lastRolePersisted && !awsuserInfoCookieParsed) {
                     persistIfNewRole();
+                    lastRolePersisted = true;
                 }
             });
         }
@@ -2075,13 +2080,14 @@ function hasTemplate(name) {
 }
 
 function persistIfNewRole(roleArn, region) {
+    const roleKey = `${LAST_CREDS}federate`;
     if(!roleArn) {
         console.log('Console role changed');
-        GM_deleteValue(`${LAST_CREDS}federate`);
+        GM_deleteValue(roleKey);
     } else {
-        const lastCreds = GM_getValue(LAST_CREDS, undefined);
-        if(lastCreds && lastCreds.role && lastCreds.role != roleArn) {
-            console.log('Console role changed');
+        const lastCreds = GM_getValue(roleKey, undefined);
+        if(!lastCreds || (lastCreds.role && lastCreds.role != roleArn)) {
+            console.log(`Console role changed from ${lastCreds ? lastCreds.role : 'not set'} to ${roleArn}`);
             persistLastRole({internal: {newCreds:true, templateType:'federate'}, roleArn, region});
         }
     }
