@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.56
+// @version      1.57
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -306,7 +306,7 @@ if (window.onurlchange === null) {
             persistIfIssue();
             if(isSRPage()) {
                 //wait for page to render
-                await sleep(100);
+                await sleep(250);
                 if($('.markdown-body').length && $('.srDone').length==0) {
                    console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
                    lastPath = location.pathname + location.search;
@@ -709,8 +709,8 @@ input:checked + .slider:before {
   padding: 1px 6px;
 }
 </style>`);
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0","css":{"display":"none", "left": "50%","transform":"translate(-50%, 0)","padding":"2px","z-index":"50","border-radius":"5px", "background": "var(--color-header-bg)"}});
-        toolbar.append(`<a id='toggleSRToolbar' href="#"><img width="25" height="25" style="vertical-align:middle" src="${GM_info.script.icon}"/></a>
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0","css":{"display":"none", "left": "50%","transform":"translate(-50%, 0)","padding":"2px","z-index":"50","border-radius":"5px", "background": "var(--color-page-header-bg)"}});
+        toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
   <label id='srToggleTitle' class="switch">
   <input id='srEnabled' type="checkbox"><span class="slider round"></span>
       </label>
