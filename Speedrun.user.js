@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.57
+// @version      1.58
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -298,6 +298,26 @@ if(location.host.endsWith('console.aws.amazon.com')) {
     return;
 }
 
+function waitForSelector(selector) {
+    return new Promise(resolve => {
+        if (document.querySelector(selector)) {
+            return resolve(document.querySelector(selector));
+        }
+
+        const observer = new MutationObserver(mutations => {
+            if (document.querySelector(selector)) {
+                resolve(document.querySelector(selector));
+                observer.disconnect();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
 const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
 if (window.onurlchange === null) {
     window.addEventListener('urlchange', async (info) => {
@@ -306,12 +326,13 @@ if (window.onurlchange === null) {
             persistIfIssue();
             if(isSRPage()) {
                 //wait for page to render
-                await sleep(250);
-                if($('.markdown-body').length && $('.srDone').length==0) {
-                   console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
-                   lastPath = location.pathname + location.search;
-                   await updatePage(`urlchange ${lastPath}`);
+                console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
+                lastPath = location.pathname + location.search;
+                await waitForSelector('.markdown-body > *');
+                while($('.srDone').length>0) {
+                    await sleep(10);
                 }
+                await updatePage(`urlchange ${lastPath}`);
             } else {
                 console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
                 lastPath = location.pathname + location.search;
@@ -319,7 +340,7 @@ if (window.onurlchange === null) {
             showToolbarOnPage();
         }
         if(isSRPage()){
-            await sleep(500);
+            await waitForSelector('.srDone');
             setFavIcon();
         }
     });
