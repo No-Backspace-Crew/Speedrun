@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.58
+// @version      1.59
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -431,7 +431,9 @@ let regionMap = {
     "US West (Oregon)": "us-west-2",
     "Africa (Cape Town)": "af-south-1",
     "Asia Pacific (Hong Kong)": "ap-east-1",
+    "Asia Pacific (Hyderabad)": "ap-south-2",
     "Asia Pacific (Jakarta)": "ap-southeast-3",
+    "Asia Pacific (Melbourne)": "ap-southeast-4",
     "Asia Pacific (Mumbai)": "ap-south-1",
     "Asia Pacific (Osaka)": "ap-northeast-3",
     "Asia Pacific (Seoul)": "ap-northeast-2",
@@ -446,7 +448,9 @@ let regionMap = {
     "Europe (Milan)": "eu-south-1",
     "Europe (Paris)": "eu-west-3",
     "Europe (Stockholm)": "eu-north-1",
+    "Europe (Zaragoza)": "eu-south-2",
     "Middle East (Bahrain)": "me-south-1",
+    "Middle East (UAE)": "me-central-1",
     "South America (São Paulo)": "sa-east-1",
 };
 
