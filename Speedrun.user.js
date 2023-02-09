@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.59
+// @version      1.60
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -1674,11 +1674,12 @@ async function nope(content, preview = false, anchor, runBtn) {
                     variables[key] = result;
                 }
             })});
-    } else {
-        //turn off raw so variables get interpolated in the template
-        variables.raw = false;
     }
-    variables.internal.result = deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
+
+    //turn off raw so variables get interpolated in the template
+    const raw = variables.raw;
+    variables.internal.result = deepInterpolate(variables.internal.template, $.extend(variables,{raw:false}), variables.ignoreErrors || preview);
+    variables.raw = raw;
 
     if(!preview) {
         if(variables.creds) {
