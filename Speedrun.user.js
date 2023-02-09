@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.60
+// @version      1.61
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -781,7 +781,7 @@ input:checked + .slider:before {
     `);
 
         $("body").prepend(toolbar).append(`
-<div class="position-fixed top-0 right-0" hidden style='"top":"0","left": "50%","transform":"translate(-50%, 0)"' id='snackbar'>
+<div class="position-fixed top-0 right-0" hidden style='z-index:100' id='snackbar'>
   <div class="Toast Toast--success anim-fade-in fast">
     <span class="Toast-icon">
       <!-- <%= octicon "check" %> -->
