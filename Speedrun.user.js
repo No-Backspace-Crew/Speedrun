@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.63
+// @version      1.64
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -39,6 +39,7 @@
 //eval(Babel.transform((<><![CDATA[
 (async function() {
     'use strict';
+    let updatingPageTimer = undefined;
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
@@ -324,26 +325,38 @@ if (window.onurlchange === null) {
         let location = new URL(info.url);
         if(lastPath !== location.pathname + location.search) {
             persistIfIssue();
-            if(isSRPage()) {
-                //wait for page to render
-                console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
-                lastPath = location.pathname + location.search;
-                await waitForSelector('.markdown-body > *');
-                while($('.srDone').length>0) {
-                    await sleep(10);
-                }
-                await updatePage(`urlchange ${lastPath}`);
-            } else {
-                console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
-                lastPath = location.pathname + location.search;
-            }
-            showToolbarOnPage();
-        }
-        if(isSRPage()){
-            await waitForSelector('.srDone');
-            setFavIcon();
+            scheduleUpdate(location);
         }
     });
+}
+
+async function updatePageTimerFired(location) {
+    if(isSRPage()) {
+        persistLastPath(location);
+        //wait for page to render
+        await waitForSelector('.markdown-body > *');
+        while($('.srDone').length>0) {
+            await sleep(10);
+        }
+        await updatePage(`urlchange ${lastPath}`);
+        setFavIcon();
+    } else {
+        persistLastPath(location);
+    }
+    showToolbarOnPage();
+    updatingPageTimer = undefined;
+}
+
+function scheduleUpdate(location) {
+    if(updatingPageTimer) {
+        clearTimeout(updatingPageTimer);
+    }
+    updatingPageTimer = setTimeout(updatePageTimerFired, 150, location);
+}
+
+function persistLastPath(location) {
+    console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
+    lastPath = location.pathname + location.search;
 }
 
 async function sleep(interval=500) {
@@ -420,8 +433,8 @@ const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
 const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
-const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nunset AWS_PROFILE\\\n";'`
-const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials);`;
+const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
+const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
 let regionMap = {
@@ -1115,15 +1128,16 @@ function isSRPage() {
     return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
 }
 
-function persistIfIssue() {
-    let issue = isIssue();
+function persistIfIssue(location=window.location) {
+    let issue = isIssue(location);
     if(issue && $('.gh-header-title > .markdown-title').length) {
         let [,issueNumber] = issue;
         persistTimestamp({label:`#${issueNumber} ${$('.gh-header-title > .markdown-title').text()}`,value:window.location.href}, ISSUES_KEY);
+        persistLastPath(location);
     }
 }
 
-function isIssue() {
+function isIssue(location) {
     return ISSUES_PATH_REGEX.exec(location.pathname);
 }
 
@@ -1709,7 +1723,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     if(String(variables.account).startsWith('-')) {
                         alertAndThrow(`Getting credentials not enabled on demo accounts`);
                     }
-                    variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+                    variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
                 } else if(variables.internal.newRegion) {
                     variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                 }
@@ -1868,13 +1882,13 @@ async function updatePage(reason) {
         if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 1) {
             $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
             $('#srWikiSearch').on('click', async () => {
-            let searchTerm = getValue('#wiki-pages-filter');
-            if(searchTerm) {
-                let searchURL = new URL('https://www.github.com/search?type=wikis');
-                let [,path] = isSRPage();
-                searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
-                window.location.href = searchURL.href;
-            }
+                let searchTerm = getValue('#wiki-pages-filter');
+                if(searchTerm) {
+                    let searchURL = new URL('https://www.github.com/search?type=wikis');
+                    let [,path] = isSRPage();
+                    searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
+                    window.location.href = searchURL.href;
+                }
             });
             $('#wiki-pages-filter').keypress(function(event) {
                 if (event.key === "Enter") {
@@ -2185,23 +2199,23 @@ async function wireUpContent() {
                                 $(`#${tabId}`).hide();
                                 $(`#tab-${tabId}`).removeAttr('aria-current');
                             }
-                        }
-                    }}};
-                    nav.append(navBody);
-                    $(pre).parent().before(nav);
-                    dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
-                    $(pre).attr('id',`Preview-${block}`);
-                    dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
+                    }
+                }}};
+                nav.append(navBody);
+                $(pre).parent().before(nav);
+                dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
+                $(pre).attr('id',`Preview-${block}`);
+                dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
 
-                    const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
-                    const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
-                    dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
-                    $(pre).after(codeTab);
-                    codeTab.after(debugTab);
-                    dataAndEvents[runBtnId].events.click = async function() {
-                        await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
-                    };
-                }
+                const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
+                const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
+                dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
+                $(pre).after(codeTab);
+                codeTab.after(debugTab);
+                dataAndEvents[runBtnId].events.click = async function() {
+                    await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
+                };
+            }
         }
     }
 }
