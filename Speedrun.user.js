@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.64
+// @version      1.65
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -15,6 +15,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp-all.js
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/srInvokeLambda@0.0.1/srInvokeLambda.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -24,17 +25,20 @@
 // @grant        GM_info
 // @grant        GM_cookie
 // @grant        GM_download
+// @grant        GM_addElement
 // @grant        window.onurlchange
 // @match        https://github.com/*
 // @match        https://www.github.com/*
 // @match        https://*.console.aws.amazon.com/*
 // @match        https://console.aws.amazon.com/*
+// @connect      speedrun-api.us-west-2.nobackspacecrew.com
+// @connect      speedrun-api-beta.us-west-2.nobackspacecrew.com
 // @updateURL    https://speedrun.nobackspacecrew.com/userscripts/Speedrun.meta.js
 // @downloadURL  https://speedrun.nobackspacecrew.com/userscripts/Speedrun.user.js
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5 */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvokeLambda */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -323,10 +327,10 @@ const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
 if (window.onurlchange === null) {
     window.addEventListener('urlchange', async (info) => {
         let location = new URL(info.url);
-        if(lastPath !== location.pathname + location.search) {
+        //if(lastPath !== location.pathname + location.search) {
             persistIfIssue();
             scheduleUpdate(location);
-        }
+        //}
     });
 }
 
@@ -351,7 +355,7 @@ function scheduleUpdate(location) {
     if(updatingPageTimer) {
         clearTimeout(updatingPageTimer);
     }
-    updatingPageTimer = setTimeout(updatePageTimerFired, 150, location);
+    updatingPageTimer = setTimeout(updatePageTimerFired, 100, location);
 }
 
 function persistLastPath(location) {
@@ -605,6 +609,9 @@ let templates = {
         allowfullscreen:'true'
     },
     iframe : {
+    },
+    lambda : {
+      value: "${content.trim().length = 0 ? undefined : content}"
     }
 };
 
@@ -748,7 +755,7 @@ input:checked + .slider:before {
   padding: 1px 6px;
 }
 </style>`);
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": "var(--color-page-header-bg)"}});
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
   <label id='srToggleTitle' class="switch">
   <input id='srEnabled' type="checkbox"><span class="slider round"></span>
@@ -1067,7 +1074,7 @@ function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
     }
 };
 
-function retrieve(path) {
+function retrieve(path, raw=false) {
     return new Promise((resolve,reject) => {
         let [,root] = window.location.href.match(/^(.*?.com\/[^\/]+\/[^\/]+(\/(blob\/[^\/]+|wiki))?)/i);
         let url = path.startsWith('https://') ? path : `${root}/${path.replaceAll(/^\//g,'')}`;
@@ -1075,13 +1082,17 @@ function retrieve(path) {
             method: 'GET',
             url,
             onload: function(response) {
-                resolve(response.responseText);
+                resolve(raw ? response : response.responseText);
             },
             onerror: function(err) {
                 reject(err);
             }
         });
     });
+}
+
+function getCredentials(account, role) {
+    return retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=speedrun-${role}`, true);
 }
 
 function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
@@ -1118,6 +1129,9 @@ function hasDOMContent(str) {
 }
 
 function isSRPage() {
+    if('Page not found · GitHub' == $('title').text()) {
+        return false;
+    }
     let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
     if(REPO_REGEX.exec(location.pathname) && location.search) {
         const params = new URLSearchParams(location.search);
@@ -1766,7 +1780,28 @@ async function nope(content, preview = false, anchor, runBtn) {
                 break;
             }
             case "iframe" : {
-                $(`#${runBtn.data('previewTab')}`).first("code").html(buildIFrame(variables));
+                injectIFrame($(`#${runBtn.data('previewTab')}`).first('code').get(0), variables);
+                break;
+            }
+            case "lambda" : {
+                if(variables.account && String(variables.account).startsWith('-')) {
+                    alertAndThrow(`Lambda not enabled on demo accounts`);
+                }
+                let response = await getCredentials(variables.account, variables.role);
+                if(response.status != 200) {
+                    alertAndThrow(`${response.status} ${response.statusText}: ${response.responseText}`);
+                } else {
+                    response = JSON.parse(response.responseText);
+                }
+                let lambdaCredentials = {accessKeyId:response.AccessKeyId, secretAccessKey:response.SecretAccessKey, sessionToken:response.SessionToken};
+                const {Payload} = await srInvokeLambda(variables.functionName,variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
+                let decodedPayload = JSON.parse(new TextDecoder("utf-8").decode(Payload));
+                if(decodedPayload.statusCode == "200") {
+                    GM_setClipboard(decodedPayload.body);
+                    toast("📋 Copied");
+                } else {
+                    throw new Error(decodedPayload);
+                }
                 break;
             }
             default:
@@ -1822,14 +1857,15 @@ $(document).ready(function() {
     setFavIcon();
 });
 
-function buildIFrame(variables) {
+function injectIFrame(location, variables) {
     const validAttributes = ['allow','allowfullscreen','height','loading','name','sandbox','allow-top-navigation','src','width','frameBorder'];
     let overlay = {'name':'Speedrun Content'}
     if(!variables.name instanceof Function){
         delete overlay.name;
     }
     const attributes = $.extend({'width':'100%', frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
-    return $('<iframe>',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
+    location.textContent = '';
+    GM_addElement(location,'iframe',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
 }
 
 function getValue(selector, useText) {
@@ -1977,7 +2013,7 @@ function updateTabs() {
                 $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
             } else {
                 btn.hide();
-                $(`#${btn.data('previewTab')}`).first("code").html(buildIFrame(variables));
+                injectIFrame($(`#${btn.data('previewTab')}`).first('code').get(0), variables);
             }
         } catch(e) {
             alertAndThrow(`Unable to preview: ${e.message}`, e);
