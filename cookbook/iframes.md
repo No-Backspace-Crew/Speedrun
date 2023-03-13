@@ -1,7 +1,5 @@
 # Using iframes
 
-> ❗ **Alert** iframes only work in FireFox for now due to CSP restrictions.
-
 Use iframes to embed third party content into your documentation. You can embed things like:
 
 1. [CloudWatch Dashboards](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/cloudwatch-dashboard-sharing.html)
