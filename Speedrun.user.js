@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.65
+// @version      1.66
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -611,7 +611,8 @@ let templates = {
     iframe : {
     },
     lambda : {
-      value: "${content.trim().length = 0 ? undefined : content}"
+      value: "${content.trim().length = 0 ? undefined : content}",
+      creds: true
     }
 };
 
@@ -1092,7 +1093,7 @@ function retrieve(path, raw=false) {
 }
 
 function getCredentials(account, role) {
-    return retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=speedrun-${role}`, true);
+    return retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
 }
 
 function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
