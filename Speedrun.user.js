@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.66
+// @version      1.67
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -2211,7 +2211,7 @@ async function wireUpContent() {
                 copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
                 copy.data('wrapped',true);
             }
-            const nav = $(`<nav id="sr-nav-${block}" class="UnderlineNav UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
+            const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
             const actions = $('<div class="UnderlineNav-actions">');
             const runBtnId = `sr-btn-${block}`;
             const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
