@@ -8,15 +8,6 @@ Use iframes to embed third party content into your documentation. You can embed 
 
 No configuration is necessary to embed iframes on your page unless you want to dynamically change the content based on what you've selected in the toolbar.
 
-## Cloudwatch Dashboard
-
-This is a public cloudwatch dashboard.  It uses the built-in template `#!CWDashboard` and specifies the `dashboardName`.  Set the body to the `context` from the dashboard url.
-
-```
-#!CWDashboard {dashboardName:'LambdaStats'}
-eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTIwNTM0ODk2MzE4NSIsIlUiOiJ1cy1lYXN0LTFfUmt2d0hPZlV1IiwiQyI6IjdwZGVzZ2dmZ2VhczVsamwxZDVmdXBqcGFzIiwiSSI6InVzLWVhc3QtMTphYTgzYmZlMy1jODdlLTQyMDItYjZjZS1lZjZkMTIwZDIyOTciLCJPIjoiYXJuOmF3czppYW06OjIwNTM0ODk2MzE4NTpyb2xlL3NlcnZpY2Utcm9sZS9DV0RCU2hhcmluZy1QdWJsaWNSZWFkT25seUFjY2Vzcy1ZUVVVN09CRCIsIk0iOiJQdWJsaWMifQ%3D%3D
-```
-
 ## YouTube Video
 
 ### Video based on Configuration
@@ -42,6 +33,17 @@ This uses the raw `#iframe` template.  It overrides the `height` to `300`, and s
 ```
 #iframe {title:'Confetti Button', height:300}
 https://codepen.io/marcobiedermann/embed/ExvvyLQ?default-tab=html%2Cresult
+```
+
+## Cloudwatch Dashboard
+> ** Alert**
+> Unfortunately, AWS appears to have added a x-frames-option DENY to their dashboards blocking embedding so this is not currently working.  I've [reached out](https://repost.aws/questions/QUoBjvddKbRze4_xjTyY-Uzw/regression-in-cloudwatch-dashboard-iframe-embed-stopped-working)
+
+This is a public cloudwatch dashboard.  It uses the built-in template `#!CWDashboard` and specifies the `dashboardName`.  Set the body to the `context` from the dashboard url.
+
+```
+#!CWDashboard {dashboardName:'LambdaStats'}
+eyJSIjoidXMtZWFzdC0xIiwiRCI6ImN3LWRiLTIwNTM0ODk2MzE4NSIsIlUiOiJ1cy1lYXN0LTFfUmt2d0hPZlV1IiwiQyI6IjdwZGVzZ2dmZ2VhczVsamwxZDVmdXBqcGFzIiwiSSI6InVzLWVhc3QtMTphYTgzYmZlMy1jODdlLTQyMDItYjZjZS1lZjZkMTIwZDIyOTciLCJPIjoiYXJuOmF3czppYW06OjIwNTM0ODk2MzE4NTpyb2xlL3NlcnZpY2Utcm9sZS9DV0RCU2hhcmluZy1QdWJsaWNSZWFkT25seUFjY2Vzcy1ZUVVVN09CRCIsIk0iOiJQdWJsaWMifQ%3D%3D
 ```
 
 ## Configuration
