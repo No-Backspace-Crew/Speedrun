@@ -36,7 +36,8 @@ https://codepen.io/marcobiedermann/embed/ExvvyLQ?default-tab=html%2Cresult
 ```
 
 ## Cloudwatch Dashboard
-> ** Alert**
+
+> **:exclamation: Alert**
 > Unfortunately, AWS appears to have added a x-frames-option DENY to their dashboards blocking embedding so this is not currently working.  I've [reached out](https://repost.aws/questions/QUoBjvddKbRze4_xjTyY-Uzw/regression-in-cloudwatch-dashboard-iframe-embed-stopped-working)
 
 This is a public cloudwatch dashboard.  It uses the built-in template `#!CWDashboard` and specifies the `dashboardName`.  Set the body to the `context` from the dashboard url.
