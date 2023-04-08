@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.68
+// @version      1.69
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -432,7 +432,7 @@ const USER_SERVICE = "${user}";
 const varNameCache = new Map();
 const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
 const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?.*(?<!\/_(edit|new))$/;
-const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|\/blob\/.*\/\w+.md)?$/i;
+const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/\w+.md)|(\/tree\/(\w+\/?)+(.*\/\w+.md)?))?$/i;
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
