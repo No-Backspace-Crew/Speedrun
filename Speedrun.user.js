@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.69
+// @version      1.70
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -288,6 +288,20 @@ function extractCloudWatchTime() {
     }
 }
 
+function isSRPage() {
+    if('Page not found · GitHub' == $('title').text()) {
+        return false;
+    }
+    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
+    if(REPO_REGEX.exec(location.pathname) && location.search) {
+        const params = new URLSearchParams(location.search);
+        if(params.has('plain')) {
+            return false;
+        }
+    }
+    return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
+}
+
 if(location.host.endsWith('console.aws.amazon.com')) {
     window.addEventListener('hashchange', extractCloudWatchTime, false);
     let bodyList = document.querySelector("body");
@@ -409,6 +423,7 @@ addEventListener('popstate', async (event) => {
     if(isSRPage()) {
         setTimeout(()=> {
             bindDataAndEvents();
+            showToolbarOnPage();
             updateTabs();
         }
                    , 10);
@@ -1129,20 +1144,6 @@ function hasDOMContent(str) {
     return !(str == undefined) && HAS_DOM_CONTENT_REGEX.test(str);
 }
 
-function isSRPage() {
-    if('Page not found · GitHub' == $('title').text()) {
-        return false;
-    }
-    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
-    if(REPO_REGEX.exec(location.pathname) && location.search) {
-        const params = new URLSearchParams(location.search);
-        if(params.has('plain')) {
-            return false;
-        }
-    }
-    return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
-}
-
 function persistIfIssue(location=window.location) {
     let issue = isIssue(location);
     if(issue && $('.gh-header-title > .markdown-title').length) {
@@ -1473,6 +1474,9 @@ async function nope(content, preview = false, anchor, runBtn) {
     variables.service = firstNonNull(details.service, variables.service);
     if(variables.service) {
         variables.srServiceName = getServiceDropdownName(variables.service);
+    }
+    if(variables.internal.region) {
+        variables.srRegionName = variables.internal.region;
     }
     let templateVariables;
 
