@@ -79,3 +79,5 @@ You can embed any web page in a Speedrun page using iFrames.  Perhaps you want t
 #!YouTube
 LXboNl2vWH8
 ```
+
+[Return to Page 1](a-better-README-1.md)
