@@ -20,7 +20,8 @@ This example shows you how you would configure two stages for the `Ticket Servic
        }
      }
   },
-  srShowConfig: true
+  srShowConfig: true,
+  srHideUserService: true
 }
 ```
 
