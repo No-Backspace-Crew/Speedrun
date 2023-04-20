@@ -60,3 +60,22 @@ There's already a [template](https://github.com/No-Backspace-Crew/Speedrun/wiki/
 ```
 #CloudWatchLogs
 ```
+### Advanced configuration
+You can put your configuration in a central location and transclude it so you don't need to embed it on each page.  You can also use composition to overlay multiple configurations allowing you to override variables. Read more [here](https://github.com/No-Backspace-Crew/Speedrun/wiki/Speedrun-Configuration).
+
+## Federation links
+Federation links work for authorized users whether they have Speedrun installed or not.  They allow you to get credentials in a role and federate to a specific location in the AWS console.  This is perfect for sharing links with peers or accessing the AWS console from your mobile device.  I use deep links to review my CloudWatch daily analytics dashboard on my phone.  To build a federation link, just click the Speedrun icon in the AWS console toolbar.
+
+![Toolbar](https://user-images.githubusercontent.com/97474956/220422715-5ac37c8d-fe43-409e-8e76-a76b17873897.png)
+
+## Magic Copy
+Magic copy allows you to copy any inline code block to the clipboard with a click.  `No highlighting required!`
+
+## IFrames
+
+You can embed any web page in a Speedrun page using iFrames.  Perhaps you want to add a YouTube video or CloudWatch Dashboard.  Use the `!#YouTube` template
+
+```
+#!YouTube
+LXboNl2vWH8
+```
