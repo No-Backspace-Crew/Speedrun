@@ -34,3 +34,5 @@ ${region}
 ${account}
 ${role}
 ```
+
+[Continue to Page 3](a-better-README-3.md) [Return to Page 1](a-better-README-1.md)
