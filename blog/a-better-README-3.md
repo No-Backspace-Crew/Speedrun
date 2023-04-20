@@ -85,6 +85,6 @@ LXboNl2vWH8
 ```
 
 ## Conclusion
-With Speedrun, you can do a lot more in your GitHub markdown.  This blog only scratches the surface.  Refer to the [documentation](https://github.com/No-Backspace-Crew/Speedrun/wiki) and [cookbooks](https://github.com/No-Backspace-Crew/Speedrun/wiki/cookbook) for more examples.  I'd love to hear your feedback, join our <a href="https://d%69sc%6Frd.gg/E7TRpqb%58RY">Discord</a> to get help, get and share tips and see release notes.
+With Speedrun, you can do a lot more in your GitHub markdown.  This blog only scratches the surface.  Refer to the [documentation](https://github.com/No-Backspace-Crew/Speedrun/wiki) and [cookbooks](https://github.com/No-Backspace-Crew/Speedrun/wiki/cookbook) for more examples.  I'd love to hear your feedback! Join our <a href="https://d%69sc%6Frd.gg/E7TRpqb%58RY">Discord</a> to get help, get and share tips and see release notes.
 
 [Return to Page 1 (Building Command Lines)](a-better-README-1.md)
