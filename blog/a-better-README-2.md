@@ -1,3 +1,4 @@
+[Return to Page 1 (Building command lines)](a-better-README-1.md)
 ## Setting the stage
 
 ### Configuration via srConfig
@@ -35,4 +36,4 @@ ${account}
 ${role}
 ```
 
-[Continue to Page 3](a-better-README-3.md) [Return to Page 1](a-better-README-1.md)
+[Continue to Page 3 (Configuration continued, iFrames and more)](a-better-README-3.md) 
