@@ -1,3 +1,5 @@
+[Return to Page 2 (Setting the stage)](a-better-README-2.md)
+
 ## Setting the stage (Cont'd)
 
 ### Adding variables and using JavaScript
@@ -80,4 +82,4 @@ You can embed any web page in a Speedrun page using iFrames.  Perhaps you want t
 LXboNl2vWH8
 ```
 
-[Return to Page 1](a-better-README-1.md)
+[Return to Page 1 (Building Command Lines)](a-better-README-1.md)
