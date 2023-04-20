@@ -64,3 +64,5 @@ imagine \
     --init-image-strength .2 --steps ~~~Steps {type:'select', options:['15','20','30']}~~~ \
     "~~~Customization {default:'a modern female president'}~~~"
 ```
+
+[Continue to Page 2 (Setting the Stage)](a-better-README-2.md)
