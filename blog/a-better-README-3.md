@@ -4,7 +4,7 @@
 
 You can add your own variables to the configuration and use JavaScript to resolve them.  Let's add a `logGroup` variable that is made up of a prefix and the stage.  We'll define it at the service level so it's available to all stages.
 
-````
+```
 #srConfig
 {
   role : "ReadOnly",
@@ -25,7 +25,6 @@ You can add your own variables to the configuration and use JavaScript to resolv
   srHideUserService: true
 }
 ```
-````
 
 Now when you pick a stage, the `logGroup` will be set to `/aws/lambda/ticketservice-prod` or `/aws/lambda/ticketservice-beta` depending on which stage you pick.
 
