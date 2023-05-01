@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.72
+// @version      1.73
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
@@ -453,7 +453,7 @@ addEventListener('popstate', async (event) => {
             showToolbarOnPage();
             updateTabs();
         }
-                   , 10);
+                   , 50);
     }
 });
 
@@ -1458,7 +1458,7 @@ function getTemplateVariables(template, templates) {
 
 //Add spaces before uppercase letters in value
 function prettyCamelCase(str) {
-    return str.replace(/([a-z])([A-Z])/g, "$1 $2");
+    return str.replace(/([a-z]|[A-Z]+)([A-Z])/g, "$1 $2");
 }
 
 function getServiceDropdownName(serviceName) {
