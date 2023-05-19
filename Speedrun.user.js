@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.74
+// @version      1.75
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
-// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.6.2/jquery.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
 // @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
@@ -15,7 +15,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp-all.js
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/srInvokeLambda@0.0.3/srInvokeLambda.js
+// @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.1/srInvoke.min.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -60,6 +60,33 @@
 // @connect      lambda.me-south-1.amazonaws.com
 // @connect      lambda.me-central-1.amazonaws.com
 // @connect      lambda.sa-east-1.amazonaws.com
+// @connect      states.us-east-1.amazonaws.com
+// @connect      states.us-east-2.amazonaws.com
+// @connect      states.us-west-1.amazonaws.com
+// @connect      states.us-west-2.amazonaws.com
+// @connect      states.af-south-1.amazonaws.com
+// @connect      states.ap-east-1.amazonaws.com
+// @connect      states.ap-south-2.amazonaws.com
+// @connect      states.ap-southeast-3.amazonaws.com
+// @connect      states.ap-southeast-4.amazonaws.com
+// @connect      states.ap-south-1.amazonaws.com
+// @connect      states.ap-northeast-3.amazonaws.com
+// @connect      states.ap-northeast-2.amazonaws.com
+// @connect      states.ap-southeast-1.amazonaws.com
+// @connect      states.ap-southeast-2.amazonaws.com
+// @connect      states.ap-northeast-1.amazonaws.com
+// @connect      states.ca-central-1.amazonaws.com
+// @connect      states.eu-central-1.amazonaws.com
+// @connect      states.eu-central-2.amazonaws.com
+// @connect      states.eu-west-1.amazonaws.com
+// @connect      states.eu-west-2.amazonaws.com
+// @connect      states.eu-south-1.amazonaws.com
+// @connect      states.eu-west-3.amazonaws.com
+// @connect      states.eu-north-1.amazonaws.com
+// @connect      states.eu-south-2.amazonaws.com
+// @connect      states.me-south-1.amazonaws.com
+// @connect      states.me-central-1.amazonaws.com
+// @connect      states.sa-east-1.amazonaws.com
 // @connect      lambda-url.us-east-1.on.aws
 // @connect      lambda-url.us-east-2.on.aws
 // @connect      lambda-url.us-west-1.on.aws
@@ -92,7 +119,7 @@
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvokeLambda */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -682,6 +709,15 @@ let templates = {
     lambda : {
         value: "${content.trim().length = 0 ? undefined : content}",
         creds: true
+    },
+    '!stepfunction' : {
+        type: 'stepfunction',
+        value: "${content.trim().length = 0 ? undefined : content}",
+        creds: true
+    },
+    stepfunctionExecution : {
+        type: "federate",
+        value: "states/home?region=${region}#/v2/executions/details/${executionArn?executionArn:`arn:${partition}:states:${region}:${account}:execution:${functionName}:${execution}`}"
     }
 };
 
@@ -1805,12 +1841,13 @@ async function nope(content, preview = false, anchor, runBtn) {
                 alertAndThrow("Unable to determine role arn, role, account and partition must be defined");
             }
         }
+        try {
         switch(variables.internal.templateType) {
             case "copy" :
                 //refactor to show key if creds are needed
                 if(needsNewCreds(variables)) {
                     if(String(variables.account).startsWith('-')) {
-                        alertAndThrow(`Getting credentials not enabled on demo accounts`);
+                        throw new Error(`Getting credentials not enabled on demo accounts`);
                     }
                     variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
                 } else if(variables.internal.newRegion) {
@@ -1841,7 +1878,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     console.log('Federation url', url);
                 }
                 if(variables.account && String(variables.account).startsWith('-')) {
-                    alertAndThrow(`Federation not enabled on demo accounts`);
+                    throw new Error(`Federation not enabled on demo accounts`);
                 }
                 window.open(url);
                 persistLastRole(variables);
@@ -1849,7 +1886,7 @@ async function nope(content, preview = false, anchor, runBtn) {
             }
             case "download" : {
                 GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
-                             onerror: (download)=>{alertAndThrow(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
+                             onerror: (download)=>{throw new Error(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
                              onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
 
                 break;
@@ -1860,34 +1897,72 @@ async function nope(content, preview = false, anchor, runBtn) {
             }
             case "lambda" : {
                 if(variables.account && String(variables.account).startsWith('-')) {
-                    alertAndThrow(`Lambda not enabled on demo accounts`);
+                    throw new Error(`Lambda not enabled on demo accounts`);
+                }
+                const isFunctionUrl = variables.functionUrl != undefined;
+                if(!isFunctionUrl && !variables.functionName) {
+                    throw new Error('functionUrl or functionName is required');
                 }
                 let response = await getCredentials(variables.account, variables.role);
                 if(response.status != 200) {
-                    alertAndThrow(`${response.status} ${response.statusText}: ${response.responseText}`);
+                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
                 } else {
                     response = JSON.parse(response.responseText);
                 }
                 let lambdaCredentials = {accessKeyId:response.AccessKeyId, secretAccessKey:response.SecretAccessKey, sessionToken:response.SessionToken};
-                const request = await srInvokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
-                const result = await invoke(request);
-                if(variables.functionUrl) {
-                    GM_setClipboard(result);
+                const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
+                response = await invoke(request, isFunctionUrl);
+                if(isFunctionUrl) {
+                    if(response.status != 200) {
+                        throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                    }
+
+                    GM_setClipboard(response.responseText);
                     toast("📋 Copied");
                 } else {
-                    let decodedPayload = JSON.parse(result);
+                    let decodedPayload = JSON.parse(response);
                     if(decodedPayload.statusCode == "200") {
                         GM_setClipboard(decodedPayload.body);
                         toast("📋 Copied");
                     } else {
-                        alertAndThrow(`Invalid lambda response: ${result}`);
+                        throw new Error(`Invalid lambda response: ${response}`);
                     }
                 }
                 break;
             }
+            case "stepfunction" : {
+                if(variables.account && String(variables.account).startsWith('-')) {
+                    throw new Error(`Step Functions not enabled on demo accounts`);
+                }
+                if(variables.functionName == undefined) {
+                    throw new Error('functionName is required');
+                }
+                let response = await getCredentials(variables.account, variables.role);
+                if(response.status != 200) {
+                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                } else {
+                    response = JSON.parse(response.responseText);
+                }
+                let credentials = {accessKeyId:response.AccessKeyId, secretAccessKey:response.SecretAccessKey, sessionToken:response.SessionToken};
+                let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
+                let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
+                            "input": variables.internal.result
+                           }
+                const request = await srInvoke.invokeService(credentials, 'states', variables.region, new URL(`https://states.${variables.region}.amazonaws.com`),'POST',headers,JSON.stringify(body));
+                response = await invoke(request, true);
+                if(response.status != 200) {
+                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                }
+                let executionArn = JSON.parse(response.responseText).executionArn;
+                await nope(`#stepfunctionExecution {region: "${variables.region}", account: "${variables.account}", partition: "${variables.partition}", role: "${variables.role}", executionArn: "${executionArn}"}\n`);
+                break;
+            }
             default:
-                alertAndThrow(`Unknown template type ${variables.internal.templateType}`);
-
+                throw new Error(`Unknown template type ${variables.internal.templateType}`);
+                break;
+        }
+        } catch (e) {
+            alertAndThrow(e);
         }
         //persist last region and service
         let lastRegion = extractRegion(getValue('#select2-region-container', true));
