@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.75
+// @version      1.76
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -128,8 +128,10 @@
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
- let curRegion = undefined;
- let dataAndEvents = {};
+    let curRegion = undefined;
+    let dataAndEvents = {};
+    let credentialsCache = {};
+
 if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
     $('link[rel~="icon"]').each((i,el) => {
         el = $(el);
@@ -710,6 +712,11 @@ let templates = {
         value: "${content.trim().length = 0 ? undefined : content}",
         creds: true
     },
+    '!lambda' : {
+        value: "${content.trim().length = 0 ? undefined : content}",
+        creds: true,
+        type: 'lambda'
+    },
     '!stepfunction' : {
         type: 'stepfunction',
         value: "${content.trim().length = 0 ? undefined : content}",
@@ -1003,6 +1010,7 @@ input:checked + .slider:before {
         dataAndEvents.srFlush = { events: {'click': async () => {
             GM_deleteValue(`${LAST_CREDS}federate`);
             GM_deleteValue(`${LAST_CREDS}copy`);
+            credentialsCache = {};
             toast('Credentials flushed');
         }}};
     }
@@ -1213,8 +1221,26 @@ function invoke(request, raw=false) {
     });
 }
 
-function getCredentials(account, role) {
-    return retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+async function getCredentials(account, role, forceNewCreds) {
+    const cacheKey = `${account}:${role}`;
+    const cachedCredentials = credentialsCache[cacheKey];
+    if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration)) {
+       console.log('Using cached credentials');
+       return cachedCredentials.credentials;
+    }
+    const result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+    if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
+       throw new Error('Unable to get credentials: GitHub authentication failed');
+    }
+    if(result.status != 200) {
+        throw new Error(`${result.status} ${result.statusText}: ${result.responseText}`);
+    } else {
+        let parsed = JSON.parse(result.responseText);
+        let credentials = {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken}
+        let expiration = dayjs(parsed.Expiration).valueOf();
+        credentialsCache[cacheKey] = {expiration,credentials};
+        return {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken};
+    }
 }
 
 function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
@@ -1903,15 +1929,9 @@ async function nope(content, preview = false, anchor, runBtn) {
                 if(!isFunctionUrl && !variables.functionName) {
                     throw new Error('functionUrl or functionName is required');
                 }
-                let response = await getCredentials(variables.account, variables.role);
-                if(response.status != 200) {
-                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
-                } else {
-                    response = JSON.parse(response.responseText);
-                }
-                let lambdaCredentials = {accessKeyId:response.AccessKeyId, secretAccessKey:response.SecretAccessKey, sessionToken:response.SessionToken};
+                let lambdaCredentials = await getCredentials(variables.account, variables.role, variables.forceNewCreds);
                 const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
-                response = await invoke(request, isFunctionUrl);
+                let response = await invoke(request, isFunctionUrl);
                 if(isFunctionUrl) {
                     if(response.status != 200) {
                         throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
@@ -1937,19 +1957,13 @@ async function nope(content, preview = false, anchor, runBtn) {
                 if(variables.functionName == undefined) {
                     throw new Error('functionName is required');
                 }
-                let response = await getCredentials(variables.account, variables.role);
-                if(response.status != 200) {
-                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
-                } else {
-                    response = JSON.parse(response.responseText);
-                }
-                let credentials = {accessKeyId:response.AccessKeyId, secretAccessKey:response.SecretAccessKey, sessionToken:response.SessionToken};
+                let credentials = await getCredentials(variables.account, variables.role, variables.forceNewCreds);
                 let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
                 let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
                             "input": variables.internal.result
                            }
                 const request = await srInvoke.invokeService(credentials, 'states', variables.region, new URL(`https://states.${variables.region}.amazonaws.com`),'POST',headers,JSON.stringify(body));
-                response = await invoke(request, true);
+                let response = await invoke(request, true);
                 if(response.status != 200) {
                     throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
                 }
@@ -2334,10 +2348,14 @@ function persistIfNewRole(roleArn, region) {
     }
 }
 
+function needsRefresh(expiration) {
+    return expiration <= (Date.now()+(5*60000))
+}
+
 function needsNewCreds(variables) {
     const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.role != variables.roleArn);
-    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || lastCreds.expiration <= (Date.now()+(5*60000)) || lastCreds.region != variables.region);
+    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.role != variables.roleArn);
+    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.region != variables.region);
     return variables.internal.newCreds
 }
 
