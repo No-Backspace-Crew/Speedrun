@@ -1,6 +1,6 @@
 <img alt="Speedrun" src="https://speedrun.nobackspacecrew.com/images/speedrun.png" align="right">
 
-[Speedrun](https://github.com/No-Backspace-Crew/Speedrun/wiki) lets you build tools and documentation at the same time.  
+[Speedrun](https://github.com/No-Backspace-Crew/Speedrun/wiki) lets your users do exactly what they came to do straight from your documentation.  
 It's a powerup for GitHub markdown that infuses your documentation with the ability to:
 
 - [x] 📥 Prompt for inputs
@@ -9,5 +9,6 @@ It's a powerup for GitHub markdown that infuses your documentation with the abil
 - [x] ⚙️ Reference configuration
 - [x] 🚀 Federate into the AWS console
 - [x] :godmode: Build an exact command line
+- [x] 🐎 Invoke AWS Lambdas and AWS Step Functions
 
 [Read the wiki to start Speedrunning now](https://github.com/No-Backspace-Crew/Speedrun/wiki/Getting-Started)
