@@ -77,7 +77,7 @@ Magic copy allows you to copy any inline code block to the clipboard with a clic
 
 ## IFrames
 
-You can embed any web page in a Speedrun page using iFrames.  Perhaps you want to add a YouTube video or CloudWatch Dashboard.  Use the [`#iframe`](https://github.com/No-Backspace-Crew/Speedrun/wiki/Templates#iframe) template or one of the builtin ones like `!#YouTube`.
+You can embed any web page in a Speedrun page using iFrames.  Perhaps you want to add a YouTube video or CloudWatch Dashboard.  Use the [`#iframe`](https://github.com/No-Backspace-Crew/Speedrun/wiki/Templates#iframe) template or one of the builtin ones like `#!YouTube`.
 
 ```
 #!YouTube
