@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.76
+// @version      1.77
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -146,6 +146,7 @@ if(window.location.hostname == 'github.com' || window.location.hostname == 'www.
     });
 }
 const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpoint', false)?"-beta":""}.us-west-2.nobackspacecrew.com/v1`;
+const ASSUME_COMMAND = `${GM_getValue('g_use_beta_endpoint', false)?"d":""}assume`;
 var sessionVariables = {};
 const STORAGE_NAMESPACE = 'SR:';
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
@@ -161,6 +162,84 @@ function getFederationLink(roleArn, destination) {
     url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
     return url.toString();
+}
+
+class CredentialsBroker {
+  getValidTemplateTypes() {throw new Error('Not implemented');};
+  validate(variables) {
+      throw new Error('Not implemented');
+  }
+  async getCredentials(variables) {
+      throw new Error('Not implemented');
+  }
+  getCacheKey() {
+      throw new Error('Not implemented');
+  }
+  getDangerKey() {
+      throw new Error('Not implemented');
+  }
+  isDemoAccount(variables) {
+      return
+  }
+}
+class SpeedrunCredentialsBroker extends CredentialsBroker {
+  getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction']};
+  validate(variables) {
+      if(variables.account && variables.role && variables.partition) {
+                //prepend speedrun to role name
+                if(!variables.role.startsWith('speedrun-')) {
+                    variables.role = `speedrun-${variables.role}`
+                }
+                variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
+      } else {
+                throw new Error("Unable to determine role arn, role, account and partition must be defined");
+      }
+  }
+  async getCredentials(variables) {
+      switch(variables.internal.templateType) {
+          case 'federate':
+                return {
+                  url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl) : variables.internal.consoleUrl
+                }
+                break;
+          case 'copy':
+                  return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\nunset AWS_CREDENTIAL_EXPIRATION\n' + variables.internal.result + "\nfi";
+                break;
+          case 'lambda':
+          case 'stepfunction':
+                return getWebCredentials(variables.account, variables.role, variables.forceNewCreds);
+                break;
+      }
+  }
+  getCacheKey() {
+      return 'roleArn'
+  }
+  getDangerKey() {
+      return 'role'
+  }
+
+  isDemoAccount(variables) {
+      return variables.account && variables.account.startsWith("-");
+  }
+}
+
+class GrantedCredentialsBroker extends CredentialsBroker {
+  getValidTemplateTypes() {return ['federate','copy']};
+  validate(variables) {
+      if(!variables.profile || !variables.region) {
+          throw new Error("profile and region must be defined");
+      }
+  }
+  async getCredentials(variables) {
+      return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
+      : interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+  }
+  getCacheKey() {
+      return 'profile';
+  }
+  getDangerKey() {
+      return 'profile'
+  }
 }
 
 function addSpeedrunLink() {
@@ -537,6 +616,7 @@ const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
 const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
 const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
 const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
+const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
 let regionMap = {
@@ -590,11 +670,19 @@ function isPartition(str) {
     return Object.keys(partitionMap).includes(str);
 }
 
+let credentialsBroker = getCredentialsBroker();
+
+function getCredentialsBroker() {
+    return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
+}
+
 let templates = {
     settings : `~~~g_usernameOverride=Username Override~~~
                     ~~~g_role=Role {"default":"speedrun-ReadOnly"}~~~
                     ~~~g_aws-accountId=AWS Account Id for Classic~~~
-                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean"}~~~`,
+                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean"}~~~
+                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Granted (Experimental)':'granted'}, "default":'speedrun'}~~~
+                    ~~~g_granted_profile=Granted Profile~~~`,
     copy : "${content}",
     download : {
         value: "data:${contentType};base64,${btoa(unescape(encodeURIComponent(content)))}",
@@ -928,7 +1016,7 @@ input:checked + .slider:before {
 </div>
 `).append(`<details id='srModal' class="fixed details-reset details-overlay details-overlay-dark">
   <summary aria-haspopup="dialog"></summary>
-  <details-dialog class="Box height-fit overflow-auto Box-overlay--wide anim-fade-in fast">
+  <details-dialog class="Box height-fit overflow-y-scroll overflow-x-scroll Box-overlay--wide anim-fade-in fast">
     <div class="Box-header">
       <button id="modal-cancel" class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
         <!-- <%= octicon "x" %> -->
@@ -1221,7 +1309,7 @@ function invoke(request, raw=false) {
     });
 }
 
-async function getCredentials(account, role, forceNewCreds) {
+async function getWebCredentials(account, role, forceNewCreds) {
     const cacheKey = `${account}:${role}`;
     const cachedCredentials = credentialsCache[cacheKey];
     if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration)) {
@@ -1313,6 +1401,7 @@ function getUserConfig() {
         "services" : {
             [USER_SERVICE] : {
                 "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
+                "profile" : GM_getValue('g_granted_profile', undefined),
                 "regions" : {
                     "aws" : {
                         "account" : GM_getValue('g_aws-accountId')
@@ -1856,26 +1945,21 @@ async function nope(content, preview = false, anchor, runBtn) {
     variables.raw = raw;
 
     if(!preview) {
-        if(variables.creds) {
-            if(variables.account && variables.role && variables.partition) {
-                //prepend speedrun to role name
-                if(!variables.role.startsWith('speedrun-')) {
-                    variables.role = `speedrun-${variables.role}`
-                }
-                variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
-            } else {
-                alertAndThrow("Unable to determine role arn, role, account and partition must be defined");
-            }
-        }
         try {
+        if(variables.creds) {
+            if(!credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
+                throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
+            }
+            credentialsBroker.validate(variables);
+        }
         switch(variables.internal.templateType) {
             case "copy" :
                 //refactor to show key if creds are needed
                 if(needsNewCreds(variables)) {
-                    if(String(variables.account).startsWith('-')) {
+                    if(credentialsBroker.isDemoAccount(variables)) {
                         throw new Error(`Getting credentials not enabled on demo accounts`);
                     }
-                    variables.internal.result = interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
+                    variables.internal.result = await credentialsBroker.getCredentials(variables);
                 } else if(variables.internal.newRegion) {
                     variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                 }
@@ -1887,26 +1971,32 @@ async function nope(content, preview = false, anchor, runBtn) {
                 window.open(variables.internal.result);
                 break;
             case "settings" :
-                if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false)) {
+                if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
                     location.reload();
+                    credentialsBroker = getCredentialsBroker();
                 }
                 break;
             case "federate" : {
+                if(credentialsBroker.isDemoAccount(variables)) {
+                    throw new Error(`Federation not enabled on demo accounts`);
+                }
                 // strip leading / if present or console links won't work
                 variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
                 // use cloudwatch/deeplink.js instead of home to better handle long urls
                 variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js')
-                let consoleURL = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
-                console.log('Console url', consoleURL);
-                let url = consoleURL;
-                if(needsNewCreds(variables)) {
-                    url = getFederationLink(variables.roleArn, consoleURL);
-                    console.log('Federation url', url);
+                variables.internal.consoleUrl = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
+                console.log('Console url', variables.internal.consoleUrl);
+                needsNewCreds(variables);
+                let result = await credentialsBroker.getCredentials(variables);
+                if(result.url) {
+                    if(result.url != variables.internal.consoleUrl) {
+                        console.log(`Federation url`, result.url)
+                    }
+                    window.open(result.url);
+                } else {
+                    GM_setClipboard(result.text);
+                    toast("📋 Copied");
                 }
-                if(variables.account && String(variables.account).startsWith('-')) {
-                    throw new Error(`Federation not enabled on demo accounts`);
-                }
-                window.open(url);
                 persistLastRole(variables);
                 break;
             }
@@ -1929,7 +2019,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 if(!isFunctionUrl && !variables.functionName) {
                     throw new Error('functionUrl or functionName is required');
                 }
-                let lambdaCredentials = await getCredentials(variables.account, variables.role, variables.forceNewCreds);
+                let lambdaCredentials = await credentialsBroker.getCredentials(variables);
                 const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
                 let response = await invoke(request, isFunctionUrl);
                 if(isFunctionUrl) {
@@ -1957,7 +2047,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 if(variables.functionName == undefined) {
                     throw new Error('functionName is required');
                 }
-                let credentials = await getCredentials(variables.account, variables.role, variables.forceNewCreds);
+                let credentials = await credentialsBroker.getCredentials(variables);
                 let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
                 let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
                             "input": variables.internal.result
@@ -2150,7 +2240,7 @@ async function updatePage(reason) {
 }
 
 function setButtonDanger(btn, variables) {
-    if(variables.danger || (variables.creds && _.isString(variables.role) && variables.role.toLowerCase().match(/(full|admin|write)/))) {
+    if(variables.danger || (variables.creds && _.isString(variables[credentialsBroker.getDangerKey()]) && variables[credentialsBroker.getDangerKey()].toLowerCase().match(/(full|admin|write)/))) {
         btn.addClass('color-bg-danger-emphasis');
         btn.removeClass('btn-primary');
         btn.data('danger', true);
@@ -2354,14 +2444,14 @@ function needsRefresh(expiration) {
 
 function needsNewCreds(variables) {
     const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.role != variables.roleArn);
+    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.role != variables[credentialsBroker.getCacheKey()]);
     variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.region != variables.region);
     return variables.internal.newCreds
 }
 
 function persistLastRole(variables) {
     if(variables.internal.newCreds) {
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables.roleArn, region: variables.region, expiration: Date.now() + (60*60*1000)});
+        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration: Date.now() + (60*60*1000)});
     }
 }
 
