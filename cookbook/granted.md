@@ -7,7 +7,7 @@ If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a c
 1. Only federation into the AWS console and getting credentials for the command line work.  It does not work for invoking a lambda or step function directly from your markdown.
 2. Federation to the console requires you to paste the command into your terminal instead of being done via http redirects.
 
-# Setup
+## Switching to the Granted credentials broker
 
 To use the Granted credentials broker, click the gear icon in the Speedrun toolbar to enter settings.  Then change the **Credentials Broker** to Granted (Experimental).  You can optionally set the default profile for your personal account. Setting this will configure what profile to use when you use select your GitHub username in the dropdowns.
 
