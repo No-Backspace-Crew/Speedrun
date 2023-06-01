@@ -1,0 +1,66 @@
+# Using Granted as a credentials broker
+> ⚠️ **Alert**
+> This page requires Speedrun v1.79 or higher to render correctly, check your version in the by hovering over the gear icon in the toolbar.
+
+If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a credentials broker to build `assume` commands for you first understand the limitations.
+
+1. Only federation into the AWS console and getting credentials for the command line work.  It does not work for invoking a lambda or step function directly from your markdown.
+2. Federation to the console requires you to paste the command into your terminal instead of being done via http redirects.
+
+# Setup
+
+To use the Granted credentials broker, click the gear icon in the Speedrun toolbar to enter settings.  Then change the **Credentials Broker** to Granted (Experimental).  You can optionally set the default profile for your personal account. Setting this will configure what profile to use when you use select your GitHub username in the dropdowns.
+
+## Configuration
+
+Instead of configuring a `role` and `account` you need to provide a `profile` in your [configuration](https://github.com/No-Backspace-Crew/Speedrun/wiki/Speedrun-Configuration).
+
+````
+```
+#srConfig
+{
+    services : {
+        MiddleOutService : {
+            regions : {
+                "us-west-2 - Beta" : {
+                    "profile" : "middleout-beta"
+                },
+                "us-west-2 - Prod" : {
+                    "profile" : "middleout-prod"
+                }
+            }
+        }
+    }
+}
+```
+````
+
+You can define the profile at a higher level and use JavaScript if you like to generate it.
+
+````
+```
+#srConfig
+{
+    services : {
+        MiddleOutService : {
+            profile: "middleout-${srRegionName.split(' - ')[1].toLowerCase()}",
+            regions: {
+                "us-west-2 - Beta" : {
+                },
+                "us-west-2 - Prod" : {
+                }
+            }
+        },
+        PiedPiperFrontendService : {
+            profile: "frontend-${srRegionName.split(' - ')[1].toLowerCase()}",
+            regions : {
+                "us-west-2 - Beta" : {
+                },
+                "us-west-2 - Prod" : {
+                }
+            }
+        }
+    }
+}
+```
+````
