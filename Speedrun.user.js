@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.78
+// @version      1.79
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -592,7 +592,7 @@ addEventListener('popstate', async (event) => {
     }
 });
 
-const HEADER = /#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
+const HEADER = /^#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
 const LITERAL = /\$\{.+?\}/s;
 const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
 const PROMPT_G = new RegExp(PROMPT, 'g');
@@ -2123,7 +2123,7 @@ function injectIFrame(location, variables) {
     if(!variables.name instanceof Function){
         delete overlay.name;
     }
-    const attributes = $.extend({'width':'100%', frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
+    const attributes = $.extend({'width':860, frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
     location.textContent = '';
     GM_addElement(location,'iframe',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
 }
