@@ -11,6 +11,9 @@ If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a c
 
 To use the Granted credentials broker, click the gear icon in the Speedrun toolbar to enter settings.  Then change the **Credentials Broker** to Granted (Experimental).  You can optionally set the default profile for your personal account. Setting this will configure what profile to use when you use select your GitHub username in the dropdowns.
 
+<img width="779" alt="Granted Configuration" src="https://github.com/No-Backspace-Crew/Speedrun/assets/97474956/b5dda28d-c4a5-48bc-a61a-d3412773ce8a">
+
+
 ## Configuration
 
 Instead of configuring a `role` and `account` you need to provide a `profile` in your [configuration](https://github.com/No-Backspace-Crew/Speedrun/wiki/Speedrun-Configuration).
