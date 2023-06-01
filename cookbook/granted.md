@@ -64,3 +64,4 @@ You can define the profile at a higher level and use JavaScript if you like to g
 }
 ```
 ````
+[Return to Cookbook](https://github.com/No-Backspace-Crew/Speedrun/wiki/Cookbook)
