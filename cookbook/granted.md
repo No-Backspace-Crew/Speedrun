@@ -1,6 +1,6 @@
 # Using Granted as a credentials broker
 > ⚠️ **Alert**
-> This page requires Speedrun v1.79 or higher to render correctly, check your version in the by hovering over the gear icon in the toolbar.
+> This page requires Speedrun v1.79 or higher to render correctly, check your version by hovering over the gear icon in the toolbar.
 
 If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a credentials broker to build `assume` commands for you first understand the limitations.
 
