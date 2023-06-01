@@ -2,7 +2,7 @@
 > ⚠️ **Alert**
 > This page requires Speedrun v1.79 or higher to render correctly, check your version by hovering over the gear icon in the toolbar.
 
-If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a credentials broker to build `assume` commands for you first understand the limitations.
+If you'd like to configure Speedrun to use [Granted](https://granted.dev) as a credentials broker to build `assume` commands make sure you understand the limitations.
 
 1. Only federation into the AWS console and getting credentials for the command line work.  It does not work for invoking a lambda or step function directly from your markdown.
 2. Federation to the console requires you to paste the command into your terminal instead of being done via http redirects.
