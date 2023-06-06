@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.79
+// @version      1.80
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -16,6 +16,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.1/srInvoke.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -119,7 +120,7 @@
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -155,6 +156,13 @@ const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+  // set all elements owning target to target=_blank
+  if ('target' in node) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener');
+  }
+});
 var lastPath = location.pathname + location.search;
 
 function getFederationLink(roleArn, destination) {
@@ -837,6 +845,9 @@ let tabNames = {
 function injectToolbar() {
     if(!$('#srToolbar').length) {
         $("head").append(`<style>${GM_getResourceText('select2css')}
+        input:invalid.srInput {
+          border: 2px solid var(--color-checks-step-error-text)
+        }
     /* Select2 theming to match github */
 
         .select2-container--default {
@@ -956,7 +967,7 @@ input:checked + .slider:before {
   padding: 1px 6px;
 }
 </style>`);
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`}});
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
   <label id='srToggleTitle' class="switch">
   <input id='srEnabled' type="checkbox"><span class="slider round"></span>
@@ -979,7 +990,7 @@ input:checked + .slider:before {
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
           <span class="dropdown-caret"></span>
         </summary>
-        <details-menu class="SelectMenu right-0" role="menu">
+        <details-menu class="SelectMenu right-0" style="height: fit-content" role="menu">
           <div class="SelectMenu-modal">
             <header class="SelectMenu-header">
               <span class="SelectMenu-title">Recent Github issues</span>
@@ -1670,6 +1681,10 @@ function isEnabledPath() {
     return false;
 }
 
+function validateInputs() {
+  $("#srModal-link, #srModal-ok").prop('disabled', $(".srInput:invalid").length != 0);
+}
+
 function setEnabledPath(enabled) {
     let regex = isSRPage();
     if (regex) {
@@ -1751,7 +1766,7 @@ async function nope(content, preview = false, anchor, runBtn) {
             variables.internal.prompts.forEach(prompt => {
                 const info = getPromptInfo(prompt.prompt);
                 const row = $('<tr>');
-                const header = $('<td>', {class: 'p-2 text-right v-align-top'})
+                const header = $('<td>', {class: 'p-1 text-right v-align-top'})
                 const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
                 header.append(label);
                 row.append(header);
@@ -1794,19 +1809,33 @@ async function nope(content, preview = false, anchor, runBtn) {
                         }
                         break;
                     case "textarea":
-                        input = $('<textarea>', {rows:"5",cols:"40"});
+                        input = $('<textarea>', {rows:firstNonNull(info.configuration.rows,5),cols:firstNonNull(info.configuration.cols,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
                         input.val(info.interpolatedValue);
                         break;
                     default:
-                        input = $('<input>', {size:40});
+                        input = $('<input>', {size:firstNonNull(info.configuration.size,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
                         input.val(info.interpolatedValue);
                         break;
                 }
                 input.data('prompt', info);
-                let col = $('<td>', {class: 'p-2'})
+                let col = $('<td>', {class: 'p-1'})
                 col.append(input);
+                input.addClass('srInput');
+
+                if(info.configuration.label) {
+                  col.append(`<p class="note">${DOMPurify.sanitize(info.configuration.label, {ALLOWED_TAGS: ['b','a','i','u'], ATTRIBUTES: ['target']})}</p>`);
+                }
+                ['pattern', 'maxlength', 'minlength', 'required'].forEach(attr => {
+                    if(info.configuration[attr]) {
+                        input.addClass('srValidated');
+                        input.attr(attr, info.configuration[attr]);
+                        input.on('input', function() {
+                           validateInputs();
+                        });
+                    }
+                });
                 row.append(col);
-                col = $('<td>', {class: 'p-2 v-align-top'})
+                col = $('<td>', {class: 'p-1 v-align-top'})
                 if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
                     const text = interpolatedDefaultText || info.interpolatedDefault;
                     const button = $(`<button class="btn btn-sm Truncate" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
@@ -1833,7 +1862,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 var deeplink = undefined;
                 if(anchor) {
-                    deeplink = $('<button id="modal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
+                    deeplink = $('<button id="srModal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
                     deeplink.click(function () {
                         let url = new URL(`${window.location.origin}${window.location.pathname}`)
                         url.hash = anchor.attr('href').substring(1);
@@ -1853,7 +1882,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     });
                 }
                 let label = runBtn ? runBtn.attr('aria-label') : undefined;
-                await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `Input${label ? `: ${label}` : '' }`, function() {
+                await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, function() {
                     $('#srModal :input' ).not(':input[type=button],button').each(function() {
                         const prompt = $(this).data('prompt');
                         if(prompt) {
@@ -2471,7 +2500,7 @@ async function wireUpContent() {
                 while(content.includes(codeFence)){
                     codeFence+='`';
                 }
-                copy.attr('value', `${codeFence}\n${content}\n${codeFence}`);
+                copy.attr('value', `${codeFence}\n${escapeHTMLStartTags(content)}\n${codeFence}`);
                 copy.data('wrapped',true);
             }
             const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
@@ -2596,6 +2625,9 @@ function dialog(body, title, callback, footerContent, dangerous) {
         });
         $('#srModal-ok').focus();
     });
+    if ($('.srValidated').length > 0) {
+        validateInputs();
+    }
     document.querySelector('#srModal').open = true;
     return new Promise((resolve,reject) => {
         let isResolved = false;
@@ -2627,7 +2659,7 @@ function dialog(body, title, callback, footerContent, dangerous) {
 }
 
 function alertAndThrow(message, cause) {
-    alert(message);
+    alert(escapeHTMLStartTags(message));
     throw new Error(message, cause ? {cause : cause} : null);
 }
 
