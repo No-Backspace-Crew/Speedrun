@@ -843,7 +843,7 @@ let tabNames = {
 function injectToolbar() {
     if(!$('#srToolbar').length) {
         $("head").append(`<style>${GM_getResourceText('select2css')}
-        input:invalid.srInput {
+        input:invalid.srInput , textarea:invalid.srInput {
           border: 2px solid var(--color-checks-step-error-text)
         }
     /* Select2 theming to match github */
