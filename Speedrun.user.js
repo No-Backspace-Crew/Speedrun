@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.80
+// @version      1.81
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -153,25 +153,6 @@ const STORAGE_NAMESPACE = 'SR:';
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
 const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 
-dayjs.extend(window.dayjs_plugin_utc);
-dayjs.extend(window.dayjs_plugin_duration);
-dayjs.extend(window.dayjs_plugin_relativeTime);
-DOMPurify.addHook('afterSanitizeAttributes', function (node) {
-  // set all elements owning target to target=_blank
-  if ('target' in node) {
-    node.setAttribute('target', '_blank');
-    node.setAttribute('rel', 'noopener');
-  }
-});
-var lastPath = location.pathname + location.search;
-
-function getFederationLink(roleArn, destination) {
-    let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
-    url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
-    url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
-    return url.toString();
-}
-
 class CredentialsBroker {
   getValidTemplateTypes() {throw new Error('Not implemented');};
   validate(variables) {
@@ -250,9 +231,29 @@ class GrantedCredentialsBroker extends CredentialsBroker {
   }
 }
 
+let credentialsBroker = getCredentialsBroker();
+
+dayjs.extend(window.dayjs_plugin_utc);
+dayjs.extend(window.dayjs_plugin_duration);
+dayjs.extend(window.dayjs_plugin_relativeTime);
+DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+  // set all elements owning target to target=_blank
+  if ('target' in node) {
+    node.setAttribute('target', '_blank');
+    node.setAttribute('rel', 'noopener');
+  }
+});
+var lastPath = location.pathname + location.search;
+
+function getFederationLink(roleArn, destination) {
+    let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
+    url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
+    url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+    return url.toString();
+}
+
 function addSpeedrunLink() {
-    const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
-    if($('#awsc-navigation__more-menu--list')) {
+    if($('#awsc-navigation__more-menu--list').length > 0) {
         if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
             GM_cookie('list', { name: 'aws-userInfo' }, (cookies) => {
                 if(awsuserInfoCookieParsed) {
@@ -263,6 +264,7 @@ function addSpeedrunLink() {
                 let region = $("meta[name='awsc-mezz-region']").attr("content");
                 if(cookies && cookies.length && region) {
                     let userInfo = JSON.parse(unescape(cookies[0].value));
+                    const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
                     let result = ARN_REGEX.exec(userInfo.arn);
                     if(result) {
                         console.log('Adding speedrun link');
@@ -481,7 +483,7 @@ if(location.host.endsWith('console.aws.amazon.com')) {
         }
     });
     if(!addSpeedrunLink()) {
-        observer.observe(bodyList, {attributeFilter: [ "id"], subtree:true});
+        observer.observe(bodyList, {attributeFilter: [ "data-testid"], childList:true});
     }
     extractCloudWatchTime();
     return;
@@ -621,11 +623,11 @@ const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/[^\/]+\.md)|(\/tr
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
-const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST --header "Content-Type: application/json; charset=UTF-8" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
-const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\n";'`
+const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
+const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
 const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
-const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\n`;
+const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\nexport AWS_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
 let regionMap = {
     "US East (N. Virginia)": "us-east-1",
@@ -678,19 +680,13 @@ function isPartition(str) {
     return Object.keys(partitionMap).includes(str);
 }
 
-let credentialsBroker = getCredentialsBroker();
-
-function getCredentialsBroker() {
-    return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
-}
-
 let templates = {
-    settings : `~~~g_usernameOverride=Username Override~~~
-                    ~~~g_role=Role {"default":"speedrun-ReadOnly"}~~~
-                    ~~~g_aws-accountId=AWS Account Id for Classic~~~
-                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean"}~~~
-                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Granted (Experimental)':'granted'}, "default":'speedrun'}~~~
-                    ~~~g_granted_profile=Granted Profile~~~`,
+    settings : `~~~g_usernameOverride=Username Override {label:'Override your GitHub username when setting the user variable (optional)'}~~~
+                    ~~~g_aws-accountId=AWS Account Id {placeholder:'123456789012', pattern:'\\\\d{12}', label:"Your personal AWS account id <a href='https://github.com/No-Backspace-Crew/Speedrun/wiki/Creating-Speedrun-Roles'>Read more</a>"}~~~
+                    ~~~g_role=Role {"default":"speedrun-ReadOnly", label:"Your personal default role"}~~~
+                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~
+                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
+                    ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~`,
     copy : "${content}",
     download : {
         value: "data:${contentType};base64,${btoa(unescape(encodeURIComponent(content)))}",
@@ -722,6 +718,7 @@ let templates = {
             "CloudFormation": "cloudformation",
             "CloudFront": "cloudfront/v3/home?region=us-east-1",
             "CloudShell": "cloudshell",
+            "CloudTrail": "cloudtrail",
             "CloudWatch Alarms": "cloudwatch/home?region=${region}#alarmsV2:",
             "CloudWatch Dashboards": "cloudwatch/home?region=${region}#dashboards:",
             "CloudWatch Logs": "cloudwatch/home?region=${region}#logsV2:log-groups",
@@ -742,6 +739,7 @@ let templates = {
             "KMS": "kms",
             "Lambda": "lambda",
             "Organizations": "organizations/v2",
+            "Resource Explorer": "resource-explorer",
             "Route 53": "route53",
             "RDS": "rds",
             "Secrets Manager": "secretsmanager",
@@ -2581,7 +2579,7 @@ function colorizeLiterals(content, variables) {
 }
 
 function buildPreview(variables) {
-    let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
+    let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName.replaceAll(/^!/g,'') != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
 ${variables.internal.preview}`;
     preview = colorizeComments(preview, variables);
     preview = colorizePrompts(preview, variables);
@@ -2663,5 +2661,8 @@ function alertAndThrow(message, cause) {
     throw new Error(message, cause ? {cause : cause} : null);
 }
 
+function getCredentialsBroker() {
+    return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
+}
 //  ]]></>).toString(), { "targets": "> 0.25%, not dead"}).code);
 })();
