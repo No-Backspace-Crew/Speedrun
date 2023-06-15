@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.82
+// @version      1.83
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -129,9 +129,9 @@
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
     let favIcons = {false:{},true:{}};
-    let curRegion = undefined;
-    let dataAndEvents = {};
-    let credentialsCache = {};
+ let curRegion = undefined;
+ let dataAndEvents = {};
+let credentialsCache = {};
 
 if(window.location.hostname == 'github.com' || window.location.hostname == 'www.github.com') {
     $('link[rel~="icon"]').each((i,el) => {
@@ -154,81 +154,81 @@ const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
 const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 
 class CredentialsBroker {
-  getValidTemplateTypes() {throw new Error('Not implemented');};
-  validate(variables) {
-      throw new Error('Not implemented');
-  }
-  async getCredentials(variables) {
-      throw new Error('Not implemented');
-  }
-  getCacheKey() {
-      throw new Error('Not implemented');
-  }
-  getDangerKey() {
-      throw new Error('Not implemented');
-  }
-  isDemoAccount(variables) {
-      return
-  }
+    getValidTemplateTypes() {throw new Error('Not implemented');};
+    validate(variables) {
+        throw new Error('Not implemented');
+    }
+    async getCredentials(variables) {
+        throw new Error('Not implemented');
+    }
+    getCacheKey() {
+        throw new Error('Not implemented');
+    }
+    getDangerKey() {
+        throw new Error('Not implemented');
+    }
+    isDemoAccount(variables) {
+        return
+    }
 }
 class SpeedrunCredentialsBroker extends CredentialsBroker {
-  getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction']};
-  validate(variables) {
-      if(variables.account && variables.role && variables.partition) {
-                //prepend speedrun to role name
-                if(!variables.role.startsWith('speedrun-')) {
-                    variables.role = `speedrun-${variables.role}`
+    getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction']};
+    validate(variables) {
+        if(variables.account && variables.role && variables.partition) {
+            //prepend speedrun to role name
+            if(!variables.role.startsWith('speedrun-')) {
+                variables.role = `speedrun-${variables.role}`
                 }
-                variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
+          variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
       } else {
-                throw new Error("Unable to determine role arn, role, account and partition must be defined");
+          throw new Error("Unable to determine role arn, role, account and partition must be defined");
       }
   }
-  async getCredentials(variables) {
-      switch(variables.internal.templateType) {
-          case 'federate':
+    async getCredentials(variables) {
+        switch(variables.internal.templateType) {
+            case 'federate':
                 return {
-                  url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl) : variables.internal.consoleUrl
+                    url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl) : variables.internal.consoleUrl
                 }
                 break;
-          case 'copy':
-                  return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\nunset AWS_CREDENTIAL_EXPIRATION\n' + variables.internal.result + "\nfi";
+            case 'copy':
+                return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\nunset AWS_CREDENTIAL_EXPIRATION\n' + variables.internal.result + "\nfi";
                 break;
-          case 'lambda':
-          case 'stepfunction':
+            case 'lambda':
+            case 'stepfunction':
                 return getWebCredentials(variables.account, variables.role, variables.forceNewCreds);
                 break;
-      }
-  }
-  getCacheKey() {
-      return 'roleArn'
-  }
-  getDangerKey() {
-      return 'role'
-  }
+        }
+    }
+    getCacheKey() {
+        return 'roleArn'
+    }
+    getDangerKey() {
+        return 'role'
+    }
 
-  isDemoAccount(variables) {
-      return variables.account && variables.account.startsWith("-");
-  }
+    isDemoAccount(variables) {
+        return variables.account && variables.account.startsWith("-");
+    }
 }
 
 class GrantedCredentialsBroker extends CredentialsBroker {
-  getValidTemplateTypes() {return ['federate','copy']};
-  validate(variables) {
-      if(!variables.profile || !variables.region) {
-          throw new Error("profile and region must be defined");
-      }
-  }
-  async getCredentials(variables) {
-      return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
-      : interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
-  }
-  getCacheKey() {
-      return 'profile';
-  }
-  getDangerKey() {
-      return 'profile'
-  }
+    getValidTemplateTypes() {return ['federate','copy']};
+    validate(variables) {
+        if(!variables.profile || !variables.region) {
+            throw new Error("profile and region must be defined");
+        }
+    }
+    async getCredentials(variables) {
+        return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
+        : interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+    }
+    getCacheKey() {
+        return 'profile';
+    }
+    getDangerKey() {
+        return 'profile'
+    }
 }
 
 let credentialsBroker = getCredentialsBroker();
@@ -237,11 +237,11 @@ dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
 DOMPurify.addHook('afterSanitizeAttributes', function (node) {
-  // set all elements owning target to target=_blank
-  if ('target' in node) {
-    node.setAttribute('target', '_blank');
-    node.setAttribute('rel', 'noopener');
-  }
+    // set all elements owning target to target=_blank
+    if ('target' in node) {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener');
+    }
 });
 var lastPath = location.pathname + location.search;
 
@@ -686,7 +686,8 @@ let templates = {
                     ~~~g_role=Role {"default":"speedrun-ReadOnly", label:"Your personal default role"}~~~
                     ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~
                     ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
-                    ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~`,
+                    ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~
+                    ~~~g_force_new_creds=Force New Credentials {"type":"checkbox","default":false, "cast":"Boolean", label:"Gets new credentials every request, useful during testing"}~~~`,
     copy : "${content}",
     download : {
         value: "data:${contentType};base64,${btoa(unescape(encodeURIComponent(content)))}",
@@ -1023,17 +1024,39 @@ input:checked + .slider:before {
     <span id="toast" class="Toast-content"></span>
   </div>
 </div>
+<div class="position-fixed bottom-0 right-0" hidden style='z-index:100' id='authToast'>
+  <div class="Toast Toast--loading">
+    <span class="Toast-icon">
+      <svg class="Toast--spinner" viewBox="0 0 32 32" width="18" height="18">
+        <path
+          fill="#959da5"
+          d="M16 0 A16 16 0 0 0 16 32 A16 16 0 0 0 16 0 M16 4 A12 12 0 0 1 16 28 A12 12 0 0 1 16 4"
+        />
+        <path fill="#ffffff" d="M16 0 A16 16 0 0 1 32 16 L28 16 A12 12 0 0 0 16 4z"></path>
+      </svg>
+    </span>
+    <span class="Toast-content">Waiting for authentication</span>
+    <button class="Toast-dismissButton" id="authToastCancelled">
+      <!-- <%= octicon "x" %> -->
+      <svg width="12" height="16" viewBox="0 0 12 16" class="octicon octicon-x" aria-hidden="true">
+        <path
+          fill-rule="evenodd"
+          d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"
+        />
+      </svg>
+    </button>
+  </div>
+</div>
 `).append(`<details id='srModal' class="fixed details-reset details-overlay details-overlay-dark">
   <summary aria-haspopup="dialog"></summary>
-  <details-dialog class="Box height-fit overflow-y-scroll overflow-x-scroll Box-overlay--wide anim-fade-in fast">
+  <details-dialog class="Box height-fit overflow-auto Box-overlay--wide anim-fade-in fast">
     <div class="Box-header">
+      <span class="Box-title" id='srModal-title'>Dialog</span>
       <button id="modal-cancel" class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
         <!-- <%= octicon "x" %> -->
         <svg class="octicon octicon-x" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"></path></svg>
-      </button>
-      <h3 class="Box-title" id='srModal-title'>Dialog</h3>
-    </div>
-    <div class="Box-body overflow-auto">
+      </button>    </div>
+    <div class="Box-body">
     <div id="srModal-error" class="flash mt-2 flash-error" hidden>
     </div>
     <div id="srModal-body">
@@ -1322,13 +1345,44 @@ async function getWebCredentials(account, role, forceNewCreds) {
     const cacheKey = `${account}:${role}`;
     const cachedCredentials = credentialsCache[cacheKey];
     if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration)) {
-       console.log('Using cached credentials');
-       return cachedCredentials.credentials;
+        console.log('Using cached credentials');
+        return cachedCredentials.credentials;
     }
-    const result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+    let result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+    // if it redirects to github auth
     if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
-       throw new Error('Unable to get credentials: GitHub authentication failed');
+        //authenticate in a popup
+        let popup = undefined;
+        let authToast = $("#authToast");
+        authToast.attr('hidden',false);
+
+        let authPopup = new Promise((resolve, reject) => {
+            popup = window.open(`${FEDERATION_ENDPOINT}/user/authenticate?closeOnSuccess=true`,'Speedrun Authentication', "width=400,height=600");
+            var pollTimer = window.setInterval(function() {
+                if (popup.closed !== false) {
+                    window.clearInterval(pollTimer);
+                    resolve();}}, 200);
+            $('#authToastCancelled').on('click.sr', () => {reject('Authentication cancelled')});
+        });
+
+        try {
+            await authPopup;
+        } catch(e) {
+            console.log(e);
+            return;
+        } finally {
+            $('#authToastCancelled').off('click.sr');
+            authToast.attr('hidden', true);
+            popup.close();
+        }
+        // try again to get credentials
+        result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+        if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
+            throw new Error('Unable to get credentials: GitHub authentication failed');
+        }
     }
+
+
     if(result.status != 200) {
         throw new Error(`${result.status} ${result.statusText}: ${result.responseText}`);
     } else {
@@ -1680,7 +1734,7 @@ function isEnabledPath() {
 }
 
 function validateInputs() {
-  $("#srModal-link, #srModal-ok").prop('disabled', $(".srInput:invalid").length != 0);
+    $("#srModal-link, #srModal-ok").prop('disabled', $(".srInput:invalid").length != 0);
 }
 
 function setEnabledPath(enabled) {
@@ -1821,14 +1875,14 @@ async function nope(content, preview = false, anchor, runBtn) {
                 input.addClass('srInput');
 
                 if(info.configuration.label) {
-                  col.append(`<p class="note">${DOMPurify.sanitize(info.configuration.label, {ALLOWED_TAGS: ['b','a','i','u'], ATTRIBUTES: ['target']})}</p>`);
+                    col.append(`<p class="note">${DOMPurify.sanitize(info.configuration.label, {ALLOWED_TAGS: ['b','a','i','u'], ATTRIBUTES: ['target']})}</p>`);
                 }
                 ['pattern', 'maxlength', 'minlength', 'required'].forEach(attr => {
                     if(info.configuration[attr]) {
                         input.addClass('srValidated');
                         input.attr(attr, info.configuration[attr]);
                         input.on('input', function() {
-                           validateInputs();
+                            validateInputs();
                         });
                     }
                 });
@@ -1973,125 +2027,128 @@ async function nope(content, preview = false, anchor, runBtn) {
 
     if(!preview) {
         try {
-        if(variables.creds) {
-            if(!credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
-                throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
+            if(variables.creds) {
+                if(!credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
+                    throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
+                }
+                credentialsBroker.validate(variables);
             }
-            credentialsBroker.validate(variables);
-        }
-        switch(variables.internal.templateType) {
-            case "copy" :
-                //refactor to show key if creds are needed
-                if(needsNewCreds(variables)) {
-                    if(credentialsBroker.isDemoAccount(variables)) {
-                        throw new Error(`Getting credentials not enabled on demo accounts`);
+            if(GM_getValue("g_force_new_creds", false)) {
+                variables.forceNewCreds = true;
+            }
+            switch(variables.internal.templateType) {
+                case "copy" :
+                    //refactor to show key if creds are needed
+                    if(needsNewCreds(variables)) {
+                        if(credentialsBroker.isDemoAccount(variables)) {
+                            throw new Error(`Getting credentials not enabled on demo accounts`);
+                        }
+                        variables.internal.result = await credentialsBroker.getCredentials(variables);
+                    } else if(variables.internal.newRegion) {
+                        variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                     }
-                    variables.internal.result = await credentialsBroker.getCredentials(variables);
-                } else if(variables.internal.newRegion) {
-                    variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
-                }
-                GM_setClipboard(variables.internal.result);
-                toast("📋 Copied");
-                persistLastRole(variables);
-                break;
-            case "link" :
-                window.open(variables.internal.result);
-                break;
-            case "settings" :
-                if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
-                    location.reload();
-                    credentialsBroker = getCredentialsBroker();
-                }
-                break;
-            case "federate" : {
-                if(credentialsBroker.isDemoAccount(variables)) {
-                    throw new Error(`Federation not enabled on demo accounts`);
-                }
-                // strip leading / if present or console links won't work
-                variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
-                // use cloudwatch/deeplink.js instead of home to better handle long urls
-                variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js')
-                variables.internal.consoleUrl = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
-                console.log('Console url', variables.internal.consoleUrl);
-                needsNewCreds(variables);
-                let result = await credentialsBroker.getCredentials(variables);
-                if(result.url) {
-                    if(result.url != variables.internal.consoleUrl) {
-                        console.log(`Federation url`, result.url)
-                    }
-                    window.open(result.url);
-                } else {
-                    GM_setClipboard(result.text);
+                    GM_setClipboard(variables.internal.result);
                     toast("📋 Copied");
+                    persistLastRole(variables);
+                    break;
+                case "link" :
+                    window.open(variables.internal.result);
+                    break;
+                case "settings" :
+                    if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
+                        location.reload();
+                        credentialsBroker = getCredentialsBroker();
+                    }
+                    break;
+                case "federate" : {
+                    if(credentialsBroker.isDemoAccount(variables)) {
+                        throw new Error(`Federation not enabled on demo accounts`);
+                    }
+                    // strip leading / if present or console links won't work
+                    variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
+                    // use cloudwatch/deeplink.js instead of home to better handle long urls
+                    variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js')
+                    variables.internal.consoleUrl = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
+                    console.log('Console url', variables.internal.consoleUrl);
+                    needsNewCreds(variables);
+                    let result = await credentialsBroker.getCredentials(variables);
+                    if(result.url) {
+                        if(result.url != variables.internal.consoleUrl) {
+                            console.log(`Federation url`, result.url)
+                        }
+                        window.open(result.url);
+                    } else {
+                        GM_setClipboard(result.text);
+                        toast("📋 Copied");
+                    }
+                    persistLastRole(variables);
+                    break;
                 }
-                persistLastRole(variables);
-                break;
-            }
-            case "download" : {
-                GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
-                             onerror: (download)=>{throw new Error(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
-                             onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
+                case "download" : {
+                    GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
+                                 onerror: (download)=>{throw new Error(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
+                                 onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
 
-                break;
-            }
-            case "iframe" : {
-                injectIFrame($(`#${runBtn.data('previewTab')}`).first('code').get(0), variables);
-                break;
-            }
-            case "lambda" : {
-                if(variables.account && String(variables.account).startsWith('-')) {
-                    throw new Error(`Lambda not enabled on demo accounts`);
+                    break;
                 }
-                const isFunctionUrl = variables.functionUrl != undefined;
-                if(!isFunctionUrl && !variables.functionName) {
-                    throw new Error('functionUrl or functionName is required');
+                case "iframe" : {
+                    injectIFrame($(`#${runBtn.data('previewTab')}`).first('code').get(0), variables);
+                    break;
                 }
-                let lambdaCredentials = await credentialsBroker.getCredentials(variables);
-                const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
-                let response = await invoke(request, isFunctionUrl);
-                if(isFunctionUrl) {
+                case "lambda" : {
+                    if(variables.account && String(variables.account).startsWith('-')) {
+                        throw new Error(`Lambda not enabled on demo accounts`);
+                    }
+                    const isFunctionUrl = variables.functionUrl != undefined;
+                    if(!isFunctionUrl && !variables.functionName) {
+                        throw new Error('functionUrl or functionName is required');
+                    }
+                    let lambdaCredentials = await credentialsBroker.getCredentials(variables);
+                    const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
+                    let response = await invoke(request, isFunctionUrl);
+                    if(isFunctionUrl) {
+                        if(response.status != 200) {
+                            throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                        }
+
+                        GM_setClipboard(response.responseText);
+                        toast("📋 Copied");
+                    } else {
+                        let decodedPayload = JSON.parse(response);
+                        if(decodedPayload.statusCode == "200") {
+                            GM_setClipboard(decodedPayload.body);
+                            toast("📋 Copied");
+                        } else {
+                            throw new Error(`Invalid lambda response: ${response}`);
+                        }
+                    }
+                    break;
+                }
+                case "stepfunction" : {
+                    if(variables.account && String(variables.account).startsWith('-')) {
+                        throw new Error(`Step Functions not enabled on demo accounts`);
+                    }
+                    if(variables.functionName == undefined) {
+                        throw new Error('functionName is required');
+                    }
+                    let credentials = await credentialsBroker.getCredentials(variables);
+                    let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
+                    let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
+                                "input": variables.internal.result
+                               }
+                    const request = await srInvoke.invokeService(credentials, 'states', variables.region, new URL(`https://states.${variables.region}.amazonaws.com`),'POST',headers,JSON.stringify(body));
+                    let response = await invoke(request, true);
                     if(response.status != 200) {
                         throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
                     }
-
-                    GM_setClipboard(response.responseText);
-                    toast("📋 Copied");
-                } else {
-                    let decodedPayload = JSON.parse(response);
-                    if(decodedPayload.statusCode == "200") {
-                        GM_setClipboard(decodedPayload.body);
-                        toast("📋 Copied");
-                    } else {
-                        throw new Error(`Invalid lambda response: ${response}`);
-                    }
+                    let executionArn = JSON.parse(response.responseText).executionArn;
+                    await nope(`#stepfunctionExecution {region: "${variables.region}", account: "${variables.account}", partition: "${variables.partition}", role: "${variables.role}", executionArn: "${executionArn}"}\n`);
+                    break;
                 }
-                break;
+                default:
+                    throw new Error(`Unknown template type ${variables.internal.templateType}`);
+                    break;
             }
-            case "stepfunction" : {
-                if(variables.account && String(variables.account).startsWith('-')) {
-                    throw new Error(`Step Functions not enabled on demo accounts`);
-                }
-                if(variables.functionName == undefined) {
-                    throw new Error('functionName is required');
-                }
-                let credentials = await credentialsBroker.getCredentials(variables);
-                let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
-                let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
-                            "input": variables.internal.result
-                           }
-                const request = await srInvoke.invokeService(credentials, 'states', variables.region, new URL(`https://states.${variables.region}.amazonaws.com`),'POST',headers,JSON.stringify(body));
-                let response = await invoke(request, true);
-                if(response.status != 200) {
-                    throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
-                }
-                let executionArn = JSON.parse(response.responseText).executionArn;
-                await nope(`#stepfunctionExecution {region: "${variables.region}", account: "${variables.account}", partition: "${variables.partition}", role: "${variables.role}", executionArn: "${executionArn}"}\n`);
-                break;
-            }
-            default:
-                throw new Error(`Unknown template type ${variables.internal.templateType}`);
-                break;
-        }
         } catch (e) {
             alertAndThrow(e);
         }
@@ -2259,6 +2316,10 @@ async function updatePage(reason) {
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
+        $('button.js-wiki-more-pages-link').each(async function(item) {
+            $(this).trigger('click');
+        });
+
         $('.markdown-body').append($('<span>', { class : 'srDone'}));
     } finally {
         updatingPage = false;
@@ -2547,39 +2608,39 @@ async function wireUpContent() {
     }
 }
 
-function colorizeComments(content, variables) {
-    return firstNonNull(variables.stripComments, !variables.raw) ?
-        content.replace(COMMENT_G,function(comment) {
-        let [,before,,,content,after] = comment.match(COMMENT);
-        return `${before}<span class="Label Label--inline Label--secondary"><i>${escapeHTMLQuotesAnd$(content)}</i></span>${firstNonNull(after,"")}`;
-    }) : content;
-}
+    function colorizeComments(content, variables) {
+        return firstNonNull(variables.stripComments, !variables.raw) ?
+            content.replace(COMMENT_G,function(comment) {
+            let [,before,,,content,after] = comment.match(COMMENT);
+            return `${before}<span class="Label Label--inline Label--secondary"><i>${escapeHTMLQuotesAnd$(content)}</i></span>${firstNonNull(after,"")}`;
+        }) : content;
+    }
 
-//html encode curly braces
-function encodeCurlies(str) {
-    return str == undefined ? str : str.replace(/[\{\}]/g, m => ({'{':'&#123;', '}':'&#125;'}[m]));
-}
+    //html encode curly braces
+    function encodeCurlies(str) {
+        return str == undefined ? str : str.replace(/[\{\}]/g, m => ({'{':'&#123;', '}':'&#125;'}[m]));
+    }
 
-function colorizePrompts(content, variables) {
-    return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
-        if(variables.prompts === false) {
-            return encodeCurlies(prompt)
-        } else {
-            let groups = prompt.match(PROMPT);
-            return encodeCurlies(`<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`);
-        }
-    }) : content;
-}
+    function colorizePrompts(content, variables) {
+        return firstNonNull(variables.internal.prompts, true) ? content.replace(PROMPT_G,function(prompt) {
+            if(variables.prompts === false) {
+                return encodeCurlies(prompt)
+            } else {
+                let groups = prompt.match(PROMPT);
+                return encodeCurlies(`<span title="${escapeHTMLQuotesAnd$(groups[0])}" class="Label Label--inline Label--accent">${groups[2]}</span>`);
+            }
+        }) : content;
+    }
 
-function colorizeLiterals(content, variables) {
-    return interpolateLiteralsInString(content, variables, true,
-                                       (result, match) =>
-                                       {let escaped = escapeHTMLQuotesAnd$(match);
-                                        return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${whitespaceToHTML(firstNonNull(result, match))}</span>`});
-}
+    function colorizeLiterals(content, variables) {
+        return interpolateLiteralsInString(content, variables, true,
+                                           (result, match) =>
+                                           {let escaped = escapeHTMLQuotesAnd$(match);
+                                            return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}">${whitespaceToHTML(firstNonNull(result, match))}</span>`});
+    }
 
-function buildPreview(variables) {
-    let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName.replaceAll(/^!/g,'') != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
+    function buildPreview(variables) {
+        let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName.replaceAll(/^!/g,'') != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
 ${variables.internal.preview}`;
     preview = colorizeComments(preview, variables);
     preview = colorizePrompts(preview, variables);
@@ -2589,80 +2650,80 @@ ${variables.internal.preview}`;
     return colorizeLiterals(preview, variables);
 }
 
-$(document).on('select2:open', () => {
-    const selects = document.querySelectorAll('.select2-container--open .select2-search__field');
-    selects[selects.length-1].focus();
-});
-
-function alert(body, title) {
-    $('#srModal-title').text(title || 'Alert');
-    $('#srModal-body').html($('<p/>',{class:'text-mono'}).append(body));
-    $('#srModal-error').attr('hidden',true);
-    $('#srModal-ok').prevAll().remove();
-    //todo make this a separate modal?
-    setTimeout(() => {document.querySelector('#srModal').open = true}, 100);
-}
-
-function dialog(body, title, callback, footerContent, dangerous) {
-    $('#srModal-title').text(title || 'Input');
-    $('#srModal-body').html(body);
-    $('#srModal-error').attr('hidden',true);
-    let okBtn = $('#srModal-ok');
-    okBtn.prevAll().remove();
-    if(footerContent) {
-        okBtn.before(footerContent);
-    }
-    okBtn.addClass(dangerous ? 'color-bg-danger-emphasis' : 'btn-primary');
-    okBtn.removeClass(dangerous ? 'btn-primary' : 'color-bg-danger-emphasis');
-
-    $('#srModal').ready(new function() {
-        $('#srModal').find("select").each(function(index, select) {
-            $(select).select2({
-                dropdownAutoWidth : true,
-                width:'copy'});
-        });
-        $('#srModal-ok').focus();
+    $(document).on('select2:open', () => {
+        const selects = document.querySelectorAll('.select2-container--open .select2-search__field');
+        selects[selects.length-1].focus();
     });
-    if ($('.srValidated').length > 0) {
-        validateInputs();
+
+    function alert(body, title) {
+        $('#srModal-title').text(title || 'Alert');
+        $('#srModal-body').html($('<p/>',{class:'text-mono'}).append(body));
+        $('#srModal-error').attr('hidden',true);
+        $('#srModal-ok').prevAll().remove();
+        //todo make this a separate modal?
+        setTimeout(() => {document.querySelector('#srModal').open = true}, 100);
     }
-    document.querySelector('#srModal').open = true;
-    return new Promise((resolve,reject) => {
-        let isResolved = false;
-        $('#srModal-ok').on( "click.sr", function(event) {
-            if(callback) {
-                try {
-                    callback();
-                }catch(e) {
-                    $('#srModal-error').html(`<span class:'text-mono'>${escapeHTMLQuotesAnd$(e.message || e)}</span>`).attr('hidden',false);
-                    event.preventDefault();
-                    event.stopPropagation();
-                    return;
+
+    function dialog(body, title, callback, footerContent, dangerous) {
+        $('#srModal-title').text(title || 'Input');
+        $('#srModal-body').html(body);
+        $('#srModal-error').attr('hidden',true);
+        let okBtn = $('#srModal-ok');
+        okBtn.prevAll().remove();
+        if(footerContent) {
+            okBtn.before(footerContent);
+        }
+        okBtn.addClass(dangerous ? 'color-bg-danger-emphasis' : 'btn-primary');
+        okBtn.removeClass(dangerous ? 'btn-primary' : 'color-bg-danger-emphasis');
+
+        $('#srModal').ready(new function() {
+            $('#srModal').find("select").each(function(index, select) {
+                $(select).select2({
+                    dropdownAutoWidth : true,
+                    width:'copy'});
+            });
+            $('#srModal-ok').focus();
+        });
+        if ($('.srValidated').length > 0) {
+            validateInputs();
+        }
+        document.querySelector('#srModal').open = true;
+        return new Promise((resolve,reject) => {
+            let isResolved = false;
+            $('#srModal-ok').on( "click.sr", function(event) {
+                if(callback) {
+                    try {
+                        callback();
+                    }catch(e) {
+                        $('#srModal-error').html(`<span class:'text-mono'>${escapeHTMLQuotesAnd$(e.message || e)}</span>`).attr('hidden',false);
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return;
+                    }
                 }
-            }
-            isResolved = true;
-            //remove any existing listener
-            $('#srModal-ok').off("click.sr");
-            $('#srModal').off("details-dialog-close.sr");
-            resolve();
+                isResolved = true;
+                //remove any existing listener
+                $('#srModal-ok').off("click.sr");
+                $('#srModal').off("details-dialog-close.sr");
+                resolve();
+            });
+            $('#srModal').on("details-dialog-close.sr", function(event) {
+                $('#srModal-ok').off("click.sr");
+                if(!isResolved) {
+                    $('srModal').off("details-dialog-close.sr");
+                    reject('User cancelled run');
+                }
+            });
         });
-        $('#srModal').on("details-dialog-close.sr", function(event) {
-            $('#srModal-ok').off("click.sr");
-            if(!isResolved) {
-                $('srModal').off("details-dialog-close.sr");
-                reject('User cancelled run');
-            }
-        });
-    });
-}
+    }
 
-function alertAndThrow(message, cause) {
-    alert(escapeHTMLStartTags(message));
-    throw new Error(message, cause ? {cause : cause} : null);
-}
+    function alertAndThrow(message, cause) {
+        alert(escapeHTMLStartTags(message));
+        throw new Error(message, cause ? {cause : cause} : null);
+    }
 
-function getCredentialsBroker() {
-    return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
-}
-//  ]]></>).toString(), { "targets": "> 0.25%, not dead"}).code);
+    function getCredentialsBroker() {
+        return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
+    }
+    //  ]]></>).toString(), { "targets": "> 0.25%, not dead"}).code);
 })();
