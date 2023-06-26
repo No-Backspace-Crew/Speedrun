@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.83
+// @version      1.84
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1446,7 +1446,7 @@ function showToolbarOnPage() {
 }
 
 function setFavIcon() {
-    let isVisible = $('#srToolbar').is(':visible');
+    let isVisible = isEnabledPath();
     let head = $('head');
     $('link[rel~="icon"]').each((i,el) => {
         el = $(el);
