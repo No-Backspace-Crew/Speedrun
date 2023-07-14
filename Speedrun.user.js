@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.85
+// @version      1.85.1
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -148,11 +148,11 @@
         retrieve(GM_info.scriptUpdateURL, false).then((value) => {
             let version = value.match(/\/\/\s*@version\s+(\d+\..*)/);
             if(version && version[1] && version[1] != lastUpdateCheck.version) {
-                lastUpdateCheck = getLatestVersion(version[1]);
+                lastUpdateCheck.version = getLatestVersion(version[1]);
                 GM_setValue(UPDATE_CHECK_KEY, lastUpdateCheck);
                 newSRVersion = lastUpdateCheck.version != GM_info.script.version ? lastUpdateCheck.version : undefined;
-                console.log(newSRVersion ? `New version found: V${newSRVersion}` : "No updates today");
             }
+            console.log(newSRVersion ? `New version found: V${newSRVersion}` : "No updates today");
         });
     }
 
@@ -1347,7 +1347,7 @@ input:checked + .slider:before {
             GM_xmlhttpRequest({
                 method: 'GET',
                 url,
-                headers: {'User-Agent': `Speedrun V${GM_info.script.version}`},
+                headers: {'User-Agent': `Speedrun V${GM_info.script.version}`,'Cache-Control': 'no-cache'},
                 onload: function(response) {
                     resolve(raw ? response : response.responseText);
                 },
@@ -2763,16 +2763,16 @@ ${variables.internal.preview}`;
         array.push(...Array(newLength - array.length).fill(padding));
     }
 
-    function getLatestVersion(remoteSemver) {
+    function getLatestVersion(remoteVersion) {
         let [latestVersion, localVersion] = Array(2).fill(GM_info.script.version);
         const semver = localVersion.split('.').map((v) => parseInt(v, 10));
-        remoteSemver = remoteSemver.split('.').map((v) => parseInt(v, 10));
+        const remoteSemver = remoteVersion.split('.').map((v) => parseInt(v, 10));
         if(semver.length != remoteSemver.length) {
             semver.length > remoteSemver.length ? rightPad(remoteSemver, semver.length, 0) : rightPad(semver, remoteSemver.length, 0);
         }
         for(const i in semver) {
             if (semver[i] < remoteSemver[i]) {
-                latestVersion = remoteSemver;
+                latestVersion = remoteVersion;
                 break;
             }
         }
