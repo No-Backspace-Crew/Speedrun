@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.85.2
+// @version      1.86
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -24,7 +24,6 @@
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getResourceText
 // @grant        GM_info
-// @grant        GM_cookie
 // @grant        GM_download
 // @grant        GM_addElement
 // @grant        window.onurlchange
@@ -277,48 +276,60 @@ function getFederationLink(roleArn, destination) {
     return url.toString();
 }
 
+function getCookie(cookieName) {
+  let name = `${cookieName}=`;
+  let decodedCookie = decodeURIComponent(document.cookie);
+  let cookies = decodedCookie.split(';');
+  for(let cookie of cookies) {
+    cookie = cookie.trimStart();
+    if (cookie.startsWith(name)){
+      return cookie.substring(name.length);
+    }
+  }
+  return undefined;
+}
+
 function addSpeedrunLink() {
     if($('#awsc-navigation__more-menu--list').length > 0) {
         if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
-            GM_cookie('list', { name: 'aws-userInfo' }, (cookies) => {
-                if(awsuserInfoCookieParsed) {
-                    return;
-                }
-                awsuserInfoCookieParsed = true;
-                let lastRolePersisted = false;
-                let region = $("meta[name='awsc-mezz-region']").attr("content");
-                if(cookies && cookies.length && region) {
-                    let userInfo = JSON.parse(unescape(cookies[0].value));
-                    const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
-                    let result = ARN_REGEX.exec(userInfo.arn);
-                    if(result) {
-                        console.log('Adding speedrun link');
-                        let [,arn, account, role] = result;
-                        persistIfNewRole(arn, region);
-                        lastRolePersisted=true;
-                        let navBar = $('#awsc-navigation__more-menu--list');
-                        let helpButton = navBar.first().find('button').first();
-                        let srLink = helpButton.clone();
-                        srLink.attr('id','speedRunLink');
-                        srLink.attr('title',`Speedrun Link in account: ${account} with role: ${role}`);
-                        srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
-                        srLink.on('click',(event)=>{
-                            let url = getFederationLink(arn,window.location.href);
-                            let curHtml = srLink.html();
-                            console.log('Speedrun link',url);
-                            GM_setClipboard(url);
-                            srLink.html('Copied!');
-                            setTimeout(()=>{srLink.html(curHtml)}, 2000);
+            if(awsuserInfoCookieParsed) {
+                return;
+            }
+            let cookie = getCookie('aws-userInfo');
+            awsuserInfoCookieParsed = true;
+            let lastRolePersisted = false;
+            let region = $("meta[name='awsc-mezz-region']").attr("content");
+            if(cookie && region) {
+                let userInfo = JSON.parse(cookie);
+                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
+                let result = ARN_REGEX.exec(userInfo.arn);
+                if(result) {
+                    console.log('Adding speedrun link');
+                    let [,arn, account, role] = result;
+                    persistIfNewRole(arn, region);
+                    lastRolePersisted=true;
+                    let navBar = $('#awsc-navigation__more-menu--list');
+                    let helpButton = navBar.first().find('button').first();
+                    let srLink = helpButton.clone();
+                    srLink.attr('id','speedRunLink');
+                    srLink.attr('title',`Speedrun Link in account: ${account} with role: ${role}`);
+                    srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
+                    srLink.on('click',(event)=>{
+                        let url = getFederationLink(arn,window.location.href);
+                        let curHtml = srLink.html();
+                        console.log('Speedrun link',url);
+                        GM_setClipboard(url);
+                        srLink.html('Copied!');
+                        setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
-                        });
-                        helpButton.before(srLink);
-                    }
+                    });
+                    helpButton.before(srLink);
                 }
-                if(!lastRolePersisted && !awsuserInfoCookieParsed) {
-                    persistIfNewRole();
-                    lastRolePersisted = true;
-                }
-            });
+            }
+            if(!lastRolePersisted && !awsuserInfoCookieParsed) {
+                persistIfNewRole();
+                lastRolePersisted = true;
+            }
         }
         return true;
     }
