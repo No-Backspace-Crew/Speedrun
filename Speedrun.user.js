@@ -2793,6 +2793,8 @@ function getLatestVersion(remoteVersion) {
         if (semver[i] < remoteSemver[i]) {
             latestVersion = remoteVersion;
             break;
+        } else if(semver[i] > remoteSemver[i]) {
+            break;
         }
     }
     return latestVersion;
