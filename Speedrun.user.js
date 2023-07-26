@@ -1003,10 +1003,10 @@ input:checked + .slider:before {
 </style>`);
         let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
+      <span id='toolbar'>
   <label id='srToggleTitle' class="switch">
   <input id='srEnabled' type="checkbox"><span class="slider round"></span>
       </label>
-      <span id='toolbar'>
       <select id="service" class="select-sm width-fit" aria-label="Service"></select>
       <span class='needsRegion'>
       <select id="region" class="select-sm width-fit" aria-label="Region"></select>
@@ -1151,6 +1151,7 @@ input:checked + .slider:before {
         dataAndEvents.srEnabled = { events: {'change': async (event) => {
             setEnabledPath(event.target.checked);
             if(event.target.checked) {
+                $('.srDone').remove();
                 await updatePage('srEnabled');
             } else {
                 location.reload();
