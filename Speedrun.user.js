@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.87
+// @version      1.88
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -277,16 +277,16 @@ function getFederationLink(roleArn, destination) {
 }
 
 function getCookie(cookieName) {
-  let name = `${cookieName}=`;
-  let decodedCookie = decodeURIComponent(document.cookie);
-  let cookies = decodedCookie.split(';');
-  for(let cookie of cookies) {
-    cookie = cookie.trimStart();
-    if (cookie.startsWith(name)){
-      return cookie.substring(name.length);
+    let name = `${cookieName}=`;
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let cookies = decodedCookie.split(';');
+    for(let cookie of cookies) {
+        cookie = cookie.trimStart();
+        if (cookie.startsWith(name)){
+            return cookie.substring(name.length);
+        }
     }
-  }
-  return undefined;
+    return undefined;
 }
 
 function addSpeedrunLink() {
@@ -2605,15 +2605,14 @@ async function wireUpContent() {
             const isEmbed = groups[1].startsWith('!');
             block++;
             //wrap the copy content with ticks.
+            let codeFence = "```";
+            while(code.includes(codeFence)){
+                codeFence+='`';
+            }
+            const wrappedCode = `${codeFence}\n${code}${codeFence}`;
             const copy = $(pre).parent().find('clipboard-copy');
-            if(copy.length && !copy.data('wrapped')){
-                let codeFence = "```";
-                let content = copy.attr("value");
-                while(content.includes(codeFence)){
-                    codeFence+='`';
-                }
-                copy.attr('value', `${codeFence}\n${escapeHTMLStartTags(content)}\n${codeFence}`);
-                copy.data('wrapped',true);
+            if(copy.length){
+                copy.attr('value', wrappedCode);
             }
             const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
             const actions = $('<div class="UnderlineNav-actions">');
@@ -2648,7 +2647,7 @@ async function wireUpContent() {
                 $(pre).attr('id',`Preview-${block}`);
                 dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
 
-                const codeTab = $(`<pre id='Code-${block}'><code>${copy.attr('value')}</code></pre>`).hide();
+                const codeTab = $(`<pre id='Code-${block}'><code>${escapeHTMLStartTags(wrappedCode)}</code></pre>`).hide();
                 const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
                 dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
                 $(pre).after(codeTab);
