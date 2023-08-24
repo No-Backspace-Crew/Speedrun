@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.88
+// @version      1.89
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -17,6 +17,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.1/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/html2canvas@1.4.1/html2canvas.min.js
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
@@ -120,7 +121,7 @@
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, html2canvas */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -400,9 +401,9 @@ function unescapeCloudwatchInsights(s) {
     let result = {};
     for(let seg of s.split(';')){
         try {
-            $.extend(result, JSON.parse(seg));
+            $.extend(result, JSON.parse(seg.split('&')[0]));
         }catch(error) {
-            console.log(error);
+            console.log(`Unable to parse: ${seg}`);
         }
     }
     return unescapeCloudwatchQueryDetails(result);
@@ -452,7 +453,28 @@ function convertDuration(timestamp) {
     return timestamp;
 }
 
-function extractCloudWatchTime() {
+function waitForSelector(selector, source = document) {
+    return new Promise(resolve => {
+        if (document.querySelector(selector)) {
+            return resolve(source.querySelector(selector));
+        }
+
+        const observer = new MutationObserver(mutations => {
+            if (source.querySelector(selector)) {
+                resolve(source.querySelector(selector));
+                observer.disconnect();
+            }
+
+        });
+
+        observer.observe(source.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
+function extractCloudWatchTimeAndAddSnapshot() {
     if (!/^\/cloudwatch\/home/.test(window.location.pathname)) {
         return;
     }
@@ -467,6 +489,35 @@ function extractCloudWatchTime() {
         case 'metricsV2:graph':
             obj = unescapeCloudwatchInsights(unescapeCloudwatch(hash));
             break;
+        case 'alarmsV2:alarm':
+            waitForSelector('#microConsole-Alarms').then(async (result) => {
+                while(result.contentWindow.document.readyState !== 'complete'){
+                    await sleep(500);
+                }
+                waitForSelector('div > button[data-test-id=btn-refresh]', result.contentWindow.document).then(
+                    async(refreshDiv) =>
+                    {
+                        if(!result.contentWindow.document.getElementById('srSnapshot')) {
+                            // sleep until refresh button stops spinning.
+                            while($(refreshDiv).attr('disabled') == 'disabled'){
+                                await sleep(100);
+                            }
+                            let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
+                            let snapshotDiv = $(refreshDiv).parent().clone();
+                            let snapshotButton = $(snapshotDiv).find('button');
+                            snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
+                            snapshotButton.off('click');
+                            let span = snapshotButton.find('span');
+                            span.find('svg').replaceWith($(svg));
+                            snapshotButton.on('click', (event)=> {
+                                domSnapshot(refreshDiv.ownerDocument.querySelector('.graph-section-content').parentElement, `CloudWatch-${dayjs().format()}.png`);
+                            });
+                            $(refreshDiv).parent().after(snapshotDiv);
+                        }
+                    }
+                );
+            });
+            return;
         default:
             return;
     }
@@ -494,6 +545,29 @@ function extractCloudWatchTime() {
             persistTimestamp(timestamp, TIMESTAMPS_KEY);
         }
     }
+    if(src=='logsV2:logs-insights') {
+        waitForSelector('#microConsole-Logs').then(async (result) => {
+            while(result.contentWindow.document.readyState !== 'complete'){
+                await sleep(500);
+            }
+            waitForSelector('.button-portal', result.contentWindow.document).then(
+                histogram =>
+                {
+                    if(!result.contentWindow.document.getElementById('snapshot')) {
+                        let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
+                        let snapshotButton = $(result.contentWindow.document).find('.button-portal > button').clone();
+                        snapshotButton.attr('id','snapshot').attr('title','Snapshot visualization');
+                        snapshotButton.find('svg').replaceWith(svg);
+                        snapshotButton.off('click');
+                        snapshotButton.on('click', (event)=> {
+                            domSnapshot(histogram.ownerDocument.querySelector('.logs__histogram') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                        });
+                        $(result.contentWindow.document).find('.button-portal').append(snapshotButton);
+                    }
+                }
+            );
+        });
+    }
 }
 
 function isSRPage() {
@@ -511,38 +585,20 @@ function isSRPage() {
 }
 
 if(location.host.endsWith('console.aws.amazon.com')) {
-    window.addEventListener('hashchange', extractCloudWatchTime, false);
+    window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
     let bodyList = document.querySelector("body");
-    let observer = new MutationObserver((mutations, o) => {
-        if(addSpeedrunLink()) {
-            o.disconnect();
-        }
-    });
-    if(!addSpeedrunLink()) {
-        observer.observe(bodyList, {attributeFilter: [ "data-testid"], childList:true});
-    }
-    extractCloudWatchTime();
-    return;
-}
-
-function waitForSelector(selector) {
-    return new Promise(resolve => {
-        if (document.querySelector(selector)) {
-            return resolve(document.querySelector(selector));
-        }
-
-        const observer = new MutationObserver(mutations => {
-            if (document.querySelector(selector)) {
-                resolve(document.querySelector(selector));
-                observer.disconnect();
+    if(bodyList) {
+        let observer = new MutationObserver((mutations, o) => {
+            if(addSpeedrunLink()) {
+                o.disconnect();
             }
         });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
+        if(!addSpeedrunLink()) {
+            observer.observe(bodyList, {attributeFilter: [ "data-testid"], childList:true});
+        }
+        extractCloudWatchTimeAndAddSnapshot();
+    }
+    return;
 }
 
 const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
@@ -2457,8 +2513,10 @@ function getServices(pageConfig) {
     let services = nullSafe(nullSafe(pageConfig).services);
     if(services) {
         let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
+        // hide user service if there is > 1 service or hide user service is true
+        let hideUserService = (Object.keys(services).length > 1 && !pageConfig[SR_HIDE_USER_SERVICE]) || pageConfig[SR_HIDE_USER_SERVICE] == true
         for(const [service, config] of Object.entries(services)) {
-            if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && pageConfig[SR_HIDE_USER_SERVICE])) {
+            if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && hideUserService)) {
                 result[service] = {name : service,
                                    dropdownName:getServiceDropdownName(service),
                                    config: getServiceVariables(service, services),
@@ -2798,6 +2856,20 @@ function getLatestVersion(remoteVersion) {
         }
     }
     return latestVersion;
+}
+
+function domSnapshot(element, filename){
+    html2canvas(element, {
+        useCORS: true,
+        allowTaint: true,
+        logging: false}).then(function(canvas) {
+        const imgURI = canvas.toDataURL('image/png').replace('image/png', 'image/octet-stream');
+        const download = element.ownerDocument.createElement('a');
+        download.href = imgURI;
+        download.download = filename;
+        download.click();
+        download.remove();
+    });
 }
 
 function srUpdateClickHandler(event) {
