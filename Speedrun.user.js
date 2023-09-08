@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.89
+// @version      1.90
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1980,7 +1980,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         break;
                     default:
                         input = $('<input>', {size:firstNonNull(info.configuration.size,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
-                        input.val(info.interpolatedValue);
+                        info.configuration.type == 'password' ? input.attr('type', 'password') : input.val(info.interpolatedValue);
                         break;
                 }
                 input.data('prompt', info);
@@ -2095,9 +2095,11 @@ async function nope(content, preview = false, anchor, runBtn) {
                             }
                             if(prompt.variable) {
                                 variables[prompt.variable] = transformedValue;
-                                prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
-                            } else {
-                                localStorage.setItem(prompt.prompt, value);
+                                if(prompt.type != 'password') {
+                                    prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
+                                }
+                            } else if(prompt.type != 'password') {
+                                 localStorage.setItem(prompt.prompt, value);
                             }
                             let suffix = "";
                             if(prompt.configuration.suppress){
@@ -2518,7 +2520,7 @@ function getServices(pageConfig) {
     if(services) {
         let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
         // hide user service if there is > 1 service or hide user service is true
-        let hideUserService = (Object.keys(services).length > 1 && !pageConfig[SR_HIDE_USER_SERVICE]) || pageConfig[SR_HIDE_USER_SERVICE] == true
+        let hideUserService = (Object.keys(services).length > 1 && pageConfig[SR_HIDE_USER_SERVICE]) != false || pageConfig[SR_HIDE_USER_SERVICE] == true
         for(const [service, config] of Object.entries(services)) {
             if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && hideUserService)) {
                 result[service] = {name : service,
