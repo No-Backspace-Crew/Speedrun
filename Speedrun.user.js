@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.90
+// @version      1.91
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -307,6 +307,7 @@ function addSpeedrunLink() {
                 if(result) {
                     console.log('Adding speedrun link');
                     let [,arn, account, role] = result;
+                    arn = `arn:aws:iam::${account}:role/${role}`;
                     persistIfNewRole(arn, region);
                     lastRolePersisted=true;
                     let navBar = $('#awsc-navigation__more-menu--list');
@@ -810,6 +811,7 @@ let templates = {
             "API Gateway": "apigateway",
             "Athena": "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
+            "Billing": "billing",
             "Certificate Manager": "acm",
             "CloudFormation": "cloudformation",
             "CloudFront": "cloudfront/v3/home?region=us-east-1",
@@ -820,6 +822,7 @@ let templates = {
             "CloudWatch Logs": "cloudwatch/home?region=${region}#logsV2:log-groups",
             "CloudWatch Logs Insights": "cloudwatch/home?region=${region}#logsV2:logs-insights",
             "CloudWatch Metrics": "cloudwatch/home?region=${region}#metricsV2:",
+            "CloudWatch X-Ray": "cloudwatch/home?region=${region}#xray:traces",
             "CodeBuild": "codesuite/codebuild/projects?region=${region}",
             "CodeDeploy": "codedeploy",
             "Cognito" : "cognito",
@@ -831,6 +834,7 @@ let templates = {
             "EventBridge": "events",
             "Home": "console",
             "IAM": "iamv2",
+            "Identity Center": "singlesignon",
             "Kinesis": "kinesis",
             "KMS": "kms",
             "Lambda": "lambda",
@@ -2796,7 +2800,7 @@ function dialog(body, title, callback, footerContent, dangerous) {
         $('#srModal').find("select").each(function(index, select) {
             $(select).select2({
                 dropdownAutoWidth : true,
-                width:'copy'});
+                width:'style'});
         });
         $('#srModal-ok').focus();
     });
