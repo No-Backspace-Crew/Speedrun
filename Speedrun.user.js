@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.91
+// @version      1.92
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -18,6 +18,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.1/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.28/dist/index.js
+// @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_deleteValue
