@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.92
+// @version      1.93
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -15,9 +15,9 @@
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp-all.js
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.1/srInvoke.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.28/dist/index.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.31/dist/index.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -2839,8 +2839,12 @@ function dialog(body, title, callback, footerContent, dangerous) {
 }
 
 function alertAndThrow(message, cause) {
+    console.log(cause || message);
     alert(escapeHTMLStartTags(message));
-    throw new Error(message, cause ? {cause : cause} : null);
+    if(message instanceof Error && !cause) {
+        throw new Error(message);
+    }
+    throw cause || message;
 }
 
 function getCredentialsBroker() {
