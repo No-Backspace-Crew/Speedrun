@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.93
+// @version      1.94
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -214,15 +214,16 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
         switch(variables.internal.templateType) {
             case 'federate':
                 return {
-                    url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl) : variables.internal.consoleUrl
+                    url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl, variables.roleDuration) : variables.internal.consoleUrl
                 }
                 break;
             case 'copy':
-                return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\nunset AWS_CREDENTIAL_EXPIRATION\n' + variables.internal.result + "\nfi";
+                variables.internal.duration = normalizeDuration(variables.roleDuration);
+                return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
                 break;
             case 'lambda':
             case 'stepfunction':
-                return getWebCredentials(variables.account, variables.role, variables.forceNewCreds);
+                return getWebCredentials(variables.account, variables.role, variables.forceNewCreds, variables.roleDuration);
                 break;
         }
     }
@@ -271,10 +272,12 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
 });
 var lastPath = location.pathname + location.search;
 
-function getFederationLink(roleArn, destination) {
+function getFederationLink(roleArn, destination, duration) {
+    const normalizedDuration = normalizeDuration(duration);
     let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
     url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+    url.searchParams.append('duration', normalizedDuration);
     return url.toString();
 }
 
@@ -362,7 +365,7 @@ function unescapeCloudwatchLogs(s) {
 function unescapeCloudwatchQueryDetails(obj){
     if (_.isString(obj) && obj.includes('*')) {
         try {
-        return decodeURIComponent(obj.replace(/\*/g,'%'));
+            return decodeURIComponent(obj.replace(/\*/g,'%'));
         } catch(e) {
             return obj;
         }
@@ -720,8 +723,8 @@ const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/[^\/]+\.md)|(\/tr
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
-const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
-const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
+const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}", "duration":$\{internal.duration}}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
+const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\nexport AWS_REGION=$\{region}\n`;
@@ -1460,14 +1463,16 @@ function invoke(request, raw=false) {
     });
 }
 
-async function getWebCredentials(account, role, forceNewCreds) {
+async function getWebCredentials(account, role, forceNewCreds, duration) {
     const cacheKey = `${account}:${role}`;
     const cachedCredentials = credentialsCache[cacheKey];
-    if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration)) {
+    if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
         console.log('Using cached credentials');
         return cachedCredentials.credentials;
     }
-    let result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+    const normalizedDuration = normalizeDuration(duration);
+    const webCredentialsUrl = `${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}&duration=${normalizedDuration}`;
+    let result = await retrieve(webCredentialsUrl, true);
     // if it redirects to github auth
     if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
         //authenticate in a popup
@@ -1495,7 +1500,7 @@ async function getWebCredentials(account, role, forceNewCreds) {
             popup.close();
         }
         // try again to get credentials
-        result = await retrieve(`${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}`, true);
+        result = await retrieve(webCredentialsUrl, true);
         if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
             throw new Error('Unable to get credentials: GitHub authentication failed');
         }
@@ -1508,7 +1513,7 @@ async function getWebCredentials(account, role, forceNewCreds) {
         let parsed = JSON.parse(result.responseText);
         let credentials = {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken}
         let expiration = dayjs(parsed.Expiration).valueOf();
-        credentialsCache[cacheKey] = {expiration,credentials};
+        credentialsCache[cacheKey] = {expiration,credentials,duration:(expiration-Date.now())/1000};
         return {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken};
     }
 }
@@ -1744,7 +1749,7 @@ var exposedFunctions = {
     slugify: slugify,
     stringify: stringify,
     bashEscape: bashEscape,
-    _ : _
+    _ : _,
 }
 
 function injectCustomFunctions(variables) {
@@ -2104,7 +2109,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                                     prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
                                 }
                             } else if(prompt.type != 'password') {
-                                 localStorage.setItem(prompt.prompt, value);
+                                localStorage.setItem(prompt.prompt, value);
                             }
                             let suffix = "";
                             if(prompt.configuration.suppress){
@@ -2648,20 +2653,42 @@ function persistIfNewRole(roleArn, region) {
     }
 }
 
-function needsRefresh(expiration) {
-    return expiration <= (Date.now()+(5*60000))
+// if duration <= 12 it's in hours
+// if duration <= 720 it's in minutes
+// if duration > 720 it's in seconds
+// if missing it's 1 hour
+function normalizeDuration(duration = 3600) {
+    const originalDuration = duration;
+    if(!isNumeric(duration) || duration <= 0 || duration > 43200) {
+        throw new Error('${duration} is an invalid duration');
+    }
+    if (duration <= 12) {
+        duration *= 3600;
+    } else if (duration <= 720) {
+        duration *= 60;
+    }
+    if(duration < 15*60) {
+        throw new Error(`Invalid duration: ${originalDuration} minimum duration is 15 minutes`);
+    }
+    return duration;
+}
+
+// Refresh 5 minutes before expiration if duration is >= 1 hour else 2 minutes before expiration
+function needsRefresh(expiration, duration=3600) {
+    return expiration <= (Date.now()+((duration >= 3600 ? 5 : 2) *60000))
 }
 
 function needsNewCreds(variables) {
     const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.role != variables[credentialsBroker.getCacheKey()]);
-    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration) || lastCreds.region != variables.region);
+    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.role != variables[credentialsBroker.getCacheKey()]);
+    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.region != variables.region);
     return variables.internal.newCreds
 }
 
 function persistLastRole(variables) {
     if(variables.internal.newCreds) {
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration: Date.now() + (60*60*1000)});
+        let normalizedDuration = normalizeDuration(variables.roleDuration);
+        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration: Date.now() + (normalizedDuration*1000), duration: normalizedDuration});
     }
 }
 
