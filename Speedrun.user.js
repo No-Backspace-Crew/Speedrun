@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.94
+// @version      1.95
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -12,8 +12,8 @@
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/utc.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/duration.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/relativeTime.js
-// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp-all.js
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
+// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
