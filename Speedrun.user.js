@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.95
+// @version      1.96
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -12,6 +12,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/utc.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/duration.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/relativeTime.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@0.9.3/dayjs-parser.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
@@ -263,6 +264,7 @@ let credentialsBroker = getCredentialsBroker();
 dayjs.extend(window.dayjs_plugin_utc);
 dayjs.extend(window.dayjs_plugin_duration);
 dayjs.extend(window.dayjs_plugin_relativeTime);
+dayjs.extend(window.dayjs_plugin_dayjs_parser);
 DOMPurify.addHook('afterSanitizeAttributes', function (node) {
     // set all elements owning target to target=_blank
     if ('target' in node) {
@@ -2723,7 +2725,7 @@ async function wireUpContent() {
             var index = 0;
             for (const [key, value] of Object.entries(tabNames)) {
                 const localBlock = block;
-                let tab = $(`<a id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></a>`);
+                let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
                 navBody.append(tab);
                 dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
                     for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
