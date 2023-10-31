@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.96
+// @version      1.97
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -18,7 +18,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.31/dist/index.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.33/modern-screenshot.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -117,13 +117,40 @@
 // @connect      lambda-url.me-south-1.on.aws
 // @connect      lambda-url.me-central-1.on.aws
 // @connect      lambda-url.sa-east-1.on.aws
+// @connect      cloudformation.us-east-1.amazonaws.com
+// @connect      cloudformation.us-east-2.amazonaws.com
+// @connect      cloudformation.us-west-1.amazonaws.com
+// @connect      cloudformation.us-west-2.amazonaws.com
+// @connect      cloudformation.af-south-1.amazonaws.com
+// @connect      cloudformation.ap-east-1.amazonaws.com
+// @connect      cloudformation.ap-south-2.amazonaws.com
+// @connect      cloudformation.ap-southeast-3.amazonaws.com
+// @connect      cloudformation.ap-southeast-4.amazonaws.com
+// @connect      cloudformation.ap-south-1.amazonaws.com
+// @connect      cloudformation.ap-northeast-3.amazonaws.com
+// @connect      cloudformation.ap-northeast-2.amazonaws.com
+// @connect      cloudformation.ap-southeast-1.amazonaws.com
+// @connect      cloudformation.ap-southeast-2.amazonaws.com
+// @connect      cloudformation.ap-northeast-1.amazonaws.com
+// @connect      cloudformation.ca-central-1.amazonaws.com
+// @connect      cloudformation.eu-central-1.amazonaws.com
+// @connect      cloudformation.eu-central-2.amazonaws.com
+// @connect      cloudformation.eu-west-1.amazonaws.com
+// @connect      cloudformation.eu-west-2.amazonaws.com
+// @connect      cloudformation.eu-south-1.amazonaws.com
+// @connect      cloudformation.eu-west-3.amazonaws.com
+// @connect      cloudformation.eu-north-1.amazonaws.com
+// @connect      cloudformation.eu-south-2.amazonaws.com
+// @connect      cloudformation.me-south-1.amazonaws.com
+// @connect      cloudformation.me-central-1.amazonaws.com
+// @connect      cloudformation.sa-east-1.amazonaws.com
 // @connect      speedrun.nobackspacecrew.com
 // @updateURL    https://speedrun.nobackspacecrew.com/userscripts/Speedrun.meta.js
 // @downloadURL  https://speedrun.nobackspacecrew.com/userscripts/Speedrun.user.js
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, modernScreenshot */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, domToPng */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -131,10 +158,16 @@
     let updatingPageTimer = undefined;
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
-    let favIcons = {false:{},true:{}};
+    let favIcons = {
+        false:{},
+        true:{}
+};
  let curRegion = undefined;
  let dataAndEvents = {};
 let credentialsCache = {};
+let stackCache = {};
+const AsyncFunction = async function () {}.constructor;
+
 
 const STORAGE_NAMESPACE = 'SR:';
 
@@ -212,7 +245,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
         }
     }
     async getCredentials(variables) {
-        switch(variables.internal.templateType) {
+        switch(variables.internal.credentialsType || variables.internal.templateType) {
             case 'federate':
                 return {
                     url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl, variables.roleDuration) : variables.internal.consoleUrl
@@ -220,11 +253,12 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
                 break;
             case 'copy':
                 variables.internal.duration = normalizeDuration(variables.roleDuration);
-                return interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
+                return await interpolate(COPY_WITH_CREDS.replace('CREDS_REQUEST', CREDS_REQUEST),variables,false) + '\nif [ $? -eq 0 ]; then\nunset AWS_PROFILE\n' + variables.internal.result + "\nfi";
                 break;
             case 'lambda':
             case 'stepfunction':
-                return getWebCredentials(variables.account, variables.role, variables.forceNewCreds, variables.roleDuration);
+            case 'cfn':
+                return await getWebCredentials(variables.account, variables.role, variables.forceNewCreds, variables.roleDuration);
                 break;
         }
     }
@@ -249,7 +283,7 @@ class GrantedCredentialsBroker extends CredentialsBroker {
     }
     async getCredentials(variables) {
         return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
-        : interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+        : await interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
     }
     getCacheKey() {
         return 'profile';
@@ -466,7 +500,7 @@ function convertDuration(timestamp) {
 
 function waitForSelector(selector, source = document) {
     return new Promise(resolve => {
-        if (document.querySelector(selector)) {
+        if (source.querySelector(selector)) {
             return resolve(source.querySelector(selector));
         }
 
@@ -556,24 +590,39 @@ function extractCloudWatchTimeAndAddSnapshot() {
             persistTimestamp(timestamp, TIMESTAMPS_KEY);
         }
     }
+
     if(src=='logsV2:logs-insights') {
         waitForSelector('#microConsole-Logs').then(async (result) => {
             while(result.contentWindow.document.readyState !== 'complete'){
                 await sleep(500);
             }
-            waitForSelector('.button-portal', result.contentWindow.document).then(
+            const buttonPortalSelector = '.query-detail-tab-button-options';
+            waitForSelector(buttonPortalSelector, result.contentWindow.document).then(
                 histogram =>
                 {
-                    if(!result.contentWindow.document.getElementById('snapshot')) {
+                    if(!result.contentWindow.document.getElementById('srSnapshot')) {
                         let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
-                        let snapshotButton = $(result.contentWindow.document).find('.button-portal > button').clone();
-                        snapshotButton.attr('id','snapshot').attr('title','Snapshot visualization');
-                        snapshotButton.find('svg').replaceWith(svg);
+                        let isLargeButton = false;
+                        let snapshotButton = $(histogram).find('> button');
+                        if (!snapshotButton.length) {
+                            snapshotButton = $(histogram).find('button');
+                            isLargeButton = true;
+                        }
+                        snapshotButton = snapshotButton.first().clone();
+                        snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
+                        if (isLargeButton) {
+                            snapshotButton.addClass('logs--button-separator-left');
+                            snapshotButton.find('span').text('Snapshot');
+                        } else {
+                            snapshotButton.find('svg').replaceWith(svg);
+                        }
                         snapshotButton.off('click');
                         snapshotButton.on('click', (event)=> {
-                            domSnapshot(histogram.ownerDocument.querySelector('.logs__histogram') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                            if(histogram) {
+                                domSnapshot(histogram.ownerDocument.querySelector('.logs__histogram') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                            }
                         });
-                        $(result.contentWindow.document).find('.button-portal').append(snapshotButton);
+                        $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
                     }
                 }
             );
@@ -1240,6 +1289,7 @@ input:checked + .slider:before {
             GM_deleteValue(`${LAST_CREDS}federate`);
             GM_deleteValue(`${LAST_CREDS}copy`);
             credentialsCache = {};
+            stackCache = {};
             toast('Credentials flushed');
         }}};
     }
@@ -1407,14 +1457,14 @@ function persistTimestamp(timestamp, key, maxLength=5){
 }
 
 //https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
-function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
+async function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
     try {
         sessionVariables = variables;
-        let keys = Object.keys(variables).filter(key => cachedValidVarName(key)),
-            //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
-            fn = new Function(...keys,`return \`${tpl}\`;`);
+        let keys = Object.keys(variables).filter(key => cachedValidVarName(key));
+        //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
 
-        let result = fn(...keys.map(x => variables[x]));
+        let fn = tpl.includes('await ') ? new AsyncFunction(...keys,`return \`${tpl}\``) : new Function(...keys,`return \`${tpl}\`;`);
+        let result = await fn(...keys.map(x => variables[x]));
         if(!suppressErrors && hasDOMContent(result)){
             throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
         }
@@ -1463,6 +1513,80 @@ function invoke(request, raw=false) {
             }
         });
     });
+}
+
+function xml2json(xml) {
+    var obj = {};
+    if (xml.children.length > 0) {
+        for (var i = 0; i < xml.children.length; i++) {
+            var item = xml.children.item(i);
+            var nodeName = item.nodeName;
+            if (typeof (obj[nodeName]) == "undefined") {
+                obj[nodeName] = xml2json(item);
+            } else {
+                if (typeof (obj[nodeName].push) == "undefined") {
+                    var old = obj[nodeName];
+
+                    obj[nodeName] = [];
+                    obj[nodeName].push(old);
+                }
+                obj[nodeName].push(xml2json(item));
+            }
+        }
+    } else {
+        obj = xml.textContent;
+    }
+    return obj;
+}
+
+function formatDescribeStacks(obj){
+    let result = {outputs:{}, tags:{}};
+    for(let output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Outputs.member)) {
+        result.outputs[output.OutputKey] = output.OutputValue;
+    }
+    for(const output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Tags.member)) {
+        result.tags[output.Key] = output.Value;
+    }
+    result.creationTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.CreationTime
+    result.lastUpdatedTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.LastUpdatedTime
+    result.arn = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.StackId.replaceAll(/\/[^\/]+$/g,'');
+    return result;
+}
+
+function acfn(name, path, region) {
+    let regionPortion = region && region!=sessionVariables.region ? ",'${region}":"";
+    return `\$\{(await cfn('${name}'${regionPortion})).${path}\}`;
+}
+
+async function cfn(name, region) {
+    //if in preview mode, throw an exception to prevent making external calls
+    if(!sessionVariables.internal.running || sessionVariables.internal.pass != 2) {
+        throw new Error('Not available in preview');
+    }
+    region = region || sessionVariables.region;
+    const stackCacheKey = `${sessionVariables.account}:${region}:${name}`;
+    let result = stackCache[stackCacheKey];
+    if(!result){
+        sessionVariables.internal.credentialsType = 'cfn';
+        credentialsBroker.validate(sessionVariables);
+        let credentials = await credentialsBroker.getCredentials(sessionVariables);
+        delete sessionVariables.internal.credentialsType;
+        let headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8', 'User-Agent': `Speedrun V${GM_info.script.version}`};
+        let params = new URLSearchParams();
+        params.append('Action','DescribeStacks');
+        params.append('Version','2010-05-15');
+        params.append('StackName',name);
+        const request = await srInvoke.invokeService(credentials, 'cloudformation', region, new URL(`https://cloudformation.${region}.amazonaws.com/`),'POST',headers,params.toString());
+        let response = await invoke(request, true);
+        if(response.status != 200) {
+            throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+        }
+        let describeStack = formatDescribeStacks(xml2json(new DOMParser().parseFromString(response.responseText,"application/xml")));
+        console.log(`Caching ${stackCacheKey}`,describeStack);
+        stackCache[stackCacheKey] = describeStack;
+        result = describeStack;
+    }
+    return result;
 }
 
 async function getWebCredentials(account, role, forceNewCreds, duration) {
@@ -1520,12 +1644,12 @@ async function getWebCredentials(account, role, forceNewCreds, duration) {
     }
 }
 
-function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
+async function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
     let offset = str.indexOf('${');
     while(offset>-1 && !variables.raw) {
         let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
         let toReplace = "${" + matches[0] + "}";
-        let replacement = wrap(interpolate(toReplace, variables, suppressErrors), toReplace);
+        let replacement = wrap(await interpolate(toReplace, variables, suppressErrors), toReplace);
         str = str.substring(0,offset) + str.substring(offset).replace(toReplace,()=>replacement);
         offset = str.indexOf('${',offset+replacement.length);
     }
@@ -1533,18 +1657,18 @@ function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
 }
 
 //recursively interpolate variables in arrays and dicts
-function deepInterpolate(obj, variables, suppressErrors){
+async function deepInterpolate(obj, variables, suppressErrors){
     if (_.isString(obj) && obj.match(LITERAL)) {
-        return interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
+        return await interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
     } else if(isDict(obj)){
         for (const [key, value] of Object.entries(obj)) {
-            let result = deepInterpolate(value, variables, suppressErrors);
+            let result = await deepInterpolate(value, variables, suppressErrors);
             if(result) {
                 obj[key] = result;
             }
         }
     } else if(Array.isArray(obj)) {
-        obj = obj.map(item => deepInterpolate(item, variables, suppressErrors));
+        obj = obj.map(async (item) => await deepInterpolate(item, variables, suppressErrors));
     }
     return obj;
 }
@@ -1752,6 +1876,8 @@ var exposedFunctions = {
     stringify: stringify,
     bashEscape: bashEscape,
     _ : _,
+    cfn: cfn,
+    acfn:acfn
 }
 
 function injectCustomFunctions(variables) {
@@ -1885,6 +2011,7 @@ async function nope(content, preview = false, anchor, runBtn) {
     let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService(), content: content.replace(HEADER,"").replace(/\s+$/,"")};
     let details = parseContent(content);
     variables.internal.showPin = details.service != undefined;
+    variables.internal.running = !preview;
     variables.service = firstNonNull(details.service, variables.service);
     if(variables.service) {
         variables.srServiceName = getServiceDropdownName(variables.service);
@@ -1941,7 +2068,7 @@ async function nope(content, preview = false, anchor, runBtn) {
             const div = $('<div>');
             const table = $('<table>');
             div.append(table);
-            variables.internal.prompts.forEach(prompt => {
+            for(const prompt of variables.internal.prompts) {
                 const info = getPromptInfo(prompt.prompt);
                 const row = $('<tr>');
                 const header = $('<td>', {class: 'p-1 text-right v-align-top'})
@@ -1949,8 +2076,8 @@ async function nope(content, preview = false, anchor, runBtn) {
                 header.append(label);
                 row.append(header);
                 let input = undefined;
-                info.interpolatedDefault = firstNonNull(interpolate(firstNonNull(info.default,""),variables, true), info.default);
-                info.interpolatedValue = firstNonNull(interpolate(firstNonNull(info.value,""),variables, true), info.value);
+                info.interpolatedDefault = firstNonNull(await interpolate(firstNonNull(info.default,""),variables, true), info.default);
+                info.interpolatedValue = firstNonNull(await interpolate(firstNonNull(info.value,""),variables, true), info.value);
                 info.location = prompt.location;
                 let interpolatedDefaultText;
                 switch(info.configuration.type) {
@@ -1964,7 +2091,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                             if(options && (typeof options === 'string')) {
                                 let literal = options.match(LITERAL);
                                 if(literal){
-                                    options = interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
+                                    options = await interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
                                 }
                                 options = parseJSON(options);
                             }
@@ -2031,7 +2158,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 row.append(col);
                 table.append(row);
-            });
+            };
 
             try {
                 let isSettings = variables.internal.templateName === 'settings';
@@ -2061,7 +2188,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 let label = runBtn ? runBtn.attr('aria-label') : undefined;
                 await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, function() {
-                    $('#srModal :input' ).not(':input[type=button],button').each(function() {
+                    $('#srModal :input' ).not(':input[type=button],button').each(async function() {
                         const prompt = $(this).data('prompt');
                         if(prompt) {
                             const value = getInputValue($(this));
@@ -2071,7 +2198,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                                 console.log('Value Before:', value);
                                 variables.value = value;
                                 try {
-                                    transformedValue = interpolate(`\${${prompt.configuration.transform}}`, variables, false, false);
+                                    transformedValue = await interpolate(`\${${prompt.configuration.transform}}`, variables, false, false);
                                 } catch(e) {
                                     throw new Error(`Unable to run transform: ${prompt.configuration.transform} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
                                 }
@@ -2134,23 +2261,26 @@ async function nope(content, preview = false, anchor, runBtn) {
 
         }
     }
+
     if(!variables.raw){
         // interpolate variables using 2 passes to account for variables that are defined later
-        [1,2].forEach((pass) => {
-            Object.entries(variables).forEach(([key, value]) => {
+        for(let pass of [1,2]){
+            variables.internal.pass = pass;
+            for(let [key, value] of Object.entries(variables)) {
                 if(key == 'internal') {
-                    return;
+                    continue;
                 }
-                const result = deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
+                const result = await deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
                 if(result) {
                     variables[key] = result;
                 }
-            })});
+            }
+        };
     }
 
     //turn off raw so variables get interpolated in the template
     const raw = variables.raw;
-    variables.internal.result = deepInterpolate(variables.internal.template, $.extend(variables,{raw:false}), variables.ignoreErrors || preview);
+    variables.internal.result = await deepInterpolate(variables.internal.template, $.extend(variables,{raw:false}), variables.ignoreErrors || preview);
     variables.raw = raw;
 
     if(!preview) {
@@ -2173,7 +2303,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         }
                         variables.internal.result = await credentialsBroker.getCredentials(variables);
                     } else if(variables.internal.newRegion) {
-                        variables.internal.result = interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
+                        variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                     }
                     GM_setClipboard(variables.internal.result);
                     toast("📋 Copied");
@@ -2485,7 +2615,7 @@ function updateTabs() {
         const variables = await nope(btn.data('code'), true);
         try {
             if(variables.internal.templateType != 'iframe' || (variables.internal.templateType == 'iframe' && variables.internal.prompts && variables.internal.prompts.length)) {
-                $(`#${btn.data('previewTab')}`).first("code").html(buildPreview(variables));
+                $(`#${btn.data('previewTab')}`).first("code").html(await buildPreview(variables));
             } else {
                 btn.hide();
                 injectIFrame($(`#${btn.data('previewTab')}`).first('code').get(0), variables);
@@ -2615,13 +2745,13 @@ async function buildConfig(enabled) {
         }
         //smash configs together
         if(hasElements(configs)) {
-            configs.forEach(config => {
+            for(const config of configs){
                 if(config.templates) {
                     templates = $.extend(true, templates, config.templates);
                     delete config.templates;
                 }
                 pageConfig = $.extend(true, pageConfig, config);
-            });
+            };
         }
         if(pageConfig.srShowConfig || numPreBlocks == 1){
             $('.srConfig[title^="Show"]').trigger('click');
@@ -2782,14 +2912,14 @@ function colorizePrompts(content, variables) {
     }) : content;
 }
 
-function colorizeLiterals(content, variables) {
-    return interpolateLiteralsInString(content, variables, true,
-                                       (result, match) =>
-                                       {let escaped = escapeHTMLQuotesAnd$(match);
-                                        return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}" style='box-decoration-break: clone;'>${whitespaceToHTML(firstNonNull(result, match))}</span>`});
+async function colorizeLiterals(content, variables) {
+    return await interpolateLiteralsInString(content, variables, true,
+                                             (result, match) =>
+                                             {let escaped = escapeHTMLQuotesAnd$(match);
+                                              return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}" style='box-decoration-break: clone;'>${whitespaceToHTML(firstNonNull(result, match))}</span>`});
 }
 
-function buildPreview(variables) {
+async function buildPreview(variables) {
     let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName.replaceAll(/^!/g,'') != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
 ${variables.internal.preview}`;
     preview = colorizeComments(preview, variables);
@@ -2797,7 +2927,7 @@ ${variables.internal.preview}`;
     if(variables.content == variables.internal.template){
         variables.content = "";
     }
-    return colorizeLiterals(preview, variables);
+    return await colorizeLiterals(preview, variables);
 }
 
 $(document).on('select2:open', () => {
@@ -2903,8 +3033,8 @@ function getLatestVersion(remoteVersion) {
 }
 
 function domSnapshot(element, filename){
-    modernScreenshot.domToPng(element,{scale:2}).then(imgURI => {
-        const download = element.ownerDocument.createElement('a');
+    domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style}).then(imgURI => {
+        const download = GM_addElement('a');
         download.href = imgURI;
         download.download = filename;
         download.click();
