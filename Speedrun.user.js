@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.97.1
+// @version      1.97.2
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1460,11 +1460,13 @@ function persistTimestamp(timestamp, key, maxLength=5){
 async function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
     try {
         sessionVariables = variables;
-        let keys = Object.keys(variables).filter(key => cachedValidVarName(key));
+        let keys = Object.keys(variables).filter(key => cachedValidVarName(key) && key !== 'internal');
+//        keys.delete
         //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
+        let isAsync = tpl.includes('await ');
 
-        let fn = tpl.includes('await ') ? new AsyncFunction(...keys,`return \`${tpl}\``) : new Function(...keys,`return \`${tpl}\`;`);
-        let result = await fn(...keys.map(x => variables[x]));
+        let fn = isAsync ? new AsyncFunction(...keys,`return \`${tpl}\``) : new Function(...keys,`return \`${tpl}\``);
+        let result = isAsync ? await fn(...keys.map(x => variables[x])) : fn(...keys.map(x => variables[x]));
         if(!suppressErrors && hasDOMContent(result)){
             throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
         }
@@ -1668,7 +1670,7 @@ async function deepInterpolate(obj, variables, suppressErrors){
             }
         }
     } else if(Array.isArray(obj)) {
-        obj = obj.map(async (item) => await deepInterpolate(item, variables, suppressErrors));
+        obj = Promise.all(obj.map(async (item) => await deepInterpolate(item, variables, suppressErrors)));
     }
     return obj;
 }
