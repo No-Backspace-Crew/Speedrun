@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.97
+// @version      1.97.1
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2187,7 +2187,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     });
                 }
                 let label = runBtn ? runBtn.attr('aria-label') : undefined;
-                await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, function() {
+                await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, async function() {
                     $('#srModal :input' ).not(':input[type=button],button').each(async function() {
                         const prompt = $(this).data('prompt');
                         if(prompt) {
@@ -2970,10 +2970,10 @@ function dialog(body, title, callback, footerContent, dangerous) {
     document.querySelector('#srModal').open = true;
     return new Promise((resolve,reject) => {
         let isResolved = false;
-        $('#srModal-ok').on( "click.sr", function(event) {
+        $('#srModal-ok').on( "click.sr", async function(event) {
             if(callback) {
                 try {
-                    callback();
+                    await callback();
                 }catch(e) {
                     $('#srModal-error').html(`<span class:'text-mono'>${escapeHTMLQuotesAnd$(e.message || e)}</span>`).attr('hidden',false);
                     event.preventDefault();
