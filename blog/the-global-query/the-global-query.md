@@ -1,4 +1,6 @@
 # Global Query
+This is a companion to this [blog post](https://speedrun.nobackspacecrew.com/blog/2023/11/14/the-global-query.html)
+
 A couple of notes about this block:
 
 1. It is assumed that you have followed the instructions to create [Speedrun roles in your accounts](https://github.com/No-Backspace-Crew/Speedrun/wiki/Creating-Speedrun-Roles) and followed the necessary steps to [authenticate your command line for use with Speedrun](https://github.com/No-Backspace-Crew/Speedrun/wiki/Getting-AWS-Credentials#getting-cli-credentials).
