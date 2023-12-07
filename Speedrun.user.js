@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.97.3
+// @version      1.98
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -144,6 +144,33 @@
 // @connect      cloudformation.me-south-1.amazonaws.com
 // @connect      cloudformation.me-central-1.amazonaws.com
 // @connect      cloudformation.sa-east-1.amazonaws.com
+// @connect      events.us-east-1.amazonaws.com
+// @connect      events.us-east-2.amazonaws.com
+// @connect      events.us-west-1.amazonaws.com
+// @connect      events.us-west-2.amazonaws.com
+// @connect      events.af-south-1.amazonaws.com
+// @connect      events.ap-east-1.amazonaws.com
+// @connect      events.ap-south-2.amazonaws.com
+// @connect      events.ap-southeast-3.amazonaws.com
+// @connect      events.ap-southeast-4.amazonaws.com
+// @connect      events.ap-south-1.amazonaws.com
+// @connect      events.ap-northeast-3.amazonaws.com
+// @connect      events.ap-northeast-2.amazonaws.com
+// @connect      events.ap-southeast-1.amazonaws.com
+// @connect      events.ap-southeast-2.amazonaws.com
+// @connect      events.ap-northeast-1.amazonaws.com
+// @connect      events.ca-central-1.amazonaws.com
+// @connect      events.eu-central-1.amazonaws.com
+// @connect      events.eu-central-2.amazonaws.com
+// @connect      events.eu-west-1.amazonaws.com
+// @connect      events.eu-west-2.amazonaws.com
+// @connect      events.eu-south-1.amazonaws.com
+// @connect      events.eu-west-3.amazonaws.com
+// @connect      events.eu-north-1.amazonaws.com
+// @connect      events.eu-south-2.amazonaws.com
+// @connect      events.me-south-1.amazonaws.com
+// @connect      events.me-central-1.amazonaws.com
+// @connect      events.sa-east-1.amazonaws.com
 // @connect      speedrun.nobackspacecrew.com
 // @updateURL    https://speedrun.nobackspacecrew.com/userscripts/Speedrun.meta.js
 // @downloadURL  https://speedrun.nobackspacecrew.com/userscripts/Speedrun.user.js
@@ -232,7 +259,7 @@ class CredentialsBroker {
     }
 }
 class SpeedrunCredentialsBroker extends CredentialsBroker {
-    getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction']};
+    getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge']};
     validate(variables) {
         if(variables.account && variables.role && variables.partition) {
             //prepend speedrun to role name
@@ -258,6 +285,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
             case 'lambda':
             case 'stepfunction':
             case 'cfn':
+            case 'eventbridge':
                 return await getWebCredentials(variables.account, variables.role, variables.forceNewCreds, variables.roleDuration);
                 break;
         }
@@ -915,6 +943,10 @@ let templates = {
         type : "federate",
         value : "dynamodbv2/home?region=${region}#item-explorer?initialTagKey=&table=${tableName}"
     },
+    EC2Instance: {
+        type: "federate",
+        value: "ec2/home?region=${region}#InstanceDetails:instanceId=${typeof instanceId === 'undefined' ? content.trim() : `${instanceId}`}"
+    },
     S3Bucket: {
         type : "federate",
         value : "s3/buckets/${bucket}?region=${region}&tab=objects"
@@ -968,6 +1000,11 @@ let templates = {
     },
     '!stepfunction' : {
         type: 'stepfunction',
+        value: "${content.trim().length = 0 ? undefined : content}",
+        creds: true
+    },
+    '!eventbridge' : {
+        type: 'eventbridge',
         value: "${content.trim().length = 0 ? undefined : content}",
         creds: true
     },
@@ -1461,7 +1498,7 @@ async function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
     try {
         sessionVariables = variables;
         let keys = Object.keys(variables).filter(key => cachedValidVarName(key) && key !== 'internal');
-//        keys.delete
+        //        keys.delete
         //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
         let isAsync = tpl.includes('await ');
 
@@ -2382,6 +2419,40 @@ async function nope(content, preview = false, anchor, runBtn) {
                             throw new Error(`Invalid lambda response: ${response}`);
                         }
                     }
+                    break;
+                }
+                case "eventbridge" : {
+                    if(variables.account && String(variables.account).startsWith('-')) {
+                        throw new Error(`EventBridge not enabled on demo accounts`);
+                    }
+                    if(!variables.eventBusName){
+                        throw new Error('eventBusName is required');
+                    }
+                    let credentials = await credentialsBroker.getCredentials(variables);
+                    let body = {
+                        "Entries":[
+                            {
+                                "EventBusName": variables.eventBusName,
+                                "Source": variables.source || "cc.speedrun",
+                                "Detail": variables.internal.result,
+                                "DetailType": variables.detailType || `Speedrun V${GM_info.script.version} Invocation`
+                            }
+                        ]
+                    };
+                    let headers = {
+                        'X-Amz-Target': 'AWSEvents.PutEvents',
+                        'Content-Type': 'application/x-amz-json-1.1',
+                        'User-Agent': `Speedrun V${GM_info.script.version}`
+                    }
+
+                    const request = await srInvoke.invokeService(credentials, 'events', variables.region, new URL(`https://events.${variables.region}.amazonaws.com`), undefined, headers, JSON.stringify(body));
+                    let response = await invoke(request, true);
+                    if(response.status != 200 || JSON.parse(response.responseText).FailedEntryCount > 0) {
+                        throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                    }
+                    const eventId = JSON.parse(response.responseText).Entries[0].EventId;
+                    console.log(`Published event to eventbridge with id: ${eventId}`);
+                    toast(`Published: ${eventId}`);
                     break;
                 }
                 case "stepfunction" : {
