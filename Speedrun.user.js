@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.98
+// @version      1.99
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -18,7 +18,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.33/modern-screenshot.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.36/modern-screenshot.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -3106,7 +3106,10 @@ function getLatestVersion(remoteVersion) {
 }
 
 function domSnapshot(element, filename){
-    domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style}).then(imgURI => {
+    domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style, autoDestruct:true,
+                                       //only include certain styles for logs histogram for speed
+                                       includeStyleProperties: element.className && element.className.includes('histogram') ?
+                                       ['background-color','color','font-weight','line-height','display','font-size','font-family','fill', 'stroke','stroke-width','font']:null}).then(imgURI => {
         const download = GM_addElement('a');
         download.href = imgURI;
         download.download = filename;
