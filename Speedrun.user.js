@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.99
+// @version      1.100
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -176,6 +176,9 @@
 // @downloadURL  https://speedrun.nobackspacecrew.com/userscripts/Speedrun.user.js
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
+
+//elf
+//data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFlElEQVR4Xu1afUyVVRzmEklU5tLkeouZTYgohTtBtEgwF41RlKIVWbgGy7mWhiur4USZ/eFHDlPXCidbH1u1FMKUMdlYF6RuCAg2o4LmbCrebtGcmQqJwfPj5zxH3vt+3LiB577/PJzzno/3PM9zfufjYgtR/LEpPv6QgBOwtmDT5QHS15WsAvfrVm4GFm99I+DfMtBvwDtVnoDL/c8A893FpVB+/NqlwIMxTwNj7F3ADo9DmJ1zOncPi1jD0qivuKI8AVpT4NF9jQJv7ATOHC5HBNwByhOgt+zWRy9CjEjMnY6iPS3ngRd+rwd+c/oicKJtCtDf2BBwBwQJ0GBgRWwslN+weDFKhGcmAC9WtQ2rE0aMA5Qn4NKhL+GA0KSnhvSIt7wb+RMmUyzwFtAOkmNC9i9NlsS0VElvHlt5rzwBT6RGwwFxfU7wlzPNA3TmvwaUndHXVIn8ypy3gVZXhRHjgOuOgNSZj0FRfuoOHfBJ9qqHaf1n5R333U7Kxo0RZlSvm/YHEUVFQHZC1fJipLPch02Jaqqw8CU6CWUJ4IEfT98uUNTj+QnpmCM7gLIjZAfEL7CjXOj4FwgHV4f8Z+j0uGNalOAEW/9jRiAua6mSr46UJUAeePw9Y8HTkWNngZxucjcJTmAyZ4Xfhj9XLuoB8txnB8ikexrKkFWym2LE5oPW7gv+MwcoSwAvX5Vb3oES80vDgL0naccW9tceoC23ThCRnZDQ1YD8v72HgeyE5Jx7kc6elSzUK/+O7g0aP/vZL+W5Ub8doCwB8sD7uj8Bqd52msNLy38A7qvrBMkZmW9inb9xwavI59gQ10pzud2ZByx4jpSPcq0GpjloJ+jq2gI0qjx/X6T9EdQr+2LnkGJbdkCQgMG9e8Vq2rtrKY+XVz1M3D+3LkRumyMFOMYeC+TVYt5s8Va4dtt+vJdjCzuMu+D2S7PvR5Y9hZz10iaqLzvBbwcoS4DMOKdlRWQHcNqRvxcxQVZeqzw7otZNvxv0VrwLrK7aCBG1lOf9ghyTuB/LDlCWgPVRuVCubuyv4KCm3WWJxKydp4TToqz8lR2kt4NeJc8AyE44U/oi8sc5VwjlPji3DGkt5S07QFkCeODLE+8Ced8f7QR+fSECuObEx6acwPsCXv/lswPvD3iH2BH/CvpJmp0kmqWxRVA+ZDB9pnUb8vXuIQx/tLIE8MBfLzwARsOO0unrj9bJQLO3sjMSFwpzP9IejXYuHXNTuzffAWxp3iOII1+w8H0DO8es8mwjXQcoS4DRgd+dTjEg8f16n2TKwTP1LDmIH44t25tPIksvpsiO4Hb05rzQaX9C86OVJUBv4JMaGkBaWfqDmMsZj08EqV0//jmkE7i9uTfRr7y8arASnD/9AYoF/Bh1gqyo2fQ1DlCWgPKpSVA0K4N+kTEa5dkJS/KeRb2Pyj4H5tV8Kzjl0xO0evDc551kUS85iB92QsAdoDwBp1NS4ACz6zord2rrk6gfaZ+HrDYX3QUmpNG53xY9BZixpERQnBPsBI4RhRVU78PCjUB21JCVfWSef8+O74p42eP7Rkh5As6tyQRTt6yv0t0c+VJBdgIr37qL7vTecoUC5VNkelwa/YdIWh/ey865YeZ8v75La3xXGlWeAFZVb84YnYPshOr9XktzuHnZHDiCnfCbpxbt3Fmw15QTOLg/NCkc9Xkfw+O4pjHlCTCqcKDKmXWCrPgEJ91cfVVNvzbL/0tkyk6BGvTV/ShPAJMhEyHvOHkZH/c83VTxvcWGyrlIa50uR7wDggRI846dcLyGTpcc3c0qr7kK/B/z3EyfyhOgFeWZRL05L5M9amIAf7jyBMg3TP7eH4w6ByhPAE8FPj3yDZPeLbJWoB11DggSYGbNNFB21DrAwNgMFQkSYIim67jQv0WgUn0ORMqkAAAAAElFTkSuQmCC
 
 /* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, domToPng */
 
@@ -2353,6 +2356,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     break;
                 case "settings" :
                     if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
+                        await sleep(500);
                         location.reload();
                         credentialsBroker = getCredentialsBroker();
                     }
