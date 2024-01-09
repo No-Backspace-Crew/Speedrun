@@ -9,6 +9,6 @@ It's a powerup for GitHub markdown that infuses your documentation with the abil
 - [x] ⚙️ Reference configuration
 - [x] 🚀 Federate into the AWS console
 - [x] :godmode: Build an exact command line
-- [x] 🐎 Invoke AWS Lambdas and AWS Step Functions
+- [x] 🐎 Invoke AWS Lambdas, AWS Step Functions and put events on EventBridge
 
 [Read the wiki to start Speedrunning now](https://github.com/No-Backspace-Crew/Speedrun/wiki/Getting-Started)
