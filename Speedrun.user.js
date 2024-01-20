@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.100
+// @version      1.101
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -665,7 +665,7 @@ function isSRPage() {
     if('Page not found · GitHub' == $('title').text()) {
         return false;
     }
-    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname);
+    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname) || ACTIONS_REGEX.exec(location.pathname);
     if(REPO_REGEX.exec(location.pathname) && location.search) {
         const params = new URLSearchParams(location.search);
         if(params.has('plain')) {
@@ -800,8 +800,9 @@ const SR_SERVICE_FILTER = "srServiceFilter";
 const USER_SERVICE = "${user}";
 const varNameCache = new Map();
 const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
-const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/[Ww]iki\/?.*(?<!\/_(edit|new))$/;
+const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/wiki\/?.*(?<!\/_(edit|new))$/i;
 const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/[^\/]+\.md)|(\/tree\/([^\/]\/?)+(.*\/[^\/]+\.md)?))?$/i;
+const ACTIONS_REGEX = /^(?<path>\/.*?\/.*?\/actions)\/runs\/\d+$/i;
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
@@ -929,6 +930,7 @@ let templates = {
             "Route 53": "route53",
             "RDS": "rds",
             "Secrets Manager": "secretsmanager",
+            SES: "ses",
             "SNS": "sns",
             "SQS": "sqs",
             "Step Functions":"states/home?region=${region}#/statemachines",
@@ -1112,22 +1114,25 @@ function injectToolbar() {
   background-color: var(--color-neutral-emphasis);
   -webkit-transition: .4s;
   transition: .4s;
+  filter: grayscale(1);
+
 }
 
 .slider:before {
   position: absolute;
   content: "";
-  height: 10px;
-  width: 10px;
-  left: 3px;
-  bottom: 3px;
-  background-color: var(--color-btn-primary-text);
+  height: 32px;
+  width: 32px;
+  left: -8px;
+  bottom: -8px;
+  background: url('data:image/gif;base64,R0lGODlhIAAgAMZyAEopN08qQGUmKVIsP24nJ4McXV4rP3IqKHYsKoMuLKchSXQzMnowRX0zKpIuNaAuO4I5NMMkVL0pOIU7NpQ2QYk6PcYmUYs7QY08P8MqUY4+MK80P5E+PpFAOpJAOphBN9IuTJlCO7Q6Pp5FOZ9HOZ5JOKFIOaNMNdY8YOY6Peg7O59SReg8Pq1ROt9CPepAO+pBObJTPutDVrNXOdJSL+pKP+dOO+9RMu9Oa+FXQe1TWsVjPMxqPu5hMephQellL/djJe5pMc9yQvZqWftwHe9zLdZ7RvF2Qft2Hvp3HPh5H/WBI/p9QPmGHvmGH/iJGfqMMfeUF/eWF/mTRfeZH/eZIfeaHfuYP/edIfqcMfejL/ijVPm0KfmzQfqyTPm4KPq1SPq3Tvm2YvnCLvu9a/vAYvvAcvvIY/nNTvrZafrgaPvqefruefvskfvvkv7z6f37xf3/zv///////////////////////////////////////////////////////yH5BAEKAH8ALAAAAAAgACAAAAfNgH+Cg4SFhoeIiYqLjI2Oj5CRkosqMjVKk4gqN0NbTZmGKj1IXF1PoIQqQVhfY2BOqIIRNlBsbWphsX8RKExrcW9luhEgOmJwb2bDIDBLaW5kyzBAZ2xa0kBZaNexxC9AV15WmQEVggUZLDhTXlWoCB9/ChYpR1RUug0xDxJFUVK6/jhw8YNGEiIB/xjI4YNCwj8DPIjYkGBGwAEdRowQpGEHqAMQAHTAwIHQhRCZFpAogYHBwwktjKxAmVDACSE8HgoiYEKnz59Agw4KBAA7');
   -webkit-transition: .4s;
   transition: .4s;
 }
 
 input:checked + .slider {
   background-color: var(--color-accent-emphasis);
+  filter: none;
 }
 
 input:focus + .slider {
