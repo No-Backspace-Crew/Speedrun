@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.101
+// @version      1.102
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1249,14 +1249,14 @@ input:checked + .slider:before {
 </div>
 `).append(`<details id='srModal' class="fixed details-reset details-overlay details-overlay-dark">
   <summary aria-haspopup="dialog"></summary>
-  <details-dialog class="Box height-fit overflow-auto Box-overlay--wide anim-fade-in fast">
-    <div class="Box-header">
+  <details-dialog class="Box height-fit Box-overlay--wide anim-fade-in fast">
+    <div class="Box-header m-0">
       <span class="Box-title" id='srModal-title'>Dialog</span>
       <button id="modal-cancel" class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
         <!-- <%= octicon "x" %> -->
         <svg class="octicon octicon-x" viewBox="0 0 12 16" version="1.1" width="12" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.48 8l3.75 3.75-1.48 1.48L6 9.48l-3.75 3.75-1.48-1.48L4.52 8 .77 4.25l1.48-1.48L6 6.52l3.75-3.75 1.48 1.48L7.48 8z"></path></svg>
       </button>    </div>
-    <div class="Box-body">
+    <div class="Box-body overflow-auto">
     <div id="srModal-error" class="flash mt-2 flash-error" hidden>
     </div>
     <div id="srModal-body">
