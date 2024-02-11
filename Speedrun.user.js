@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.103.1
+// @version      1.104
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -197,6 +197,7 @@
 let credentialsCache = {};
 let stackCache = {};
 let functionCache = {};
+let searchObserver = undefined;
 const AsyncFunction = async function () {}.constructor;
 
 
@@ -1165,24 +1166,24 @@ input:checked + .slider:before {
 }
 </style>`);
 
-// https://stackoverflow.com/a/67456813/3006039
-function isChrome() {
-    return navigator.userAgentData && navigator.userAgentData.brands && navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome');
-}
-
-function needsTMSettingsUpdate() {
-    if(!isChrome()) {
-        return false;
-    }
-    try {
-        new Function('return false');
-    } catch(e) {
-        if(e.message && e.message.includes('unsafe-eval')){
-            return true;
+        // https://stackoverflow.com/a/67456813/3006039
+        function isChrome() {
+            return navigator.userAgentData && navigator.userAgentData.brands && navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome');
         }
-    }
-    return false;
-}
+
+        function needsTMSettingsUpdate() {
+            if(!isChrome()) {
+                return false;
+            }
+            try {
+                new Function('return false');
+            } catch(e) {
+                if(e.message && e.message.includes('unsafe-eval')){
+                    return true;
+                }
+            }
+            return false;
+        }
         let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
       <span id='toolbar'>
@@ -2643,6 +2644,22 @@ async function updatePage(reason) {
             console.log("Page already current, ignoring");
             return;
         }
+
+        // hide speedrun toolbar when search is displayed
+        if(isSRPage() && !searchObserver) {
+            const searchSelector = 'search-suggestions-dialog';
+            waitForSelector(`#${searchSelector}`).then(async (result) => {
+                searchObserver = new MutationObserver(mutations => {
+                    mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
+                });
+
+                searchObserver.observe(document.getElementById(searchSelector), {
+                    attributeFilter:['aria-disabled'],
+                    attributeOldValue:true
+                });
+            });
+        }
+
         sessionVariables = {};
         let [,path] = isSRPage();
         injectToolbar();
