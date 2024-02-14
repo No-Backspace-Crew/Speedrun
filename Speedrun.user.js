@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.104
+// @version      1.104.1
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -197,7 +197,6 @@
 let credentialsCache = {};
 let stackCache = {};
 let functionCache = {};
-let searchObserver = undefined;
 const AsyncFunction = async function () {}.constructor;
 
 
@@ -2646,11 +2645,18 @@ async function updatePage(reason) {
         }
 
         // hide speedrun toolbar when search is displayed
-        if(isSRPage() && !searchObserver) {
+        if(isSRPage()) {
             const searchSelector = 'search-suggestions-dialog';
             waitForSelector(`#${searchSelector}`).then(async (result) => {
-                searchObserver = new MutationObserver(mutations => {
-                    mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
+                if($('.srSearchDone').length){
+                    return;
+                }
+                $('#search-suggestions-dialog').addClass('srSearchDone');
+
+                let searchObserver = new MutationObserver(mutations => {
+                    if($('.srDone').length){
+                        mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
+                    }
                 });
 
                 searchObserver.observe(document.getElementById(searchSelector), {
