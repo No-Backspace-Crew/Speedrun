@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.104.1
+// @version      1.105
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -896,7 +896,10 @@ let templates = {
         //Sort object by keys https://github.com/lodash/lodash/issues/1459
         value:"~~~path=Service {\"type\":\"select\",\"options\":\"${_(consoleOptions).toPairs().sortBy(0).fromPairs().value()}\",\"suppress\":true}~~~\n${path.includes('?') ? path : `${path}/home?region=${region}`}",
         consoleOptions: {
+            "Amazon Verified Permissions":"verifiedpermissions",
+            "Amplify": "amplify",
             "API Gateway": "apigateway",
+            "AppSync": "appsync",
             "Athena": "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
             "Billing": "billing",
@@ -926,7 +929,10 @@ let templates = {
             "Kinesis": "kinesis",
             "KMS": "kms",
             "Lambda": "lambda",
+            "Load Balancers": "ec2/home?region=${region}#LoadBalancers:",
             "Organizations": "organizations/v2",
+            "Parameter Store": "systems-manager/parameters/?region=${region}&tab=Table",
+            "Resource Access Manager": "ram",
             "Resource Explorer": "resource-explorer",
             "Route 53": "route53",
             "RDS": "rds",
