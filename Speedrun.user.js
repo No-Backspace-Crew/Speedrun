@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.106.2
+// @version      1.106.3
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2716,10 +2716,12 @@ async function updatePage(reason) {
         }
         injectToolbar();
         let pageEnabled = isEnabledPath();
-        setInputValue($('#srEnabled'), pageEnabled);
-        //Don't show toolbar toggle on pages it can't be disabled
-        isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
-        $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
+        if(path) {
+          setInputValue($('#srEnabled'), pageEnabled);
+          //Don't show toolbar toggle on pages it can't be disabled
+          isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
+          $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
+        }
         // first pass to build page config
         pageConfig = await buildConfig(pageEnabled);
 
