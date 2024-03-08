@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.106.1
+// @version      1.106.2
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2709,7 +2709,11 @@ async function updatePage(reason) {
         }
 
         sessionVariables = {};
-        let [,path] = isSRPage();
+        let result = isSRPage();
+        let path = undefined;
+        if(result) {
+            [,path] = result;
+        }
         injectToolbar();
         let pageEnabled = isEnabledPath();
         setInputValue($('#srEnabled'), pageEnabled);
