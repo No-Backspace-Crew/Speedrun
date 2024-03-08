@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.105
+// @version      1.106
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -13,7 +13,6 @@
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/duration.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/relativeTime.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@0.9.3/dayjs-parser.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/jquery-dim-background@1.3.1/jquery.dim-background.js
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
@@ -345,7 +344,9 @@ function getFederationLink(roleArn, destination, duration) {
     let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
     url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
-    url.searchParams.append('duration', normalizedDuration);
+    if(normalizedDuration) {
+        url.searchParams.append('duration', normalizedDuration);
+    }
     return url.toString();
 }
 
@@ -380,7 +381,19 @@ function addSpeedrunLink() {
                     console.log('Adding speedrun link');
                     let [,arn, account, role] = result;
                     arn = `arn:aws:iam::${account}:role/${role}`;
-                    persistIfNewRole(arn, region);
+                    //attempt to extract expiration time from speedrun issuer
+                    let expiration = undefined;
+                    if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
+                        try {
+                            expiration = new URL(userInfo.issuer).searchParams.get('expiration');
+                            if(expiration) {
+                                expiration = parseInt(expiration);
+                            }
+                        } catch(e) {
+                            console.error('Invalid issuer expiration',userInfo.issuer);
+                        }
+                    }
+                    persistIfNewRoleOrExpiration(arn, region, expiration);
                     lastRolePersisted=true;
                     let navBar = $('#awsc-navigation__more-menu--list');
                     let helpButton = navBar.first().find('button').first();
@@ -401,7 +414,7 @@ function addSpeedrunLink() {
                 }
             }
             if(!lastRolePersisted && !awsuserInfoCookieParsed) {
-                persistIfNewRole();
+                persistIfNewRoleOrExpiration();
                 lastRolePersisted = true;
             }
         }
@@ -1189,7 +1202,7 @@ input:checked + .slider:before {
             }
             return false;
         }
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-ansi-magenta)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-scale-purple-7)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
       <span id='toolbar'>
   <label id='srToggleTitle' class="switch">
@@ -1673,7 +1686,7 @@ async function getWebCredentials(account, role, forceNewCreds, duration) {
         return cachedCredentials.credentials;
     }
     const normalizedDuration = normalizeDuration(duration);
-    const webCredentialsUrl = `${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}&duration=${normalizedDuration}`;
+    const webCredentialsUrl = `${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}${normalizedDuration?`&duration=${normalizedDuration}`:''}`;
     let result = await retrieve(webCredentialsUrl, true);
     // if it redirects to github auth
     if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
@@ -1771,16 +1784,17 @@ function showToolbarOnPage() {
     setFavIcon();
 }
 
-function setFavIcon() {
+async function setFavIcon() {
+    await sleep(500);
     let isVisible = isEnabledPath();
     let head = $('head');
     $('link[rel~="icon"]').each((i,el) => {
         el = $(el);
         let details = favIcons[isVisible+''][el.attr('rel')];
         if(details.href != el.attr('href')){
-            el.remove();
+            //el.remove();
             el.attr('href', details.href);
-            head.append(el);
+            //head.append(el);
         }
     });
 }
@@ -1887,7 +1901,7 @@ function getPromptInfo(prompt) {
     if("srTimestampValue" === variable){
         sessionValue = configuration.default;
     }
-    return {raw:prompt[0], variable:variable, prompt: text, configuration: configuration, value: sessionValue, default: configuration.default, condition: configuration.condition};
+    return {raw:prompt[0], variable, prompt: text, configuration, urlValue, value: sessionValue, default: configuration.default, condition: configuration.condition};
 }
 
 
@@ -2080,6 +2094,21 @@ function setEnabledPath(enabled) {
     }
 }
 
+function getPathFromObject(o, path) { return path.split(".").reduce((r, k) => r?.[k], o) };
+
+function safeInterpolate(tpl, variables){
+  if(tpl === undefined || tpl === null){
+    return undefined;
+  }
+  return tpl.replaceAll(/\${(.*?)}/g, (_, path) => {
+    let val = getPathFromObject(variables, path);
+    if(val === undefined) {
+      throw new Error(`${_} cannot be interpolated from untrusted input`);
+    }
+    return val;
+  });
+}
+
 async function nope(content, preview = false, anchor, runBtn) {
     let pageVariables = _.cloneDeep(nullSafe(pageConfig));
     delete pageVariables.templates;
@@ -2153,7 +2182,12 @@ async function nope(content, preview = false, anchor, runBtn) {
                 row.append(header);
                 let input = undefined;
                 info.interpolatedDefault = firstNonNull(await interpolate(firstNonNull(info.default,""),variables, true), info.default);
-                info.interpolatedValue = firstNonNull(await interpolate(firstNonNull(info.value,""),variables, true), info.value);
+                //use url value if set and = to value.
+                if(info.urlValue && info.urlValue == info.value) {
+                    info.interpolatedValue = safeInterpolate(info.value,variables);
+                } else {
+                    info.interpolatedValue = firstNonNull(await interpolate(firstNonNull(info.value,""),variables, true), info.value);
+                }
                 info.location = prompt.location;
                 let interpolatedDefaultText;
                 switch(info.configuration.type) {
@@ -2250,6 +2284,9 @@ async function nope(content, preview = false, anchor, runBtn) {
                         let parameters = new URLSearchParams();
                         parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
                         parameters.append('srService', getValue('#service'));
+                        if(runBtn && runBtn.prop('id')) {
+                            parameters.append('srButton', runBtn.prop('id'));
+                        }
                         $('#srModal :input' ).not(':input[type=button],button').each(function() {
                             const prompt = $(this).data('prompt');
                             if(prompt) {
@@ -2545,25 +2582,24 @@ if(isSRPage()){
 
 showToolbarOnPage();
 
-$(document).ready(function() {
+$(document).ready(async function() {
+
     if(window.location.hash) {
         const el = document.getElementById('user-content-' + window.location.hash.substring(1));
         if(el) {
             el.scrollIntoView({behavior: 'smooth', block: 'start'});
-            const runBtn = $(el).parent().next().find('.srRunBtn');
+            let buttonId = getURLSearchParam('srButton');
+            const runBtn = buttonId?$(`#${buttonId}`) : $(el).parent().nextAll().find('.srRunBtn').first();
             if(runBtn && runBtn.length) {
-                runBtn.dimBackground();
                 runBtn.focus();
                 runBtn.addClass('anim-pulse');
                 let cleanup = (stopPulsing=false)=>{
-                    runBtn.undim();
                     if(stopPulsing) {
                         runBtn.removeClass('anim-pulse');
                     }
                 };
-                runBtn.click(cleanup);
-                runBtn.hover(cleanup);
-                setTimeout(()=>{cleanup(false)}, 3000);
+                runBtn.click(()=>cleanup(true));
+                runBtn.hover(()=>cleanup(true));
             }
         }
     }
@@ -2594,7 +2630,7 @@ function extractRegion(textRegionValue) {
 
 function updateRegions() {
     let service = $('#service');
-    let lastRegion = curRegion || getURLSearchParam('srRegion') || localStorage.getItem(LAST_REGION_KEY);
+    let lastRegion = curRegion || safeInterpolate(getURLSearchParam('srRegion'),{}) || localStorage.getItem(LAST_REGION_KEY);
     let regions = [];
     let currentOptGroup = undefined;
     let numRegions = 0;
@@ -2687,7 +2723,7 @@ async function updatePage(reason) {
         let serviceDropdown = $("#service");
 
         let newServices = [];
-        let lastService = getValue('#service') || getURLSearchParam('srService') || localStorage.getItem(LAST_SERVICE_KEY);
+        let lastService = getValue('#service') || safeInterpolate(getURLSearchParam('srService'),{user: GM_getValue("g_usernameOverride") || user}) || localStorage.getItem(LAST_SERVICE_KEY);
 
         for (const [key, value] of Object.entries(getServices(pageConfig))) {
             newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
@@ -2710,10 +2746,11 @@ async function updatePage(reason) {
         $('button.js-wiki-more-pages-link').each(async function(item) {
             $(this).trigger('click');
         });
-
-        $('.markdown-body').append($('<span>', { class : 'srDone'}));
+    } catch(e){
+        alertAndThrow(e);
     } finally {
         updatingPage = false;
+        $('.markdown-body').append($('<span>', { class : 'srDone'}));
     }
 
 }
@@ -2737,6 +2774,8 @@ function setButtonDanger(btn, variables) {
             btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
         }
         btn.prop('disabled', !hasService);
+    } else {
+        btn.prop('disabled', false);
     }
 }
 
@@ -2905,16 +2944,20 @@ function hasTemplate(name) {
     return true;
 }
 
-function persistIfNewRole(roleArn, region) {
+function persistIfNewRoleOrExpiration(roleArn, region, expiration) {
     const roleKey = `${LAST_CREDS}federate`;
     if(!roleArn) {
         console.log('Console role changed');
         GM_deleteValue(roleKey);
     } else {
         const lastCreds = GM_getValue(roleKey, undefined);
-        if(!lastCreds || (lastCreds.role && lastCreds.role != roleArn)) {
-            console.log(`Console role changed from ${lastCreds ? lastCreds.role : 'not set'} to ${roleArn}`);
-            persistLastRole({internal: {newCreds:true, templateType:'federate'}, roleArn, region});
+        if(!lastCreds || (lastCreds.role && lastCreds.role != roleArn || (expiration && (lastCreds.expiration+10000 > expiration || expiration + 10000 > lastCreds.expiration)))) {
+            if(!lastCreds || lastCreds.role != roleArn) {
+                console.log(`Console role changed from ${lastCreds ? lastCreds.role : 'not set'} to ${roleArn}`);
+            } else {
+                console.log(`Updating expiration of role for ${roleArn} to: ${new Date(expiration)}`);
+            }
+            persistLastRole({internal: {newCreds:true, templateType:'federate', expiration}, roleArn, region});
         }
     }
 }
@@ -2922,8 +2965,11 @@ function persistIfNewRole(roleArn, region) {
 // if duration <= 12 it's in hours
 // if duration <= 720 it's in minutes
 // if duration > 720 it's in seconds
-// if missing it's 1 hour
-function normalizeDuration(duration = 3600) {
+// if missing it's undefined
+function normalizeDuration(duration) {
+    if(duration === undefined) {
+        return duration;
+    }
     const originalDuration = duration;
     if(!isNumeric(duration) || duration <= 0 || duration > 43200) {
         throw new Error('${duration} is an invalid duration');
@@ -2953,8 +2999,9 @@ function needsNewCreds(variables) {
 
 function persistLastRole(variables) {
     if(variables.internal.newCreds) {
-        let normalizedDuration = normalizeDuration(variables.roleDuration);
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration: Date.now() + (normalizedDuration*1000), duration: normalizedDuration});
+        let normalizedDuration = normalizeDuration(variables.roleDuration) || 3600;
+        let expiration = variables.internal.expiration ? variables.internal.expiration : Date.now() + normalizedDuration*1000;
+        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration, duration: normalizedDuration || 3600});
     }
 }
 
@@ -2980,6 +3027,7 @@ async function wireUpContent() {
             const actions = $('<div class="UnderlineNav-actions">');
             const runBtnId = `sr-btn-${block}`;
             const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
+            runBtn.prop('disabled',true);
             actions.append(runBtn);
             nav.append(actions);
             dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
@@ -3005,7 +3053,7 @@ async function wireUpContent() {
                 }}};
                 nav.append(navBody);
                 $(pre).parent().before(nav);
-                dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll(":header").find('a.anchor').last();
+                dataAndEvents[runBtnId].data.anchor = runBtn.closest("nav").prevAll("div.markdown-heading").find('a.anchor').last();
                 $(pre).attr('id',`Preview-${block}`);
                 dataAndEvents[runBtnId].data.previewTab = $(pre).attr('id');
 
