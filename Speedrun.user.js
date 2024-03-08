@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.106
+// @version      1.106.1
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -786,18 +786,6 @@ function bindDataAndEvents() {
     $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
 }
 
-addEventListener('popstate', async (event) => {
-    //when the back button is pressed, all events/data is lost, this is an attempt to wire those back up
-    if(isSRPage()) {
-        setTimeout(()=> {
-            bindDataAndEvents();
-            showToolbarOnPage();
-            updateTabs();
-        }
-                   , 50);
-    }
-});
-
 const HEADER = /^#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
 const LITERAL = /\$\{.+?\}/s;
 const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
@@ -871,6 +859,18 @@ Object.entries(regionMap).forEach(([name, region]) => {
     partitionMap[partition] ? partitionMap[partition].push(region) : partitionMap[partition] = [region];
     const [,area,prettyName] = REGION_REGEX.exec(name);
     regionNameMap[region] = {name, area, prettyName, partition}
+});
+
+addEventListener('popstate', async (event) => {
+    //when the back button is pressed, all events/data is lost, this is an attempt to wire those back up
+    if(isSRPage()) {
+        setTimeout(()=> {
+            bindDataAndEvents();
+            showToolbarOnPage();
+            updateTabs();
+        }
+                   , 50);
+    }
 });
 
 function isPartition(str) {
