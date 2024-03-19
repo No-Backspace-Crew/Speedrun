@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.107
+// @version      1.107.1
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1202,7 +1202,7 @@ input:checked + .slider:before {
             }
             return false;
         }
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-scale-purple-7)' : 'var(--color-page-header-bg)'}`, 'text-align': 'center'}});
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-scale-purple-7)' : 'var(--page-header-bgColor)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
       <span id='toolbar'>
   <label id='srToggleTitle' class="switch">
