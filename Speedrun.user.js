@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.106.4
+// @version      1.107
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1059,7 +1059,7 @@ function injectToolbar() {
     if(!$('#srToolbar').length) {
         $("head").append(`<style>${GM_getResourceText('select2css')}
         input:invalid.srInput , textarea:invalid.srInput {
-          border: 2px solid var(--color-checks-step-error-text)
+          border: 2px solid var(--fgColor-danger)
         }
     /* Select2 theming to match github */
 
@@ -1069,37 +1069,37 @@ function injectToolbar() {
         }
 
         .select2-container--default .select2-selection--single {
-          background-color:var(--color-canvas-default);
-          border: 1px solid var(--color-border-default);
+          background-color:var(--bgColor-default);
+          border: 1px solid var(--borderColor-default);
           border-radius: 6px;
         }
 
         .select2-container--default .select2-selection--single .select2-selection__rendered {
-          color: var(--color-fg-default);
+          color: var(--fgColor-default);
         }
 
         .select2-container--default .select2-results__option--selected {
-          background-color: var(--color-btn-bg);
+          background-color: var(--button-default-bgColor-selected);
         }
 
         .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
-          background-color: var(--color-accent-emphasis);
-          color: var(--color-fg-default);
+          background-color: var(--fgColor-accent);
+          color: var(--fgColor-default);
         }
 
         .select2-container--default.select2-container--disabled .select2-selection--single {
           cursor: not-allowed;
-          background-color: var(--color-canvas-subtle);
+          background-color: var(--fgColor-canvas);
         }
 
         .select2-dropdown {
-          background-color: var(--color-canvas-default);
-          border-color: var(--color-border-default);
+          background-color: var(--bgColor-default);
+          border-color: var(--borderColor-default);
 
         }
 
         .select2-search__field {
-          border: 1px solid var(--color-border-default);
+          border: 1px solid var(--borderColor-default);
           border-radius: 6px;
         }
         .needsRegion {
@@ -1129,7 +1129,7 @@ function injectToolbar() {
   left: 0px;
   right: 0px;
   bottom: 0px;
-  background-color: var(--color-neutral-emphasis);
+  background-color: var(--bgColor-neutral-emphasis);
   -webkit-transition: .4s;
   transition: .4s;
   filter: grayscale(1);
@@ -1149,12 +1149,12 @@ function injectToolbar() {
 }
 
 input:checked + .slider {
-  background-color: var(--color-accent-emphasis);
+  background-color: var(--bgColor-accent-emphasis);
   filter: none;
 }
 
 input:focus + .slider {
-  box-shadow: 0 0 1px var(--color-accent-emphasis);
+  box-shadow: 0 0 1px var(--bgColor-accent-emphasis);
 }
 
 input:checked + .slider:before {
@@ -1176,7 +1176,7 @@ input:checked + .slider:before {
 }
 
 .copyCursor:hover {
-  color:var(--color-accent-fg);
+  color:var(--fgColor-accent);
 }
 
 .minimalPadding {
@@ -2684,11 +2684,6 @@ async function updatePage(reason) {
             });
         }
 
-        if($('.srDone').length){
-            console.log("Page already current, ignoring");
-            return;
-        }
-
         // hide speedrun toolbar when search is displayed
         if(isSRPage()) {
             const searchSelector = 'search-suggestions-dialog';
@@ -2709,6 +2704,13 @@ async function updatePage(reason) {
                     attributeOldValue:true
                 });
             });
+        } else if($('.srSearchDone').length){
+            $('#search-suggestions-dialog').removeClass('srSearchDone');
+        }
+
+        if($('.srDone').length){
+            console.log("Page already current, ignoring");
+            return;
         }
 
         sessionVariables = {};
