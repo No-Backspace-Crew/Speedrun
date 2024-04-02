@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.107.3
+// @version      1.108
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -792,6 +792,8 @@ const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
 const PROMPT_G = new RegExp(PROMPT, 'g');
 const COMMENT = /(^\s*|[^\s](\s+))((\/\/.*)(\n)?)/;
 const COMMENT_G = new RegExp(COMMENT, 'mg');
+const OUTPUT = /^-{3,}output-{3,}/im;
+const TRAILING_WHITESPACE = /\s+$/;
 const HAS_DOM_CONTENT_REGEX = /\[object \w*Element\]/;
 const SR_CONFIG = "srConfig";
 const GLOBAL_PREFIX = "g_";
@@ -912,6 +914,7 @@ let templates = {
             "Amazon Verified Permissions":"verifiedpermissions",
             "Amplify": "amplify",
             "API Gateway": "apigateway",
+            AppConfig : "systems-manager/appconfig/?region=${region}",
             "AppSync": "appsync",
             "Athena": "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
@@ -1089,7 +1092,8 @@ function injectToolbar() {
 
         .select2-container--default.select2-container--disabled .select2-selection--single {
           cursor: not-allowed;
-          background-color: var(--fgColor-canvas);
+          color: var(--control-fgColor-disabled);
+          background-color: var(--control-bgColor-disabled);
         }
 
         .select2-dropdown {
@@ -1252,7 +1256,7 @@ input:checked + .slider:before {
 
         $("body").prepend(toolbar).append(`
 <div class="position-fixed bottom-0 right-0" hidden style='z-index:100' id='snackbar'>
-  <div class="Toast Toast--success anim-fade-in fast">
+  <div class="Toast Toast--success">
     <span class="Toast-icon">
       <!-- <%= octicon "check" %> -->
       <svg width="12" height="16" viewBox="0 0 12 16" class="octicon octicon-check" aria-hidden="true">
@@ -1287,7 +1291,7 @@ input:checked + .slider:before {
 </div>
 `).append(`<details id='srModal' class="fixed details-reset details-overlay details-overlay-dark">
   <summary aria-haspopup="dialog"></summary>
-  <details-dialog class="Box height-fit Box-overlay--wide anim-fade-in fast">
+  <details-dialog class="Box height-fit Box-overlay--wide">
     <div class="Box-header m-0">
       <span class="Box-title" id='srModal-title'>Dialog</span>
       <button id="modal-cancel" class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
@@ -1587,6 +1591,17 @@ function retrieve(path, raw=false, cache=true) {
     });
 }
 
+function parseHeaders(headers) {
+    return headers.split('\r\n').reduce((acc,value) => {if(value.trim()!="")
+                        {
+                            let header = value.split(": ",2);
+                            acc[header[0].toLowerCase()]=header[1];
+                        }
+                        return acc;
+                    }
+                ,{});
+}
+
 function invoke(request, raw=false) {
     return new Promise((resolve,reject) => {
         GM_xmlhttpRequest({
@@ -1595,7 +1610,9 @@ function invoke(request, raw=false) {
             headers: request.headers,
             data: request.body,
             onload: function(response) {
-                resolve(raw ? response : response.responseText);
+                const headers = parseHeaders(response.responseHeaders);
+                response.headers = headers;
+                resolve(raw ? response : {headers, responseText:response.responseText, status: response.status, response:headers['content-type']==='application/json' ? JSON.parse(response.responseText) : response.responseText});
             },
             onerror: function(err) {
                 reject(err);
@@ -2113,8 +2130,9 @@ async function nope(content, preview = false, anchor, runBtn) {
     let pageVariables = _.cloneDeep(nullSafe(pageConfig));
     delete pageVariables.templates;
     delete pageVariables.services;
-    let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService(), content: content.replace(HEADER,"").replace(/\s+$/,"")};
+    let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService()};
     let details = parseContent(content);
+    variables.content = details.body;
     variables.internal.showPin = details.service != undefined;
     variables.internal.running = !preview;
     variables.service = firstNonNull(details.service, variables.service);
@@ -2162,6 +2180,15 @@ async function nope(content, preview = false, anchor, runBtn) {
         });
         //if / is escaped so it isn't treated as a comment, unescape it
         variables.content = variables.content.replace('&sol;','/');
+    }
+
+    //strip output
+    if(!(preview || variables.raw)) {
+         let arr = variables.content.split(OUTPUT,2);
+         if(arr.length > 1) {
+             variables.content = arr[0];
+             variables.internal.output = arr[1].replace(TRAILING_WHITESPACE,"");
+         }
     }
     sessionVariables = variables;
 
@@ -2477,23 +2504,31 @@ async function nope(content, preview = false, anchor, runBtn) {
                     }
                     let lambdaCredentials = await credentialsBroker.getCredentials(variables);
                     const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
-                    let response = await invoke(request, isFunctionUrl);
+                    const response = await invoke(request, isFunctionUrl);
+                    let lambdaResult = undefined;
                     if(isFunctionUrl) {
+                        if(response.headers['x-amzn-requestid']) {
+                            console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
+                        }
                         if(response.status != 200) {
                             throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
                         }
-
-                        GM_setClipboard(response.responseText);
-                        toast("📋 Copied");
+                        lambdaResult = response.responseText;
                     } else {
-                        let decodedPayload = JSON.parse(response);
-                        if(decodedPayload.statusCode == "200") {
-                            GM_setClipboard(decodedPayload.body);
-                            toast("📋 Copied");
-                        } else {
-                            throw new Error(`Invalid lambda response: ${response}`);
+                        if(response.headers['x-amzn-requestid']) {
+                            console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
                         }
+                        if(response.status != 200 || response.response.statusCode != "200") {
+                            throw new Error(`Invalid lambda response: ${response.status}: ${response.responseText}`);
+                        }
+                        lambdaResult = response.response.body;
                     }
+                    if(variables.internal.output) {
+                        variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
+                        lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), true);
+                    }
+                    GM_setClipboard(lambdaResult);
+                    toast("📋 Copied");
                     break;
                 }
                 case "eventbridge" : {
@@ -2877,7 +2912,8 @@ function getRegions(service, pageConfig) {
 function parseContent(str, name) {
     const groups = str.match(HEADER);
     if(groups && groups[1] && (!name || name === groups[1])) {
-        return {"template" : groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, "body": str.replace(HEADER,"")};
+        let body = str.replace(HEADER,"").replace(TRAILING_WHITESPACE,"");
+        return {template: groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, body};
     }
     return undefined;
 }
@@ -3089,6 +3125,12 @@ function colorizeComments(content, variables) {
     }) : content;
 }
 
+function colorizeOutput(content, variables) {
+    return firstNonNull(!variables.raw) ?
+        content.replace(OUTPUT,'<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis mr-1">Output Transform</span>')
+     : content;
+}
+
 //html encode curly braces
 function encodeCurlies(str) {
     return str == undefined ? str : str.replace(/[\{\}]/g, m => ({'{':'&#123;', '}':'&#125;'}[m]));
@@ -3116,6 +3158,7 @@ async function buildPreview(variables) {
     let preview = `<span class="IssueLabel color-bg-accent-emphasis color-fg-on-emphasis mr-1" title="${escapeHTMLQuotesAnd$(variables.internal.template)}">#${variables.internal.templateName}</span>${variables.internal.templateName.replaceAll(/^!/g,'') != variables.internal.templateType ? `<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis">type: ${variables.internal.templateType}${variables.creds?"":" "}</span>`:''}
 ${variables.internal.preview}`;
     preview = colorizeComments(preview, variables);
+    preview = colorizeOutput(preview, variables);
     preview = colorizePrompts(preview, variables);
     if(variables.content == variables.internal.template){
         variables.content = "";
