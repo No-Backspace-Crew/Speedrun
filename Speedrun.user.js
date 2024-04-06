@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.108
+// @version      1.109
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -722,10 +722,15 @@ async function updatePageTimerFired(location) {
         persistLastPath(location);
         //wait for page to render
         await waitForSelector('.markdown-body > *');
-        while($('.srDone').length>0) {
-            await sleep(10);
+        let maxAttempts = 100;
+        while($('.srDone').length>0 && maxAttempts-- > 0) {
+            await sleep(50);
         }
-        await updatePage(`urlchange ${lastPath}`);
+        if(maxAttempts > 0) {
+            await updatePage(`urlchange ${lastPath}`);
+        } else {
+            console.log('No changes detected');
+        }
     } else {
         persistLastPath(location);
     }
@@ -918,6 +923,7 @@ let templates = {
             "AppSync": "appsync",
             "Athena": "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
+            Bedrock: "bedrock",
             "Billing": "billing",
             "Certificate Manager": "acm",
             "CloudFormation": "cloudformation",
@@ -1984,7 +1990,8 @@ var exposedFunctions = {
     bashEscape: bashEscape,
     _ : _,
     cfn: cfn,
-    acfn:acfn
+    acfn:acfn,
+    JSON5: JSON5,
 }
 
 function injectCustomFunctions(variables) {
@@ -2518,14 +2525,15 @@ async function nope(content, preview = false, anchor, runBtn) {
                         if(response.headers['x-amzn-requestid']) {
                             console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
                         }
-                        if(response.status != 200 || response.response.statusCode != "200") {
+                        console.log(response);
+                        if(!(response.status == 200 || response.response.statusCode == "200")) {
                             throw new Error(`Invalid lambda response: ${response.status}: ${response.responseText}`);
                         }
-                        lambdaResult = response.response.body;
+                        lambdaResult = response.response.body || response.responseText;
                     }
                     if(variables.internal.output) {
                         variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
-                        lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), true);
+                        lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), false);
                     }
                     GM_setClipboard(lambdaResult);
                     toast("📋 Copied");
