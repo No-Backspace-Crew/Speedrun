@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.109
+// @version      1.110
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -686,7 +686,7 @@ function isSRPage() {
             return false;
         }
     }
-    return result && !result.groups.path.match(/^\/(login|settings|features)\//i) ? result : null;
+    return result && !result.groups.path.match(/^\/(sessions|login|settings|features)\//i) ? result : null;
 }
 
 if(location.host.endsWith('console.aws.amazon.com')) {
@@ -2175,7 +2175,12 @@ async function nope(content, preview = false, anchor, runBtn) {
 
     const entryVariables = nullSafe(details.variables);
 
-    variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables, entryVariables);
+    variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables);
+    variables.internal.overriddenAccount = entryVariables.account && entryVariables.account != variables.account ? entryVariables.account : undefined;
+    variables.internal.overriddenRegion = entryVariables.region && entryVariables.region != variables.region ? entryVariables.region : undefined;
+    variables.internal.showPin ||= (variables.internal.overriddenAccount != undefined && variables.internal.overriddenAccount != variables.account);
+    variables.internal.showRegionPin = (variables.internal.overriddenRegion != undefined && variables.internal.overriddenRegion != variables.region);
+    variables = $.extend(true, variables, entryVariables);
     variables = overlayExposedFunctions(variables);
 
     if(!preview && firstNonNull(variables.stripComments, !variables.raw)) {
@@ -2335,10 +2340,11 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 let label = runBtn ? runBtn.attr('aria-label') : undefined;
                 await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, async function() {
-                    $('#srModal :input' ).not(':input[type=button],button').each(async function() {
-                        const prompt = $(this).data('prompt');
+                    for(const input of $('#srModal :input' ).not(':input[type=button],button')) {
+                        const $input = $(input);
+                        const prompt = $input.data('prompt');
                         if(prompt) {
-                            const value = getInputValue($(this));
+                            const value = getInputValue($input);
                             let transformedValue = value;
                             if(prompt.configuration.transform){
                                 console.log('Transform:', prompt.configuration.transform);
@@ -2399,16 +2405,15 @@ async function nope(content, preview = false, anchor, runBtn) {
                                 variables.internal.template = variables.internal.template.replace(replacement, transformedValue);
                             }
                         }
-                    });
-                }, deeplink, runBtn? runBtn.data('danger'):false)}
-            catch(err) {
+                    }
+                }, deeplink, runBtn? runBtn.data('danger'):false);
+            } catch(err) {
                 console.log(err);
                 return;
             }
 
         }
     }
-
     if(!variables.raw){
         // interpolate variables using 2 passes to account for variables that are defined later
         for(let pass of [1,2]){
@@ -2822,7 +2827,7 @@ function setButtonDanger(btn, variables) {
 
     if(variables.creds) {
         let hasService = document.querySelector("#region").length > 0
-        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.srServiceName}${variables.internal.showPin? " 📌":""}: ${(curRegion||"")} (${variables[credentialsBroker.getDangerKey()]})`);
+        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[credentialsBroker.getDangerKey()]})`);
         if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
             btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
             btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
@@ -3218,11 +3223,11 @@ function dialog(body, title, callback, footerContent, dangerous) {
             if(callback) {
                 try {
                     await callback();
-                }catch(e) {
-                    $('#srModal-error').html(`<span class:'text-mono'>${escapeHTMLQuotesAnd$(e.message || e)}</span>`).attr('hidden',false);
+                } catch(e) {
+                    alert(escapeHTMLQuotesAnd$(e.message || e));
                     event.preventDefault();
                     event.stopPropagation();
-                    return;
+                    reject(e);
                 }
             }
             isResolved = true;
