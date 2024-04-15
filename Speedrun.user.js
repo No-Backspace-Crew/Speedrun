@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.110
+// @version      1.111
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -238,6 +238,7 @@ if(window.location.hostname == 'github.com' || window.location.hostname == 'www.
     });
 }
 const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpoint', false)?"-beta":""}.us-west-2.nobackspacecrew.com/v1`;
+var IDENTITY_CENTER_ENDPOINT = GM_getValue('g_identity_center_endpoint', undefined);
 const ASSUME_COMMAND = `${GM_getValue('g_use_beta_endpoint', false)?"d":""}assume`;
 var sessionVariables = {};
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
@@ -324,6 +325,27 @@ class GrantedCredentialsBroker extends CredentialsBroker {
     }
 }
 
+class IdentityCenterCredentialsBroker extends CredentialsBroker {
+    getValidTemplateTypes() {return ['federate']};
+    validate(variables) {
+        if(!variables.permSet || !variables.region || !variables.account) {
+            throw new Error("permission set (permSet) and region must be defined");
+        }
+        variables.accountAndPermSet = `${variables.account}:${variables.permSet}`;
+    }
+    async getCredentials(variables) {
+        return {
+            url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
+        }
+    }
+    getCacheKey() {
+        return 'accountAndPermSet';
+    }
+    getDangerKey() {
+        return 'permSet';
+    }
+}
+
 let credentialsBroker = getCredentialsBroker();
 
 dayjs.extend(window.dayjs_plugin_utc);
@@ -339,10 +361,19 @@ DOMPurify.addHook('afterSanitizeAttributes', function (node) {
 });
 var lastPath = location.pathname + location.search;
 
-function getFederationLink(roleArn, destination, duration) {
+function getFederationLink(arn, destination, duration, account) {
     const normalizedDuration = normalizeDuration(duration);
-    let url = new URL(`${FEDERATION_ENDPOINT}/federate/${roleArn.split(':')[4]}`);
-    url.searchParams.append('role',roleArn.split(/:(?:assumed-)?role\//)[1]);
+    const isRole = arn.includes(":role/");
+    let url = undefined;
+    if(isRole) {
+        url = new URL(`${FEDERATION_ENDPOINT}/federate/${arn.split(':')[4]}`)
+        url.searchParams.append('role',arn.split(/:(?:assumed-)?role\//)[1]);
+    }
+    else {
+        url = new URL(`${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console`);
+        url.searchParams.append('account_id', account);
+        url.searchParams.append('role_name', arn);
+    }
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
     if(normalizedDuration) {
         url.searchParams.append('duration', normalizedDuration);
@@ -375,15 +406,23 @@ function addSpeedrunLink() {
             let region = $("meta[name='awsc-mezz-region']").attr("content");
             if(cookie && region) {
                 let userInfo = JSON.parse(cookie);
-                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>speedrun-\w+))\/\w+/
+                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z1-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
                 let result = ARN_REGEX.exec(userInfo.arn);
                 if(result) {
                     console.log('Adding speedrun link');
                     let [,arn, account, role] = result;
-                    arn = `arn:aws:iam::${account}:role/${role}`;
-                    //attempt to extract expiration time from speedrun issuer
                     let expiration = undefined;
-                    if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
+                    let isIdentityCenter = false;
+                    let permSet = undefined;
+                    if(role.startsWith('AWSReservedSSO_')){
+                        isIdentityCenter = true;
+                        permSet = role.substring(15);
+                        arn = permSet = permSet.substring(0,permSet.lastIndexOf('_'));
+                        IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
+                    } else {
+                      arn = `arn:aws:iam::${account}:role/${role}`;
+                      //attempt to extract expiration time from speedrun issuer
+                      if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
                         try {
                             expiration = new URL(userInfo.issuer).searchParams.get('expiration');
                             if(expiration) {
@@ -392,17 +431,18 @@ function addSpeedrunLink() {
                         } catch(e) {
                             console.error('Invalid issuer expiration',userInfo.issuer);
                         }
+                      }
                     }
-                    persistIfNewRoleOrExpiration(arn, region, expiration);
+                    persistIfNewRoleOrExpiration(isIdentityCenter?`${account}:${permSet}`:arn, region, expiration);
                     lastRolePersisted=true;
                     let navBar = $('#awsc-navigation__more-menu--list');
                     let helpButton = navBar.first().find('button').first();
                     let srLink = helpButton.clone();
                     srLink.attr('id','speedRunLink');
-                    srLink.attr('title',`Speedrun Link in account: ${account} with role: ${role}`);
+                    srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
                     srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
                     srLink.on('click',(event)=>{
-                        let url = getFederationLink(arn,window.location.href);
+                        let url = getFederationLink(arn,window.location.href,undefined,isIdentityCenter?account:undefined);
                         let curHtml = srLink.html();
                         console.log('Speedrun link',url);
                         GM_setClipboard(url);
@@ -676,7 +716,8 @@ function extractCloudWatchTimeAndAddSnapshot() {
 }
 
 function isSRPage() {
-    if('Page not found · GitHub' == $('title').text()) {
+    // when page not found this id appears
+    if($('#not-found-search').length) {
         return false;
     }
     let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname) || ACTIONS_REGEX.exec(location.pathname);
@@ -883,14 +924,15 @@ addEventListener('popstate', async (event) => {
 function isPartition(str) {
     return Object.keys(partitionMap).includes(str);
 }
-
 let templates = {
     settings : `~~~g_usernameOverride=Username Override {label:'Override your GitHub username when setting the user variable (optional)'}~~~
                     ~~~g_aws-accountId=AWS Account Id {placeholder:'123456789012', pattern:'\\\\d{12}', label:"Your personal AWS account id <a href='https://github.com/No-Backspace-Crew/Speedrun/wiki/Creating-Speedrun-Roles'>Read more</a>"}~~~
                     ~~~g_role=Role {"default":"speedrun-ReadOnly", label:"Your personal default role"}~~~
                     ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~
-                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
+                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Identity Center (Experimental)':'identitycenter','Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
                     ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~
+                    ~~~g_identity_center_endpoint=Identity Center Url {label:"Identity Center start url if using your personal profile", placeholder:'https://your_subdomain.awsapps.com', pattern:'https:\\\\/\\\\/[a-z0-9\\\\-]+\\\\.awsapps\\\\.com(\\\\/(start(\\\\/)?))?'}~~~
+                    ~~~g_identity_center_permSet=Identity Center Permission Set  {label:"If using Identity Center, your permission set"}~~~
                     ~~~g_force_new_creds=Force New Credentials {"type":"checkbox","default":false, "cast":"Boolean", label:"Gets new credentials every request, useful during testing"}~~~`,
     copy : "${content}",
     download : {
@@ -1828,6 +1870,7 @@ function getUserConfig() {
             [USER_SERVICE] : {
                 "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
                 "profile" : GM_getValue('g_granted_profile', undefined),
+                "permSet" : GM_getValue('g_identity_center_permSet', undefined),
                 "regions" : {
                     "aws" : {
                         "account" : GM_getValue('g_aws-accountId')
@@ -2205,8 +2248,7 @@ async function nope(content, preview = false, anchor, runBtn) {
     sessionVariables = variables;
 
     variables.internal.prompts = getPrompts(content, variables.internal.template);
-
-    let existingUserConfig = {};
+    let existingUserConfig = {}, existingCredentialsBroker = undefined;
     if (!preview) {
         if(hasElements(variables.internal.prompts) && !(variables.prompts === false)) {
             const div = $('<div>');
@@ -2313,6 +2355,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                 let isSettings = variables.internal.templateName === 'settings';
                 if(isSettings) {
                     existingUserConfig = getUserConfig();
+                    existingCredentialsBroker = GM_getValue("g_credentials_broker", 'speedrun')
                 }
                 var deeplink = undefined;
                 if(anchor) {
@@ -2465,7 +2508,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     window.open(variables.internal.result);
                     break;
                 case "settings" :
-                    if(!_.isEqual(existingUserConfig,getUserConfig()) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
+                    if(!_.isEqual(existingUserConfig,getUserConfig()) || !_.isEqual(existingCredentialsBroker, GM_getValue("g_credentials_broker", 'speedrun')) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
                         await sleep(500);
                         location.reload();
                         credentialsBroker = getCredentialsBroker();
@@ -3256,7 +3299,20 @@ function alertAndThrow(message, cause) {
 }
 
 function getCredentialsBroker() {
-    return GM_getValue("g_credentials_broker", 'speedrun') == 'speedrun' ? new SpeedrunCredentialsBroker() : new GrantedCredentialsBroker();
+    switch (GM_getValue("g_credentials_broker", 'speedrun')) {
+        case "speedrun":
+           return new SpeedrunCredentialsBroker();
+        break;
+        case "granted":
+           return new GrantedCredentialsBroker();
+        break;
+        case "identitycenter":
+            return new IdentityCenterCredentialsBroker();
+        break;
+        default:
+            alertAndThrow('Unknown credentials broker');
+        break;
+    }
 }
 
 function rightPad(array, newLength, padding) {
