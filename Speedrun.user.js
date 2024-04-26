@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.111
+// @version      1.112
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -969,7 +969,7 @@ let templates = {
             "Billing": "billing",
             "Certificate Manager": "acm",
             "CloudFormation": "cloudformation",
-            "CloudFront": "cloudfront/v3/home?region=us-east-1",
+            "CloudFront": "cloudfront/v4/home?region=us-east-1",
             "CloudShell": "cloudshell",
             "CloudTrail": "cloudtrail",
             "CloudWatch Alarms": "cloudwatch/home?region=${region}#alarmsV2:",
@@ -1417,7 +1417,7 @@ input:checked + .slider:before {
         }}};
 
         dataAndEvents.srGetCreds = { events: {'click': async (event) => {
-            await nope('#copy.withCreds {"forceNewCreds": true}\necho $credentials',false);
+            await nope('#copy.withCreds {"forceNewCreds": true}\necho Credentials Expiration: $AWS_CREDENTIAL_EXPIRATION',false);
         }}};
 
         dataAndEvents.srFlush = { events: {'click': async () => {
@@ -1536,7 +1536,7 @@ function parseJSON(str, name) {
 
 function jsonWithoutInternalVariables(variables) {
     //return prettyJSON(variables);
-    return prettyJSON(variables,function replacer(key, value) { return (key=="internal") ? undefined : value;});
+    return prettyJSON(variables,function replacer(key, value) { return (key=="internal" || key=="JSON5") ? undefined : value;});
 }
 
 function prettyJSON(obj, replacer, spaces=2) {
@@ -1976,7 +1976,7 @@ function getService() {
 }
 
 function getRegion() {
-    return $('#region').val();
+    return $('#region').val() || undefined;
 }
 
 function getInputValue(input) {
@@ -2073,7 +2073,7 @@ function getUndefinedGlobals(variables) {
 // if the service name is warp.federation.support
 // overlay the variables of warp, with warp.federation and with warp.federation.support
 function getServiceVariables(service, services) {
-    return service ? service.split('.').reduceRight((variables, previous, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(index).join('.')]), {}) : {};
+    return service ? service.split('.').reduceRight((variables, current, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(0,arr.length-index).join('.')]), {}) : {};
 }
 
 // get variables for templates and smash them together allowing for extension
@@ -2114,7 +2114,7 @@ function getServiceDropdownName(serviceName) {
     //Only pretty up final name in extension as service name for dropdown
     //A = A
     //A.B.C = C
-    return prettyCamelCase(serviceName.replace(USER_SERVICE,GM_getValue("g_usernameOverride") || user).replace('.*\.',''));
+    return prettyCamelCase(serviceName.replace(USER_SERVICE,GM_getValue("g_usernameOverride") || user).replace(/^.*\./,''));
 }
 
 function applyIfNotNull(obj, f) {
@@ -2954,7 +2954,7 @@ function getRegions(service, pageConfig) {
     let regionSet = new Set();
     let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
     let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
-    for (const [region, config] of Object.entries(nullSafe(nullSafe(nullSafe(pageConfig.services)[service]).regions))){
+    for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
         let regions = isPartition(region) ? partitionMap[region] : [region];
         regions.forEach(region => {
             if(!regionFilter.length || regionFilter.includes(region)) {
