@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.112
+// @version      1.113
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -420,18 +420,18 @@ function addSpeedrunLink() {
                         arn = permSet = permSet.substring(0,permSet.lastIndexOf('_'));
                         IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
                     } else {
-                      arn = `arn:aws:iam::${account}:role/${role}`;
-                      //attempt to extract expiration time from speedrun issuer
-                      if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
-                        try {
-                            expiration = new URL(userInfo.issuer).searchParams.get('expiration');
-                            if(expiration) {
-                                expiration = parseInt(expiration);
+                        arn = `arn:aws:iam::${account}:role/${role}`;
+                        //attempt to extract expiration time from speedrun issuer
+                        if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
+                            try {
+                                expiration = new URL(userInfo.issuer).searchParams.get('expiration');
+                                if(expiration) {
+                                    expiration = parseInt(expiration);
+                                }
+                            } catch(e) {
+                                console.error('Invalid issuer expiration',userInfo.issuer);
                             }
-                        } catch(e) {
-                            console.error('Invalid issuer expiration',userInfo.issuer);
                         }
-                      }
                     }
                     persistIfNewRoleOrExpiration(isIdentityCenter?`${account}:${permSet}`:arn, region, expiration);
                     lastRolePersisted=true;
@@ -759,24 +759,25 @@ if (window.onurlchange === null) {
 }
 
 async function updatePageTimerFired(location) {
+    updatingPageTimer = undefined;
     if(isSRPage()) {
         persistLastPath(location);
         //wait for page to render
         await waitForSelector('.markdown-body > *');
-        let maxAttempts = 100;
+        let maxAttempts = 50;
         while($('.srDone').length>0 && maxAttempts-- > 0) {
-            await sleep(50);
+            await sleep(100);
         }
         if(maxAttempts > 0) {
             await updatePage(`urlchange ${lastPath}`);
         } else {
             console.log('No changes detected');
+            return;
         }
     } else {
         persistLastPath(location);
     }
     showToolbarOnPage();
-    updatingPageTimer = undefined;
 }
 
 function scheduleUpdate(location) {
@@ -911,11 +912,14 @@ Object.entries(regionMap).forEach(([name, region]) => {
 
 addEventListener('popstate', async (event) => {
     //when the back button is pressed, all events/data is lost, this is an attempt to wire those back up
-    if(isSRPage()) {
-        setTimeout(()=> {
+    let result = isSRPage();
+    if(result) {
+        setTimeout(async () => {
+        let [,path] = result;
+        let pageEnabled = await updatePageConfig(path);
             bindDataAndEvents();
             showToolbarOnPage();
-            updateTabs();
+            $("#service").trigger('change');
         }
                    , 50);
     }
@@ -1254,7 +1258,7 @@ input:checked + .slider:before {
             }
             return false;
         }
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--color-scale-purple-7)' : 'var(--page-header-bgColor)'}`, 'text-align': 'center'}});
+        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--label-plum-bgColor-active)' : 'var(--page-header-bgColor)'}`, 'text-align': 'center'}});
         toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
       <span id='toolbar'>
   <label id='srToggleTitle' class="switch">
@@ -1641,13 +1645,13 @@ function retrieve(path, raw=false, cache=true) {
 
 function parseHeaders(headers) {
     return headers.split('\r\n').reduce((acc,value) => {if(value.trim()!="")
-                        {
-                            let header = value.split(": ",2);
-                            acc[header[0].toLowerCase()]=header[1];
-                        }
-                        return acc;
-                    }
-                ,{});
+    {
+        let header = value.split(": ",2);
+        acc[header[0].toLowerCase()]=header[1];
+    }
+                                                        return acc;
+                                                       }
+                                        ,{});
 }
 
 function invoke(request, raw=false) {
@@ -2164,16 +2168,16 @@ function setEnabledPath(enabled) {
 function getPathFromObject(o, path) { return path.split(".").reduce((r, k) => r?.[k], o) };
 
 function safeInterpolate(tpl, variables){
-  if(tpl === undefined || tpl === null){
-    return undefined;
-  }
-  return tpl.replaceAll(/\${(.*?)}/g, (_, path) => {
-    let val = getPathFromObject(variables, path);
-    if(val === undefined) {
-      throw new Error(`${_} cannot be interpolated from untrusted input`);
+    if(tpl === undefined || tpl === null){
+        return undefined;
     }
-    return val;
-  });
+    return tpl.replaceAll(/\${(.*?)}/g, (_, path) => {
+        let val = getPathFromObject(variables, path);
+        if(val === undefined) {
+            throw new Error(`${_} cannot be interpolated from untrusted input`);
+        }
+        return val;
+    });
 }
 
 async function nope(content, preview = false, anchor, runBtn) {
@@ -2239,11 +2243,11 @@ async function nope(content, preview = false, anchor, runBtn) {
 
     //strip output
     if(!(preview || variables.raw)) {
-         let arr = variables.content.split(OUTPUT,2);
-         if(arr.length > 1) {
-             variables.content = arr[0];
-             variables.internal.output = arr[1].replace(TRAILING_WHITESPACE,"");
-         }
+        let arr = variables.content.split(OUTPUT,2);
+        if(arr.length > 1) {
+            variables.content = arr[0];
+            variables.internal.output = arr[1].replace(TRAILING_WHITESPACE,"");
+        }
     }
     sessionVariables = variables;
 
@@ -2811,28 +2815,7 @@ async function updatePage(reason) {
             [,path] = result;
         }
         injectToolbar();
-        let pageEnabled = isEnabledPath();
-        if(path) {
-          setInputValue($('#srEnabled'), pageEnabled);
-          //Don't show toolbar toggle on pages it can't be disabled
-          isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
-          $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
-        }
-        // first pass to build page config
-        pageConfig = await buildConfig(pageEnabled);
-
-
-        let serviceDropdown = $("#service");
-
-        let newServices = [];
-        let lastService = getValue('#service') || safeInterpolate(getURLSearchParam('srService'),{user: GM_getValue("g_usernameOverride") || user}) || localStorage.getItem(LAST_SERVICE_KEY);
-
-        for (const [key, value] of Object.entries(getServices(pageConfig))) {
-            newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
-        };
-        serviceDropdown.empty().append(newServices);
-        serviceDropdown.prop('disabled', newServices.length == 1);
-        newServices.length > 0 ? serviceDropdown.show() : serviceDropdown.hide();
+        let pageEnabled = await updatePageConfig(path);
 
         // second pass to wire up content
         if(pageEnabled) {
@@ -2840,7 +2823,7 @@ async function updatePage(reason) {
         }
 
         bindDataAndEvents();
-        serviceDropdown.trigger('change');
+        $("#service").trigger('change');
 
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
@@ -2855,6 +2838,32 @@ async function updatePage(reason) {
         $('.markdown-body').append($('<span>', { class : 'srDone'}));
     }
 
+}
+
+async function updatePageConfig(path) {
+    let pageEnabled = isEnabledPath();
+    if(path) {
+        setInputValue($('#srEnabled'), pageEnabled);
+        //Don't show toolbar toggle on pages it can't be disabled
+        isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
+        $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
+    }
+    // first pass to build page config
+    pageConfig = await buildConfig(pageEnabled);
+
+
+    let serviceDropdown = $("#service");
+
+    let newServices = [];
+    let lastService = getValue('#service') || safeInterpolate(getURLSearchParam('srService'),{user: GM_getValue("g_usernameOverride") || user}) || localStorage.getItem(LAST_SERVICE_KEY);
+
+    for (const [key, value] of Object.entries(getServices(pageConfig))) {
+        newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
+    };
+    serviceDropdown.empty().append(newServices);
+    serviceDropdown.prop('disabled', newServices.length == 1);
+    newServices.length > 0 ? serviceDropdown.show() : serviceDropdown.hide();
+    return pageEnabled;
 }
 
 function setButtonDanger(btn, variables) {
@@ -2990,7 +2999,7 @@ async function buildConfig(enabled) {
             const details = parseContent($(pre).text(), SR_CONFIG);
             if(details) {
                 // hide sr config by default
-                if(!$(pre).parent().find('summary').length) {
+                if(!$('.srDone').length) {
                     $(pre).parent().wrap('<details class="details-reset"></details>')
                         .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
                         .prev().on('click', function(event) {
@@ -3184,7 +3193,7 @@ function colorizeComments(content, variables) {
 function colorizeOutput(content, variables) {
     return firstNonNull(!variables.raw) ?
         content.replace(OUTPUT,'<span class="IssueLabel color-bg-attention-emphasis color-fg-on-emphasis mr-1">Output Transform</span>')
-     : content;
+    : content;
 }
 
 //html encode curly braces
@@ -3301,17 +3310,17 @@ function alertAndThrow(message, cause) {
 function getCredentialsBroker() {
     switch (GM_getValue("g_credentials_broker", 'speedrun')) {
         case "speedrun":
-           return new SpeedrunCredentialsBroker();
-        break;
+            return new SpeedrunCredentialsBroker();
+            break;
         case "granted":
-           return new GrantedCredentialsBroker();
-        break;
+            return new GrantedCredentialsBroker();
+            break;
         case "identitycenter":
             return new IdentityCenterCredentialsBroker();
-        break;
+            break;
         default:
             alertAndThrow('Unknown credentials broker');
-        break;
+            break;
     }
 }
 
