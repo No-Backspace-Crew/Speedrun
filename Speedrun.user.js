@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.113
+// @version      1.114
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1146,6 +1146,10 @@ function injectToolbar() {
           cursor: not-allowed;
           color: var(--control-fgColor-disabled);
           background-color: var(--control-bgColor-disabled);
+        }
+
+        .select2-container--default.select2-container--disabled span.select2-selection__arrow {
+          display: none;
         }
 
         .select2-dropdown {
