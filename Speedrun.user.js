@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.114
+// @version      1.115
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -406,7 +406,7 @@ function addSpeedrunLink() {
             let region = $("meta[name='awsc-mezz-region']").attr("content");
             if(cookie && region) {
                 let userInfo = JSON.parse(cookie);
-                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z1-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
+                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
                 let result = ARN_REGEX.exec(userInfo.arn);
                 if(result) {
                     console.log('Adding speedrun link');
