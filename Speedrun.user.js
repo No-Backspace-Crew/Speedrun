@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.115
+// @version      1.116
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -197,6 +197,7 @@ let credentialsCache = {};
 let stackCache = {};
 let functionCache = {};
 const AsyncFunction = async function () {}.constructor;
+let toolbarShown = false;
 
 
 const STORAGE_NAMESPACE = 'SR:';
@@ -765,7 +766,7 @@ async function updatePageTimerFired(location) {
         //wait for page to render
         await waitForSelector('.markdown-body > *');
         let maxAttempts = 50;
-        while($('.srDone').length>0 && maxAttempts-- > 0) {
+        while(doneLoading()>0 && maxAttempts-- > 0) {
             await sleep(100);
         }
         if(maxAttempts > 0) {
@@ -1852,8 +1853,12 @@ function isIssue(location) {
     return ISSUES_PATH_REGEX.exec(location.pathname);
 }
 
+function doneLoading() {
+    return $('.srDone').length;
+}
+
 function showToolbarOnPage() {
-    isSRPage() ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show()}` : `${$("#toolbar").hide()}`) + $("#srToolbar").show() : $("#srToolbar").hide()
+    isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show()}` : `${$("#toolbar").hide()}`) + $("#srToolbar").show() : $("#srToolbar").hide()
     setFavIcon();
 }
 
@@ -2793,7 +2798,7 @@ async function updatePage(reason) {
                 $('#search-suggestions-dialog').addClass('srSearchDone');
 
                 let searchObserver = new MutationObserver(mutations => {
-                    if($('.srDone').length){
+                    if(doneLoading()){
                         mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
                     }
                 });
@@ -2807,7 +2812,7 @@ async function updatePage(reason) {
             $('#search-suggestions-dialog').removeClass('srSearchDone');
         }
 
-        if($('.srDone').length){
+        if(doneLoading()){
             console.log("Page already current, ignoring");
             return;
         }
@@ -2840,6 +2845,7 @@ async function updatePage(reason) {
     } finally {
         updatingPage = false;
         $('.markdown-body').append($('<span>', { class : 'srDone'}));
+        toolbarShown = true;
     }
 
 }
@@ -3003,7 +3009,7 @@ async function buildConfig(enabled) {
             const details = parseContent($(pre).text(), SR_CONFIG);
             if(details) {
                 // hide sr config by default
-                if(!$('.srDone').length) {
+                if(!doneLoading()) {
                     $(pre).parent().wrap('<details class="details-reset"></details>')
                         .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
                         .prev().on('click', function(event) {
