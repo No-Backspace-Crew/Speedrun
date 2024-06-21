@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.116
+// @version      1.117
 // @description  Table Flip Dev Ops
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -829,7 +829,6 @@ function bindDataAndEvents() {
         {
             dropdownAutoWidth : true,
             width:'copy'
-
         });
     $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
 }
@@ -1134,6 +1133,11 @@ function injectToolbar() {
           color: var(--fgColor-default);
         }
 
+        .select2-container--default.select2-container--disabled .select2-selection__rendered {
+          padding-right: 8px !important;
+          color: var(--control-fgColor-disabled);
+        }
+
         .select2-container--default .select2-results__option--selected {
           background-color: var(--button-default-bgColor-selected);
         }
@@ -1156,7 +1160,6 @@ function injectToolbar() {
         .select2-dropdown {
           background-color: var(--bgColor-default);
           border-color: var(--borderColor-default);
-
         }
 
         .select2-search__field {
