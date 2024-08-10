@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.117
-// @description  Table Flip Dev Ops
+// @version      1.118
+// @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
@@ -198,7 +198,7 @@ let stackCache = {};
 let functionCache = {};
 const AsyncFunction = async function () {}.constructor;
 let toolbarShown = false;
-
+let githubSearchBarObserver = undefined;
 
 const STORAGE_NAMESPACE = 'SR:';
 
@@ -232,7 +232,7 @@ if(window.location.hostname == 'github.com' || window.location.hostname == 'www.
         favIcons.true[el.attr('rel')] = {href: GM_info.script.icon, type: 'image/png'};
     });
     $('body').click(function(event) {
-        //when you click on the body, close the github issues if visible.
+        //when you click on the body, close the github issues dropdown if visible.
         if($('#githubIssuesList').is(":visible") && ($(event.target).parents('#githubIssuesDetailsCloseBtn,#srToolbar').length==0 || $(event.target).parents('#githubIssuesList').length > 0)) {
             $('#githubIssuesDetails').removeAttr("open");
         }
@@ -2795,24 +2795,22 @@ async function updatePage(reason) {
         if(isSRPage()) {
             const searchSelector = 'search-suggestions-dialog';
             waitForSelector(`#${searchSelector}`).then(async (result) => {
-                if($('.srSearchDone').length){
-                    return;
+                if(githubSearchBarObserver) {
+                    githubSearchBarObserver.disconnect();
                 }
-                $('#search-suggestions-dialog').addClass('srSearchDone');
 
-                let searchObserver = new MutationObserver(mutations => {
+                githubSearchBarObserver = new MutationObserver(mutations => {
+                    //console.log(mutations[0]);
                     if(doneLoading()){
                         mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
                     }
                 });
 
-                searchObserver.observe(document.getElementById(searchSelector), {
+                githubSearchBarObserver.observe(document.getElementById(searchSelector), {
                     attributeFilter:['aria-disabled'],
                     attributeOldValue:true
                 });
             });
-        } else if($('.srSearchDone').length){
-            $('#search-suggestions-dialog').removeClass('srSearchDone');
         }
 
         if(doneLoading()){
@@ -3012,7 +3010,7 @@ async function buildConfig(enabled) {
             const details = parseContent($(pre).text(), SR_CONFIG);
             if(details) {
                 // hide sr config by default
-                if(!doneLoading()) {
+                if(!doneLoading() && $(pre).parents('.details-reset').length == 0) {
                     $(pre).parent().wrap('<details class="details-reset"></details>')
                         .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
                         .prev().on('click', function(event) {
