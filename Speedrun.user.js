@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.118
+// @version      1.119
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -28,6 +28,7 @@
 // @grant        GM_info
 // @grant        GM_download
 // @grant        GM_addElement
+// @grant        GM_openInTab
 // @grant        window.onurlchange
 // @match        https://github.com/*
 // @match        https://www.github.com/*
@@ -170,14 +171,66 @@
 // @connect      events.me-south-1.amazonaws.com
 // @connect      events.me-central-1.amazonaws.com
 // @connect      events.sa-east-1.amazonaws.com
+// @connect      oidc.us-east-1.amazonaws.com
+// @connect      oidc.us-east-2.amazonaws.com
+// @connect      oidc.us-west-1.amazonaws.com
+// @connect      oidc.us-west-2.amazonaws.com
+// @connect      oidc.af-south-1.amazonaws.com
+// @connect      oidc.ap-east-1.amazonaws.com
+// @connect      oidc.ap-south-2.amazonaws.com
+// @connect      oidc.ap-southeast-3.amazonaws.com
+// @connect      oidc.ap-southeast-4.amazonaws.com
+// @connect      oidc.ap-south-1.amazonaws.com
+// @connect      oidc.ap-northeast-3.amazonaws.com
+// @connect      oidc.ap-northeast-2.amazonaws.com
+// @connect      oidc.ap-southeast-1.amazonaws.com
+// @connect      oidc.ap-southeast-2.amazonaws.com
+// @connect      oidc.ap-northeast-1.amazonaws.com
+// @connect      oidc.ca-central-1.amazonaws.com
+// @connect      oidc.eu-central-1.amazonaws.com
+// @connect      oidc.eu-central-2.amazonaws.com
+// @connect      oidc.eu-west-1.amazonaws.com
+// @connect      oidc.eu-west-2.amazonaws.com
+// @connect      oidc.eu-south-1.amazonaws.com
+// @connect      oidc.eu-west-3.amazonaws.com
+// @connect      oidc.eu-north-1.amazonaws.com
+// @connect      oidc.eu-south-2.amazonaws.com
+// @connect      oidc.me-south-1.amazonaws.com
+// @connect      oidc.me-central-1.amazonaws.com
+// @connect      oidc.sa-east-1.amazonaws.com
+// @connect      portal.sso.us-east-1.amazonaws.com
+// @connect      portal.sso.us-east-2.amazonaws.com
+// @connect      portal.sso.us-west-1.amazonaws.com
+// @connect      portal.sso.us-west-2.amazonaws.com
+// @connect      portal.sso.af-south-1.amazonaws.com
+// @connect      portal.sso.ap-east-1.amazonaws.com
+// @connect      portal.sso.ap-south-2.amazonaws.com
+// @connect      portal.sso.ap-southeast-3.amazonaws.com
+// @connect      portal.sso.ap-southeast-4.amazonaws.com
+// @connect      portal.sso.ap-south-1.amazonaws.com
+// @connect      portal.sso.ap-northeast-3.amazonaws.com
+// @connect      portal.sso.ap-northeast-2.amazonaws.com
+// @connect      portal.sso.ap-southeast-1.amazonaws.com
+// @connect      portal.sso.ap-southeast-2.amazonaws.com
+// @connect      portal.sso.ap-northeast-1.amazonaws.com
+// @connect      portal.sso.ca-central-1.amazonaws.com
+// @connect      portal.sso.eu-central-1.amazonaws.com
+// @connect      portal.sso.eu-central-2.amazonaws.com
+// @connect      portal.sso.eu-west-1.amazonaws.com
+// @connect      portal.sso.eu-west-2.amazonaws.com
+// @connect      portal.sso.eu-south-1.amazonaws.com
+// @connect      portal.sso.eu-west-3.amazonaws.com
+// @connect      portal.sso.eu-north-1.amazonaws.com
+// @connect      portal.sso.eu-south-2.amazonaws.com
+// @connect      portal.sso.me-south-1.amazonaws.com
+// @connect      portal.sso.me-central-1.amazonaws.com
+// @connect      portal.sso.sa-east-1.amazonaws.com
 // @connect      speedrun.nobackspacecrew.com
+// @connect      awsapps.com
 // @updateURL    https://speedrun.nobackspacecrew.com/userscripts/Speedrun.meta.js
 // @downloadURL  https://speedrun.nobackspacecrew.com/userscripts/Speedrun.user.js
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
-
-//elf
-//data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFlElEQVR4Xu1afUyVVRzmEklU5tLkeouZTYgohTtBtEgwF41RlKIVWbgGy7mWhiur4USZ/eFHDlPXCidbH1u1FMKUMdlYF6RuCAg2o4LmbCrebtGcmQqJwfPj5zxH3vt+3LiB577/PJzzno/3PM9zfufjYgtR/LEpPv6QgBOwtmDT5QHS15WsAvfrVm4GFm99I+DfMtBvwDtVnoDL/c8A893FpVB+/NqlwIMxTwNj7F3ADo9DmJ1zOncPi1jD0qivuKI8AVpT4NF9jQJv7ATOHC5HBNwByhOgt+zWRy9CjEjMnY6iPS3ngRd+rwd+c/oicKJtCtDf2BBwBwQJ0GBgRWwslN+weDFKhGcmAC9WtQ2rE0aMA5Qn4NKhL+GA0KSnhvSIt7wb+RMmUyzwFtAOkmNC9i9NlsS0VElvHlt5rzwBT6RGwwFxfU7wlzPNA3TmvwaUndHXVIn8ypy3gVZXhRHjgOuOgNSZj0FRfuoOHfBJ9qqHaf1n5R333U7Kxo0RZlSvm/YHEUVFQHZC1fJipLPch02Jaqqw8CU6CWUJ4IEfT98uUNTj+QnpmCM7gLIjZAfEL7CjXOj4FwgHV4f8Z+j0uGNalOAEW/9jRiAua6mSr46UJUAeePw9Y8HTkWNngZxucjcJTmAyZ4Xfhj9XLuoB8txnB8ikexrKkFWym2LE5oPW7gv+MwcoSwAvX5Vb3oES80vDgL0naccW9tceoC23ThCRnZDQ1YD8v72HgeyE5Jx7kc6elSzUK/+O7g0aP/vZL+W5Ub8doCwB8sD7uj8Bqd52msNLy38A7qvrBMkZmW9inb9xwavI59gQ10pzud2ZByx4jpSPcq0GpjloJ+jq2gI0qjx/X6T9EdQr+2LnkGJbdkCQgMG9e8Vq2rtrKY+XVz1M3D+3LkRumyMFOMYeC+TVYt5s8Va4dtt+vJdjCzuMu+D2S7PvR5Y9hZz10iaqLzvBbwcoS4DMOKdlRWQHcNqRvxcxQVZeqzw7otZNvxv0VrwLrK7aCBG1lOf9ghyTuB/LDlCWgPVRuVCubuyv4KCm3WWJxKydp4TToqz8lR2kt4NeJc8AyE44U/oi8sc5VwjlPji3DGkt5S07QFkCeODLE+8Ced8f7QR+fSECuObEx6acwPsCXv/lswPvD3iH2BH/CvpJmp0kmqWxRVA+ZDB9pnUb8vXuIQx/tLIE8MBfLzwARsOO0unrj9bJQLO3sjMSFwpzP9IejXYuHXNTuzffAWxp3iOII1+w8H0DO8es8mwjXQcoS4DRgd+dTjEg8f16n2TKwTP1LDmIH44t25tPIksvpsiO4Hb05rzQaX9C86OVJUBv4JMaGkBaWfqDmMsZj08EqV0//jmkE7i9uTfRr7y8arASnD/9AYoF/Bh1gqyo2fQ1DlCWgPKpSVA0K4N+kTEa5dkJS/KeRb2Pyj4H5tV8Kzjl0xO0evDc551kUS85iB92QsAdoDwBp1NS4ACz6zord2rrk6gfaZ+HrDYX3QUmpNG53xY9BZixpERQnBPsBI4RhRVU78PCjUB21JCVfWSef8+O74p42eP7Rkh5As6tyQRTt6yv0t0c+VJBdgIr37qL7vTecoUC5VNkelwa/YdIWh/ey865YeZ8v75La3xXGlWeAFZVb84YnYPshOr9XktzuHnZHDiCnfCbpxbt3Fmw15QTOLg/NCkc9Xkfw+O4pjHlCTCqcKDKmXWCrPgEJ91cfVVNvzbL/0tkyk6BGvTV/ShPAJMhEyHvOHkZH/c83VTxvcWGyrlIa50uR7wDggRI846dcLyGTpcc3c0qr7kK/B/z3EyfyhOgFeWZRL05L5M9amIAf7jyBMg3TP7eH4w6ByhPAE8FPj3yDZPeLbJWoB11DggSYGbNNFB21DrAwNgMFQkSYIim67jQv0WgUn0ORMqkAAAAAElFTkSuQmCC
 
 /* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, domToPng */
 
@@ -327,16 +380,213 @@ class GrantedCredentialsBroker extends CredentialsBroker {
 }
 
 class IdentityCenterCredentialsBroker extends CredentialsBroker {
-    getValidTemplateTypes() {return ['federate']};
+    getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge']};
     validate(variables) {
         if(!variables.permSet || !variables.region || !variables.account) {
             throw new Error("permission set (permSet) and region must be defined");
         }
         variables.accountAndPermSet = `${variables.account}:${variables.permSet}`;
     }
+    async detectIDCRegion(startUrl) {
+        let existingCreds = GM_getValue(startUrl,{});
+        if(!existingCreds.region) {
+            const text = await retrieve(startUrl);
+            existingCreds.region = text.replaceAll(/.*?region\":\"([^\"]+).*/gm, '$1');
+            if(!existingCreds.region) {
+                throw new Error('Unable to detect Identity Center region to get credentials, check your url');
+            }
+            GM_setValue(startUrl, existingCreds);
+        }
+        return existingCreds;
+    }
+
+    async registerClient(startUrl, existingCreds) {
+        if(!existingCreds.clientId || (existingCreds.clientSecretExpiresAt || 0)*1000 < (Date.now()+10000)) {
+            const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/client/register`,
+                             method: 'POST',
+                             headers:{'Content-Type': 'application/json'},
+                             body: JSON.stringify({"clientName": "Speedrun", "clientType": "public", "scopes": ["sso:account:access"]})};
+            const result = await invoke(request);
+            delete existingCreds.refreshToken;
+            if(result.status != 200) {
+                throw new Error('Unable to register Speedrun as a client with Identity Center to get credentials');
+            }
+            existingCreds = {...existingCreds, ...result.response};
+            GM_setValue(startUrl, existingCreds);
+        }
+        return existingCreds;
+    }
+
+    async startDeviceAuthorization(startUrl, existingCreds) {
+        if(!existingCreds.refreshToken) {
+            const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/device_authorization`,
+
+                             method: 'POST',
+                             headers:{'Content-Type': 'application/json'},
+                             body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, startUrl})};
+            const result = await invoke(request);
+            if(result.status != 200) {
+                throw new Error('Unable to register this browser with Identity Center to get credentials');
+            }
+            existingCreds.deviceCode = result.response.deviceCode;
+            return result.response.verificationUriComplete;
+        }
+        return undefined;
+    }
+
+    async completeDeviceAuthorization(startUrl, existingCreds, url) {
+        if(!url) {
+            return existingCreds;
+        }
+        let authToast = $("#authToast");
+        let tab = undefined;
+        try {
+            return await new Promise(async (resolve, reject) => {
+                authToast.attr('hidden',false);
+                await sleep(200);
+                tab = GM_openInTab(url, {active:true,setParent:true});
+                let attempts = 550;
+                tab.onclose = () => {
+                    attempts = 0;
+                };
+                $('#authToastCancelled').on('click.sr', () => {authToast.attr('hidden', true);attempts = 0});
+                let timer = setInterval(async ()=>{
+                    try {
+                        if(attempts-- == 0) {
+                            throw new Error('Timed out waiting for user authentication.  Unable to get credentials');
+                        }
+                        const tokenRequest = {
+                            url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
+                            method: 'POST',
+                            headers:{'Content-Type': 'application/json'},
+                            body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"urn:ietf:params:oauth:grant-type:device_code",
+                                                  "deviceCode":existingCreds.deviceCode})};
+                        const tokenResult = await invoke(tokenRequest);
+                        //todo expired
+                        if(tokenResult.status == 400) {
+                            if(tokenResult.response.error != 'authorization_pending'){
+                                throw new Error('Unable to complete browser registration with Identity Center to get credentials');
+                            }
+                        }
+                        else if(tokenResult.status != 200) {
+                            throw attempts == -1 ? new Error('Unable to get credentials, user cancelled authentication') : new Error('Unable to complete browser registration with Identity Center to get credentials');
+                        } else {
+                            clearInterval(timer);
+                            existingCreds = {...existingCreds, ...tokenResult.response};
+                            existingCreds.accessTokenExpiration = Date.now() + 3600000;
+                            GM_setValue(startUrl, existingCreds);
+                            resolve(existingCreds);
+                        }
+                    } catch(e) {
+                        clearInterval(timer);
+                        reject(e);
+                    }
+                }, 1000)
+                });
+        }finally {
+            authToast.attr('hidden', true);
+            $('#authToastCancelled').off('click.sr');
+            if(tab && !tab.closed) {
+                tab.close();
+            }
+            window.focus();
+        }
+    }
+
+    async refreshAccessToken(startUrl, existingCreds){
+        if(!existingCreds.accessTokenExpiration || existingCreds.accessTokenExpiration < Date.now() - 10000) {
+            const tokenRequest = {url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
+                                  method: 'POST',
+                                  headers:{'Content-Type': 'application/json'},
+                                  body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"refresh_token",
+                                                        "refreshToken":existingCreds.refreshToken})};
+            const tokenResult = await invoke(tokenRequest);
+            if(tokenResult.response.error == 'invalid_grant') {
+                //refresh token is bad or expired, clear it so we can restart device auth
+                delete existingCreds.refreshToken;
+                return existingCreds;
+            }
+            if(tokenResult.status != 200) {
+                throw new Error('Unable to refresh access token with Identity Center to get credentials');
+            }
+            existingCreds = {...existingCreds, ...tokenResult.response};
+            existingCreds.accessTokenExpiration = Date.now() + 3600000;
+            GM_setValue(startUrl, existingCreds);
+        }
+        return existingCreds;
+    }
+
+    getCachedCredentials(account, role, forceNewCreds, duration) {
+        const cacheKey = `${account}:${role}`;
+        const cachedCredentials = credentialsCache[cacheKey];
+        if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
+            console.log('Using cached credentials');
+            return cachedCredentials.credentials;
+        }
+    }
+
     async getCredentials(variables) {
-        return {
-            url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
+        const type = variables.internal.credentialsType || variables.internal.templateType;
+        switch(type) {
+            case 'federate':
+                return {
+                    url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
+                }
+                break;
+            case 'lambda':
+            case 'stepfunction':
+            case 'cfn':
+            case 'eventbridge':
+            case 'copy': {
+                let credentials = this.getCachedCredentials(variables.account, variables.permSet, variables.forceNewCreds, variables.roleDuration);
+                if(credentials) {
+                    return credentials;
+                }
+                const startUrl = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
+                if(!startUrl) {
+                    throw new Error('ssoStartUrl is required to get credentials');
+                }
+                startUrl.replaceAll(/\/(start(\/)?)$/gm,'/start');
+
+                // detect region
+                let existingCreds = await this.detectIDCRegion(startUrl);
+
+                // get sso client
+                existingCreds = await this.registerClient(startUrl, existingCreds);
+
+                for(let pass=0; pass<2; pass++) {
+                    // start device auth
+                    let deviceUrl = await this.startDeviceAuthorization(startUrl, existingCreds);
+                    existingCreds = await this.completeDeviceAuthorization(startUrl, existingCreds, deviceUrl);
+                    existingCreds = await this.refreshAccessToken(startUrl, existingCreds);
+                    //if refresh token still exists it's good, break out of loop, no need do another device auth pass
+                    if(existingCreds.refreshToken) {
+                        pass = 2;
+                    }
+                }
+                const request = {url:`https://portal.sso.${existingCreds.region}.amazonaws.com/federation/credentials?role_name=${variables.permSet}&account_id=${variables.account}`,
+                                 method: 'GET',
+                                 headers:{'x-amz-sso_bearer_token': existingCreds.accessToken},
+                                };
+                const result = await invoke(request);
+                if(result.status != 200) {
+                    throw new Error(`Unable to get credentials: ${result.responseText}`);
+                }
+                credentialsCache[`${variables.account}:${variables.permSet}`] = {credentials: result.response.roleCredentials};
+
+                if(type=='copy') {
+                    return `export AWS_CREDENTIAL_EXPIRATION=${dayjs(result.response.roleCredentials.expiration).toISOString()}
+export AWS_ACCESS_KEY_ID=${result.response.roleCredentials.accessKeyId}
+export AWS_SECRET_ACCESS_KEY=${result.response.roleCredentials.secretAccessKey}
+export AWS_SESSION_TOKEN=${result.response.roleCredentials.sessionToken}
+export AWS_DEFAULT_REGION=${variables.region}
+export AWS_REGION=${variables.region}
+${variables.internal.result}`
+                }
+                return result.response.roleCredentials;
+
+                break
+            }
         }
     }
     getCacheKey() {
@@ -859,7 +1109,7 @@ const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
 const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
 const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
-    const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
+const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\nexport AWS_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
@@ -915,8 +1165,8 @@ addEventListener('popstate', async (event) => {
     let result = isSRPage();
     if(result) {
         setTimeout(async () => {
-        let [,path] = result;
-        let pageEnabled = await updatePageConfig(path);
+            let [,path] = result;
+            let pageEnabled = await updatePageConfig(path);
             bindDataAndEvents();
             showToolbarOnPage();
             $("#service").trigger('change');
@@ -1640,7 +1890,7 @@ function retrieve(path, raw=false, cache=true) {
         GM_xmlhttpRequest({
             method: 'GET',
             url,
-            headers: {...{'User-Agent': `Speedrun V${GM_info.script.version}`}, ...(cache?{}:{'Cache-Control': 'no-cache'})},
+            headers: {...getUserAgentHeader(), ...(cache?{}:{'Cache-Control': 'no-cache'})},
             onload: function(response) {
                 resolve(raw ? response : response.responseText);
             },
@@ -1652,10 +1902,10 @@ function retrieve(path, raw=false, cache=true) {
 }
 
 function parseHeaders(headers) {
-    return headers.split('\r\n').reduce((acc,value) => {if(value.trim()!="")
+    return headers.split('\n').reduce((acc,value) => {if(value.trim()!="")
     {
-        let header = value.split(": ",2);
-        acc[header[0].toLowerCase()]=header[1];
+        let header = value.split(":",2);
+        acc[header[0].toLowerCase()]=header[1].trim();
     }
                                                         return acc;
                                                        }
@@ -1666,8 +1916,8 @@ function invoke(request, raw=false) {
     return new Promise((resolve,reject) => {
         GM_xmlhttpRequest({
             method: request.method,
-            url: `${request.protocol}//${request.host}${request.path}`,
-            headers: request.headers,
+            url: request.protocol ? `${request.protocol}//${request.host}${request.path}` : request.url,
+            headers: {...getUserAgentHeader(), ...(request.headers ? {...request.headers} : {})},
             data: request.body,
             onload: function(response) {
                 const headers = parseHeaders(response.responseHeaders);
@@ -1773,11 +2023,10 @@ async function getWebCredentials(account, role, forceNewCreds, duration) {
         authToast.attr('hidden',false);
 
         let authPopup = new Promise((resolve, reject) => {
-            popup = window.open(`${FEDERATION_ENDPOINT}/user/authenticate?closeOnSuccess=true`,'Speedrun Authentication', "width=400,height=600");
-            var pollTimer = window.setInterval(function() {
-                if (popup.closed !== false) {
-                    window.clearInterval(pollTimer);
-                    resolve();}}, 200);
+            popup = GM_openInTab(`${FEDERATION_ENDPOINT}/user/authenticate?closeOnSuccess=true`,{active:true,setParent:true});
+            popup.onclose = () => {
+                resolve();
+            };
             $('#authToastCancelled').on('click.sr', () => {reject('Authentication cancelled')});
         });
 
@@ -1789,7 +2038,10 @@ async function getWebCredentials(account, role, forceNewCreds, duration) {
         } finally {
             $('#authToastCancelled').off('click.sr');
             authToast.attr('hidden', true);
-            popup.close();
+            if(!popup.closed) {
+                popup.close();
+            }
+            window.focus();
         }
         // try again to get credentials
         result = await retrieve(webCredentialsUrl, true);
@@ -2377,8 +2629,10 @@ async function nope(content, preview = false, anchor, runBtn) {
                 if(anchor) {
                     deeplink = $('<button id="srModal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
                     deeplink.click(function () {
-                        let url = new URL(`${window.location.origin}${window.location.pathname}`)
-                        url.hash = anchor.attr('href').substring(1);
+                        let url = new URL(`${window.location.origin}${window.location.pathname}`);
+                        if(anchor.length) {
+                            url.hash = anchor.attr('href').substring(1);
+                        }
                         let parameters = new URLSearchParams();
                         parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
                         parameters.append('srService', getValue('#service'));
@@ -2493,14 +2747,17 @@ async function nope(content, preview = false, anchor, runBtn) {
     const raw = variables.raw;
     variables.internal.result = await deepInterpolate(variables.internal.template, $.extend(variables,{raw:false}), variables.ignoreErrors || preview);
     variables.raw = raw;
+    variables.internal.credentialsBroker = (variables.ssoStartUrl && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
+        new IdentityCenterCredentialsBroker()
+    : credentialsBroker;
 
     if(!preview) {
         try {
             if(variables.creds) {
-                if(!credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
+                if(!variables.internal.credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
                     throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
                 }
-                credentialsBroker.validate(variables);
+                variables.internal.credentialsBroker.validate(variables);
             }
             if(GM_getValue("g_force_new_creds", false)) {
                 variables.forceNewCreds = true;
@@ -2509,10 +2766,10 @@ async function nope(content, preview = false, anchor, runBtn) {
                 case "copy" :
                     //refactor to show key if creds are needed
                     if(needsNewCreds(variables)) {
-                        if(credentialsBroker.isDemoAccount(variables)) {
+                        if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
                             throw new Error(`Getting credentials not enabled on demo accounts`);
                         }
-                        variables.internal.result = await credentialsBroker.getCredentials(variables);
+                        variables.internal.result = await variables.internal.credentialsBroker.getCredentials(variables);
                     } else if(variables.internal.newRegion) {
                         variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                     }
@@ -2531,7 +2788,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     }
                     break;
                 case "federate" : {
-                    if(credentialsBroker.isDemoAccount(variables)) {
+                    if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
                         throw new Error(`Federation not enabled on demo accounts`);
                     }
                     // strip leading / if present or console links won't work
@@ -2541,7 +2798,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     variables.internal.consoleUrl = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
                     console.log('Console url', variables.internal.consoleUrl);
                     needsNewCreds(variables);
-                    let result = await credentialsBroker.getCredentials(variables);
+                    let result = await variables.internal.credentialsBroker.getCredentials(variables);
                     if(result.url) {
                         if(result.url != variables.internal.consoleUrl) {
                             console.log(`Federation url`, result.url)
@@ -2573,7 +2830,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     if(!isFunctionUrl && !variables.functionName) {
                         throw new Error('functionUrl or functionName is required');
                     }
-                    let lambdaCredentials = await credentialsBroker.getCredentials(variables);
+                    let lambdaCredentials = await variables.internal.credentialsBroker.getCredentials(variables);
                     const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
                     const response = await invoke(request, isFunctionUrl);
                     let lambdaResult = undefined;
@@ -2610,7 +2867,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     if(!variables.eventBusName){
                         throw new Error('eventBusName is required');
                     }
-                    let credentials = await credentialsBroker.getCredentials(variables);
+                    let credentials = await variables.internal.credentialsBroker.getCredentials(variables);
                     let body = {
                         "Entries":[
                             {
@@ -2644,7 +2901,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     if(variables.functionName == undefined) {
                         throw new Error('functionName is required');
                     }
-                    let credentials = await credentialsBroker.getCredentials(variables);
+                    let credentials = await variables.internal.credentialsBroker.getCredentials(variables);
                     let headers = {'X-Amz-Target': 'AWSStepFunctions.StartExecution', 'Content-Type': 'application/x-amz-json-1.0', 'User-Agent': `Speedrun V${GM_info.script.version}`};
                     let body = {"stateMachineArn":  `arn:${variables.partition}:states:${variables.region}:${variables.account}:stateMachine:${variables.functionName}`,
                                 "input": variables.internal.result
@@ -2711,6 +2968,10 @@ $(document).ready(async function() {
         }
     }
 });
+
+function getUserAgentHeader() {
+    return {'User-Agent': `Speedrun V${GM_info.script.version}`}
+}
 
 function injectIFrame(location, variables) {
     const validAttributes = ['allow','allowfullscreen','height','loading','name','sandbox','allow-top-navigation','src','width','frameBorder'];
@@ -2878,7 +3139,7 @@ async function updatePageConfig(path) {
 }
 
 function setButtonDanger(btn, variables) {
-    if(variables.danger || (variables.creds && _.isString(variables[credentialsBroker.getDangerKey()]) && variables[credentialsBroker.getDangerKey()].toLowerCase().match(/(full|admin|write)/))) {
+    if(variables.danger || (variables.creds && _.isString(variables[variables.internal.credentialsBroker.getDangerKey()]) && variables[variables.internal.credentialsBroker.getDangerKey()].toLowerCase().match(/(full|admin|write)/))) {
         btn.addClass('color-bg-danger-emphasis');
         btn.removeClass('btn-primary');
         btn.data('danger', true);
@@ -2890,7 +3151,7 @@ function setButtonDanger(btn, variables) {
 
     if(variables.creds) {
         let hasService = document.querySelector("#region").length > 0
-        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[credentialsBroker.getDangerKey()]})`);
+        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[variables.internal.credentialsBroker.getDangerKey()]})`);
         if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
             btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
             btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
