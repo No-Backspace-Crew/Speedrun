@@ -67,7 +67,7 @@ You can define the `permSet` at a higher level and use JavaScript if you want to
             }
         },
         PiedPiperFrontendService : {
-            profile: "frontend-${srRegionName.split(' - ')[1].toLowerCase()}",
+            permSet: "frontend-${srRegionName.split(' - ')[1].toLowerCase()}",
             regions : {
                 "us-west-2 - Beta" : {
                    "account" : "333333333333"
