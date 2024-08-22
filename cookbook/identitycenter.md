@@ -1,8 +1,9 @@
 # Using Identity Center as a credentials broker
 
-If you'd like to configure Speedrun to use [Identity Center](https://aws.amazon.com/about-aws/whats-new/2024/04/aws-iam-identity-center-shortcut-links-aws-access-portal/) as a credentials broker make sure you understand the limitations.
+If you'd like to configure Speedrun to use [Identity Center](https://aws.amazon.com/about-aws/whats-new/2024/04/aws-iam-identity-center-shortcut-links-aws-access-portal/) as a credentials broker note these points:
 
 1. Getting CLI creds embeds the credentials in the command that is copied to the clipboard.
+2. Full Identity Center support requires Speedrun v1.119 or later.
 
 ## Switching to the Identity Center credentials broker
 
