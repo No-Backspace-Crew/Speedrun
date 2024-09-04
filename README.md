@@ -3,7 +3,7 @@
 [Speedrun](https://github.com/No-Backspace-Crew/Speedrun/wiki) lets your users do exactly what they came to do straight from your documentation.  
 It's a powerup for GitHub markdown that infuses your documentation with the ability to:
 
-- [x] 💅 Prompt for inputs
+- [x] ❓ Prompt for inputs
 - [x] ☕ Run JavaScript code
 - [x] 🔑 Get AWS credentials
 - [x] ⚙️ Reference configuration
