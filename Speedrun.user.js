@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.119
+// @version      1.120
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1496,6 +1496,10 @@ input:checked + .slider:before {
 .minimalPadding {
   padding: 1px 6px;
 }
+
+body:has(details#srModal[open]) {
+    overflow: hidden;
+}
 </style>`);
 
         // https://stackoverflow.com/a/67456813/3006039
@@ -1599,9 +1603,9 @@ input:checked + .slider:before {
     </button>
   </div>
 </div>
-`).append(`<details id='srModal' class="fixed details-reset details-overlay details-overlay-dark">
+`).append(`<details id='srModal' class="details-reset details-overlay details-overlay-dark">
   <summary aria-haspopup="dialog"></summary>
-  <details-dialog class="Box height-fit Box-overlay--wide">
+  <details-dialog class="Box d-flex flex-column Box-overlay--wide">
     <div class="Box-header m-0">
       <span class="Box-title" id='srModal-title'>Dialog</span>
       <button id="modal-cancel" class="Box-btn-octicon btn-octicon float-right" type="button" aria-label="Close dialog" data-close-dialog>
@@ -3580,6 +3584,9 @@ function alertAndThrow(message, cause) {
 }
 
 function getCredentialsBroker() {
+    if(window.location.pathname.toLowerCase().startsWith('/no-backspace-crew/speedrun')){
+       return new SpeedrunCredentialsBroker();
+    }
     switch (GM_getValue("g_credentials_broker", 'speedrun')) {
         case "speedrun":
             return new SpeedrunCredentialsBroker();
