@@ -11,7 +11,7 @@ Check that here by clicking the  ${\textsf{\color{lime}Green}}$ **Open** button.
 https://github.com/${user}/${user}/settings
 ```
 
-3. Click the ${\textsf{\color{lime}Green}}$ **Open** button below, save the resulting page and follow the instructions to get started.
+3. Click the ${\textsf{\color{lime}Green}}$ **Open** button below, then click the ${\textsf{\color{lime}Green}}$ **Save page** button on the resulting page and follow the instructions to get started.
 
 ````
 #NewGitHubWiki {org:'${user}',repo:'${user}',title:'Speedrun Escape Room Challenge', stripComments:false, prompts:false}
