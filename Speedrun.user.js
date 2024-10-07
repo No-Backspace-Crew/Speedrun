@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.120
+// @version      1.121
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1911,9 +1911,9 @@ function parseHeaders(headers) {
         let header = value.split(":",2);
         acc[header[0].toLowerCase()]=header[1].trim();
     }
-                                                        return acc;
-                                                       }
-                                        ,{});
+                                                      return acc;
+                                                     }
+                                      ,{});
 }
 
 function invoke(request, raw=false) {
@@ -2068,7 +2068,7 @@ async function getWebCredentials(account, role, forceNewCreds, duration) {
 
 async function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
     let offset = str.indexOf('${');
-    while(offset>-1 && !variables.raw) {
+    while(offset>-1) {
         let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
         let toReplace = "${" + matches[0] + "}";
         let replacement = wrap(await interpolate(toReplace, variables, suppressErrors), toReplace);
@@ -2731,26 +2731,23 @@ async function nope(content, preview = false, anchor, runBtn) {
 
         }
     }
-    if(!variables.raw){
-        // interpolate variables using 2 passes to account for variables that are defined later
-        for(let pass of [1,2]){
-            variables.internal.pass = pass;
-            for(let [key, value] of Object.entries(variables)) {
-                if(key == 'internal') {
-                    continue;
-                }
-                const result = await deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
-                if(result) {
-                    variables[key] = result;
-                }
-            }
-        };
-    }
 
-    //turn off raw so variables get interpolated in the template
-    const raw = variables.raw;
-    variables.internal.result = await deepInterpolate(variables.internal.template, $.extend(variables,{raw:false}), variables.ignoreErrors || preview);
-    variables.raw = raw;
+    // interpolate variables using 2 passes to account for variables that are defined later
+    for(let pass of [1,2]){
+        variables.internal.pass = pass;
+        for(let [key, value] of Object.entries(variables)) {
+            // don't interpolate internal keys or content if raw is turned on
+            if(key == 'internal' || (variables.raw && key == 'content')) {
+                continue;
+            }
+            const result = await deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
+            if(result) {
+                variables[key] = result;
+            }
+        }
+    };
+
+    variables.internal.result = await deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
     variables.internal.credentialsBroker = (variables.ssoStartUrl && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
         new IdentityCenterCredentialsBroker()
     : credentialsBroker;
@@ -3103,7 +3100,7 @@ async function updatePage(reason) {
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
-        $('button.js-wiki-more-pages-link').each(async function(item) {
+        $('button.js-wiki-more-pages-link').each(function(item) {
             $(this).trigger('click');
         });
     } catch(e){
@@ -3489,10 +3486,10 @@ function colorizePrompts(content, variables) {
 }
 
 async function colorizeLiterals(content, variables) {
-    return await interpolateLiteralsInString(content, variables, true,
-                                             (result, match) =>
-                                             {let escaped = escapeHTMLQuotesAnd$(match);
-                                              return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}" style='box-decoration-break: clone;'>${whitespaceToHTML(firstNonNull(result, match))}</span>`});
+    return variables.raw ? content : await interpolateLiteralsInString(content, variables, true,
+                                                                       (result, match) =>
+                                                                       {let escaped = escapeHTMLQuotesAnd$(match);
+                                                                        return `<span title="${escaped}" class="Label Label--inline Label--${result == undefined ? "danger" : "success"}" style='box-decoration-break: clone;'>${whitespaceToHTML(firstNonNull(result, match))}</span>`});
 }
 
 async function buildPreview(variables) {
@@ -3585,7 +3582,7 @@ function alertAndThrow(message, cause) {
 
 function getCredentialsBroker() {
     if(window.location.pathname.toLowerCase().startsWith('/no-backspace-crew/speedrun')){
-       return new SpeedrunCredentialsBroker();
+        return new SpeedrunCredentialsBroker();
     }
     switch (GM_getValue("g_credentials_broker", 'speedrun')) {
         case "speedrun":
