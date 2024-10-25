@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.121
+// @version      1.122
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2949,7 +2949,7 @@ showToolbarOnPage();
 
 $(document).ready(async function() {
 
-    if(window.location.hash) {
+    if(window.location.hash && window.location.search) {
         const el = document.getElementById('user-content-' + window.location.hash.substring(1));
         if(el) {
             el.scrollIntoView({behavior: 'smooth', block: 'start'});
