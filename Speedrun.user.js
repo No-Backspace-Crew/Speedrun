@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.122
+// @version      1.123
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -1356,8 +1356,8 @@ let user = $("meta[name='user-login']").attr("content");
 let tabNames = {
     "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
     "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
-    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z"
-
+    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
+    "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
 }
 
 function injectToolbar() {
@@ -2448,6 +2448,30 @@ function safeInterpolate(tpl, variables){
     });
 }
 
+function copyAndAppendToOutput(outputText, runBtn) {
+    const outputTabId = runBtn && runBtn.data('outputTab');
+    if(outputTabId) {
+        const output = $(`#${outputTabId} > div`);
+        const timelineItem = `<div class="TimelineItem">
+            <div class="TimelineItem-badge">
+              <svg class="octicon"
+                   width="18" height="18"
+                   viewBox="0 0 16 16" >
+                <path fill-rule="evenodd" clip-rule="evenodd"
+                      d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Zm7-3.25v2.992l2.028.812a.75.75 0 0 1-.557 1.392l-2.5-1A.751.751 0 0 1 7 8.25v-3.5a.75.75 0 0 1 1.5 0Z" >
+                </path>
+              </svg>
+            </div>
+            <div class="TimelineItem-body"><span class='color-fg-success'>${new Date().toLocaleTimeString()}</span><br/><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div>
+          </div>
+          `;
+        output.append(timelineItem);
+        $(`#tab-${outputTabId}`).removeClass('d-none').click();
+    }
+    GM_setClipboard(outputText);
+    toast("📋 Copied");
+}
+
 async function nope(content, preview = false, anchor, runBtn) {
     let pageVariables = _.cloneDeep(nullSafe(pageConfig));
     delete pageVariables.templates;
@@ -2774,8 +2798,8 @@ async function nope(content, preview = false, anchor, runBtn) {
                     } else if(variables.internal.newRegion) {
                         variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                     }
-                    GM_setClipboard(variables.internal.result);
-                    toast("📋 Copied");
+                    copyAndAppendToOutput(variables.internal.result, runBtn);
+
                     persistLastRole(variables);
                     break;
                 case "link" :
@@ -2857,8 +2881,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
                         lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), false);
                     }
-                    GM_setClipboard(lambdaResult);
-                    toast("📋 Copied");
+                    copyAndAppendToOutput(lambdaResult, runBtn);
                     break;
                 }
                 case "eventbridge" : {
@@ -3422,12 +3445,14 @@ async function wireUpContent() {
             var index = 0;
             for (const [key, value] of Object.entries(tabNames)) {
                 const localBlock = block;
-                let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
+                let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item${key==='Output'?' d-none':''}" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
                 navBody.append(tab);
                 dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
                     for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
                         let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
+                                const clipboard = $(this).closest('nav').next('div').find('div.zeroclipboard-container');
+                                key === 'Preview' ? clipboard.removeClass('d-none') : clipboard.addClass('d-none');
                                 $(this).attr('aria-current','page');
                                 $(`#${tabId}`).show();
                             } else {
@@ -3444,9 +3469,12 @@ async function wireUpContent() {
 
                 const codeTab = $(`<pre id='Code-${block}'><code>${escapeHTMLStartTags(wrappedCode)}</code></pre>`).hide();
                 const debugTab = $(`<pre id='Debug-${block}'><div class='highlight highlight-source-js notranslate position-relative overflow-auto'><pre></pre></div></pre>`).hide();
+                const outputTab = $(`<pre id='Output-${block}' class='width-full'><div class="d-flex flex-column" style='max-height: 40em'></pre>`).hide();
                 dataAndEvents[runBtnId].data.debugTab = `Debug-${block}`;
+                dataAndEvents[runBtnId].data.outputTab = `Output-${block}`;
                 $(pre).after(codeTab);
                 codeTab.after(debugTab);
+                debugTab.after(outputTab);
                 dataAndEvents[runBtnId].events.click = async function() {
                     await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
                 };
