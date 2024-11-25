@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.123
+// @version      1.124
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -978,7 +978,7 @@ function isSRPage() {
             return false;
         }
     }
-    return result && !result.groups.path.match(/^\/(sessions|login|settings|features)\//i) ? result : null;
+    return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
 }
 
 if(location.host.endsWith('console.aws.amazon.com')) {
@@ -1213,55 +1213,57 @@ let templates = {
         value:"~~~path=Service {\"type\":\"select\",\"options\":\"${_(consoleOptions).toPairs().sortBy(0).fromPairs().value()}\",\"suppress\":true}~~~\n${path.includes('?') ? path : `${path}/home?region=${region}`}",
         consoleOptions: {
             "Amazon Verified Permissions":"verifiedpermissions",
-            "Amplify": "amplify",
+            Amplify: "amplify",
             "API Gateway": "apigateway",
             AppConfig : "systems-manager/appconfig/?region=${region}",
-            "AppSync": "appsync",
-            "Athena": "athena/home?region=${region}#query",
+            AppSync: "appsync",
+            Athena: "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
             Bedrock: "bedrock",
-            "Billing": "billing",
+            Billing: "billing",
             "Certificate Manager": "acm",
-            "CloudFormation": "cloudformation",
-            "CloudFront": "cloudfront/v4/home?region=us-east-1",
-            "CloudShell": "cloudshell",
-            "CloudTrail": "cloudtrail",
+            CloudFormation: "cloudformation",
+            CloudFront: "cloudfront/v4/home?region=us-east-1",
+            CloudShell: "cloudshell",
+            CloudTrail: "cloudtrail",
             "CloudWatch Alarms": "cloudwatch/home?region=${region}#alarmsV2:",
             "CloudWatch Dashboards": "cloudwatch/home?region=${region}#dashboards:",
             "CloudWatch Logs": "cloudwatch/home?region=${region}#logsV2:log-groups",
             "CloudWatch Logs Insights": "cloudwatch/home?region=${region}#logsV2:logs-insights",
             "CloudWatch Metrics": "cloudwatch/home?region=${region}#metricsV2:",
             "CloudWatch X-Ray": "cloudwatch/home?region=${region}#xray:traces",
-            "CodeBuild": "codesuite/codebuild/projects?region=${region}",
-            "CodeDeploy": "codedeploy",
-            "Cognito" : "cognito",
-            "DynamoDB": "dynamodbv2",
-            "EC2": "ec2",
-            "ECS": "ecs",
-            "EKS": "eks",
+            CodeBuild: "codesuite/codebuild/projects?region=${region}",
+            CodeDeploy: "codedeploy",
+            Cognito : "cognito",
+            DynamoDB: "dynamodbv2",
+            EC2: "ec2",
+            ECS: "ecs",
+            EKS: "eks",
             "Elastic Beanstalk": "elasticbeanstalk",
-            "EventBridge": "events",
-            "Home": "console",
-            "IAM": "iamv2",
+            EventBridge: "events",
+            "Health Dashboard": "health/home#/account/dashboard/open-issues",
+            Home: "console",
+            IAM: "iamv2",
             "Identity Center": "singlesignon",
-            "Kinesis": "kinesis",
-            "KMS": "kms",
-            "Lambda": "lambda",
+            Kinesis: "kinesis",
+            KMS: "kms",
+            Lambda: "lambda",
             "Load Balancers": "ec2/home?region=${region}#LoadBalancers:",
-            "Organizations": "organizations/v2",
+            "User Notifications": "notifications",
+            Organizations: "organizations/v2",
             "Parameter Store": "systems-manager/parameters/?region=${region}&tab=Table",
             "Resource Access Manager": "ram",
             "Resource Explorer": "resource-explorer",
             "Route 53": "route53",
-            "RDS": "rds",
+            RDS: "rds",
             "Secrets Manager": "secretsmanager",
             SES: "ses",
-            "SNS": "sns",
-            "SQS": "sqs",
+            SNS: "sns",
+            SQS: "sqs",
             "Step Functions":"states/home?region=${region}#/statemachines",
-            "S3": "s3",
+            S3: "s3",
             "Systems Manager": "systems-manager",
-            "VPC": "vpc"
+            VPC: "vpc"
         }
     },
     link : "${lastLine(content)}",
@@ -1569,7 +1571,7 @@ body:has(details#srModal[open]) {
     `);
 
         $("body").prepend(toolbar).append(`
-<div class="position-fixed bottom-0 right-0" hidden style='z-index:100' id='snackbar'>
+<div class="position-fixed top-0 right-0" hidden style='z-index:100' id='snackbar'>
   <div class="Toast Toast--success">
     <span class="Toast-icon">
       <!-- <%= octicon "check" %> -->
@@ -1698,11 +1700,16 @@ body:has(details#srModal[open]) {
 
 let noop = function() {}
 
-function toast(str) {
+function toast(str, runBtn) {
     let snackbar = $("#snackbar");
+    if(runBtn && runBtn.text().length) {
+        console.log(runBtn.text());
+        snackbar.addClass('position-absolute').removeClass('position-fixed')
+        runBtn.closest('nav').next('div').append(snackbar);
+    }
     $('#toast').html(str);
     snackbar.attr('hidden',false);
-    setTimeout(function(){ snackbar.attr('hidden',true); }, 2500);
+    setTimeout(function(){ snackbar.attr('hidden',true); snackbar.addClass('position-fixed').removeClass('position-absolute'); $('body').append(snackbar) }, 2500);
 }
 
 function insertSRUpdateButton(add=false){
@@ -2448,7 +2455,10 @@ function safeInterpolate(tpl, variables){
     });
 }
 
-function copyAndAppendToOutput(outputText, runBtn) {
+function copyAndPrependToOutput(outputText, runBtn, copy=true) {
+    prependToOutput(outputText, runBtn, copy);
+}
+function prependToOutput(outputText, runBtn, copy=false) {
     const outputTabId = runBtn && runBtn.data('outputTab');
     if(outputTabId) {
         const output = $(`#${outputTabId} > div`);
@@ -2465,11 +2475,13 @@ function copyAndAppendToOutput(outputText, runBtn) {
             <div class="TimelineItem-body"><span class='color-fg-success'>${new Date().toLocaleTimeString()}</span><br/><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div>
           </div>
           `;
-        output.append(timelineItem);
+        output.prepend(timelineItem);
         $(`#tab-${outputTabId}`).removeClass('d-none').click();
     }
-    GM_setClipboard(outputText);
-    toast("📋 Copied");
+    if(copy) {
+        GM_setClipboard(outputText);
+        toast("📋 Copied", runBtn);
+    }
 }
 
 async function nope(content, preview = false, anchor, runBtn) {
@@ -2798,7 +2810,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     } else if(variables.internal.newRegion) {
                         variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
                     }
-                    copyAndAppendToOutput(variables.internal.result, runBtn);
+                    copyAndPrependToOutput(variables.internal.result, runBtn);
 
                     persistLastRole(variables);
                     break;
@@ -2881,7 +2893,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
                         lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), false);
                     }
-                    copyAndAppendToOutput(lambdaResult, runBtn);
+                    copyAndPrependToOutput(lambdaResult, runBtn);
                     break;
                 }
                 case "eventbridge" : {
@@ -2915,7 +2927,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     }
                     const eventId = JSON.parse(response.responseText).Entries[0].EventId;
                     console.log(`Published event to eventbridge with id: ${eventId}`);
-                    toast(`Published: ${eventId}`);
+                    prependToOutput(`Published event: ${eventId}`, runBtn);
                     break;
                 }
                 case "stepfunction" : {
