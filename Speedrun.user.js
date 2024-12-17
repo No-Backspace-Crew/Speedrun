@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.124
+// @version      1.125
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2472,9 +2472,14 @@ function prependToOutput(outputText, runBtn, copy=false) {
                 </path>
               </svg>
             </div>
-            <div class="TimelineItem-body"><span class='color-fg-success'>${new Date().toLocaleTimeString()}</span><br/><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div>
-          </div>
-          `;
+            <div class="TimelineItem-body"><div class="d-flex flex-row"><span class='color-fg-success d-flex'>${new Date().toLocaleTimeString()}</span><clipboard-copy aria-label="Copy" tabindex="0" role="button" data-tooltip-direction="e" class="ClipboardButton btn btn-invisible js-clipboard-copy m-0 ml-1 p-1 d-flex flex-justify-center flex-items-baseline" data-copy-feedback="Copied!" value="${escapeHTMLStartTags(outputText)}" tabindex="0" role="button" style="margin-top:-.3em !important">
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy js-clipboard-copy-icon">
+    <path d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 0 1 0 1.5h-1.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-1.5a.75.75 0 0 1 1.5 0v1.5A1.75 1.75 0 0 1 9.25 16h-7.5A1.75 1.75 0 0 1 0 14.25Z"></path><path d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0 1 14.25 11h-7.5A1.75 1.75 0 0 1 5 9.25Zm1.75-.25a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 0 0 .25-.25v-7.5a.25.25 0 0 0-.25-.25Z"></path>
+</svg>
+      <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
+    <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
+</svg>
+    </clipboard-copy></div><div class="d-flex flex-row"><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div></div>`;
         output.prepend(timelineItem);
         $(`#tab-${outputTabId}`).removeClass('d-none').click();
     }
@@ -3135,8 +3140,14 @@ async function updatePage(reason) {
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
-        $('button.js-wiki-more-pages-link').each(function(item) {
+        $('button.js-wiki-more-pages-link').each(async function(item) {
+            await sleep(500);
             $(this).trigger('click');
+        });
+        $('img[alt="speedrun required"]').each(async function(item) {
+            if(window.location!='https://github.com/No-Backspace-Crew/Speedrun/wiki/Badges') {
+                $(this).closest('p').remove();
+            }
         });
     } catch(e){
         alertAndThrow(e);
