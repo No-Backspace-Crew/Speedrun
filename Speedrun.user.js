@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.126
+// @version      1.127
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -29,6 +29,7 @@
 // @grant        GM_download
 // @grant        GM_addElement
 // @grant        GM_openInTab
+// @grant        GM_cookie
 // @grant        window.onurlchange
 // @match        https://github.com/*
 // @match        https://www.github.com/*
@@ -254,6 +255,9 @@ let toolbarShown = false;
 let githubSearchBarObserver = undefined;
 
 const STORAGE_NAMESPACE = 'SR:';
+const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
+const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
+
 
 //update check
 const UPDATE_CHECK_KEY = `${STORAGE_NAMESPACE}version`;
@@ -529,6 +533,7 @@ class IdentityCenterCredentialsBroker extends CredentialsBroker {
         const type = variables.internal.credentialsType || variables.internal.templateType;
         switch(type) {
             case 'federate':
+                IDENTITY_CENTER_ENDPOINT = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
                 return {
                     url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
                 }
@@ -619,6 +624,9 @@ function getFederationLink(arn, destination, duration, account) {
     if(isRole) {
         url = new URL(`${FEDERATION_ENDPOINT}/federate/${arn.split(':')[4]}`)
         url.searchParams.append('role',arn.split(/:(?:assumed-)?role\//)[1]);
+        if(GM_getValue(SR_MULTI_SESSION, false)) {
+            url.searchParams.append('logout',false);
+        }
     }
     else {
         url = new URL(`${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console`);
@@ -630,6 +638,23 @@ function getFederationLink(arn, destination, duration, account) {
         url.searchParams.append('duration', normalizedDuration);
     }
     return url.toString();
+}
+
+async function getCookieExpiration(...cookieNames) {
+     for (const cookie of await GM.cookie.list()){
+         for(const cookieName of cookieNames) {
+             if(cookie.name === cookieName){
+                 console.log(`Extracting expiration from: ${cookie.name} with value ${cookie.expirationDate}`);
+                 if(dayjs().isBefore(dayjs(cookie.expirationDate))){
+                     // in testing sometimes the cookie had the expiration of the previous session, not the current one.
+                    console.warn('WARN: session expiration is in the past, cookie is stale, ignoring');
+                    continue;
+                 }
+                 return cookie.expirationDate;
+             }
+         }
+     }
+     return undefined;
 }
 
 function getCookie(cookieName) {
@@ -645,31 +670,45 @@ function getCookie(cookieName) {
     return undefined;
 }
 
-function addSpeedrunLink() {
+async function addSpeedrunLink() {
     if($('#awsc-navigation__more-menu--list').length > 0) {
-        if(!$('#speedRunLink').length || !awsuserInfoCookieParsed) {
+        if(!awsuserInfoCookieParsed) {
             if(awsuserInfoCookieParsed) {
-                return;
+                return true;
             }
             let cookie = getCookie('aws-userInfo');
+            let session = JSON.parse($("meta[name='awsc-session-data']").attr("content"));
+            let region = session.infrastructureRegion;
+            let subdomain = window.location.host.split('.')[0];
+            let isMultiSession = (subdomain.split('-').length-1)==1;
+            GM_setValue(SR_MULTI_SESSION, isMultiSession);
+            let expiration = await getCookieExpiration(`__Secure-aws-session-id-${subdomain}`,`aws-signer-token_${region}`);
+            if(expiration) {
+                expiration*=1000; //convert to millis
+                console.log('Session expires:', new dayjs(expiration).fromNow());
+            }
+
             awsuserInfoCookieParsed = true;
             let lastRolePersisted = false;
-            let region = $("meta[name='awsc-mezz-region']").attr("content");
-            if(cookie && region) {
-                let userInfo = JSON.parse(cookie);
+            if(region) {
+                let userInfo = cookie ? JSON.parse(cookie) : {arn: session.sessionARN};
                 const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
                 let result = ARN_REGEX.exec(userInfo.arn);
                 if(result) {
-                    console.log('Adding speedrun link');
                     let [,arn, account, role] = result;
-                    let expiration = undefined;
                     let isIdentityCenter = false;
+                    let addLink = false;
                     let permSet = undefined;
                     if(role.startsWith('AWSReservedSSO_')){
                         isIdentityCenter = true;
                         permSet = role.substring(15);
                         arn = permSet = permSet.substring(0,permSet.lastIndexOf('_'));
-                        IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
+                        if(userInfo.issuer) {
+                            IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
+                            addLink = true;
+                        } else {
+                            console.warn('Unable to determine session issuer');
+                        }
                     } else {
                         arn = `arn:aws:iam::${account}:role/${role}`;
                         //attempt to extract expiration time from speedrun issuer
@@ -683,25 +722,33 @@ function addSpeedrunLink() {
                                 console.error('Invalid issuer expiration',userInfo.issuer);
                             }
                         }
+                        addLink = true;
                     }
-                    persistIfNewRoleOrExpiration(isIdentityCenter?`${account}:${permSet}`:arn, region, expiration);
+                    let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
+                    if(isMultiSession) {
+                        persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
+                    }
+                    persistIfNewRoleOrExpiration(cacheKey, region, expiration);
                     lastRolePersisted=true;
-                    let navBar = $('#awsc-navigation__more-menu--list');
-                    let helpButton = navBar.first().find('button').first();
-                    let srLink = helpButton.clone();
-                    srLink.attr('id','speedRunLink');
-                    srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
-                    srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
-                    srLink.on('click',(event)=>{
-                        let url = getFederationLink(arn,window.location.href,undefined,isIdentityCenter?account:undefined);
-                        let curHtml = srLink.html();
-                        console.log('Speedrun link',url);
-                        GM_setClipboard(url);
-                        srLink.html('Copied!');
-                        setTimeout(()=>{srLink.html(curHtml)}, 2000);
+                    if(addLink) {
+                        console.log('Adding Speedrun link');
+                        let navBar = $('#awsc-navigation__more-menu--list');
+                        let helpButton = navBar.first().find('button').first();
+                        let srLink = helpButton.clone();
+                        srLink.attr('id','speedRunLink');
+                        srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
+                        srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
+                        srLink.on('click',(event)=>{
+                            let url = getFederationLink(arn,window.location.href,undefined,isIdentityCenter?account:undefined);
+                            let curHtml = srLink.html();
+                            console.log('Speedrun link',url);
+                            GM_setClipboard(url);
+                            srLink.html('Copied!');
+                            setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
-                    });
-                    helpButton.before(srLink);
+                        });
+                        helpButton.before(srLink);
+                    }
                 }
             }
             if(!lastRolePersisted && !awsuserInfoCookieParsed) {
@@ -985,12 +1032,12 @@ if(location.host.endsWith('console.aws.amazon.com')) {
     window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
     let bodyList = document.querySelector("body");
     if(bodyList) {
-        let observer = new MutationObserver((mutations, o) => {
-            if(addSpeedrunLink()) {
+        let observer = new MutationObserver(async (mutations, o) => {
+            if(await addSpeedrunLink()) {
                 o.disconnect();
             }
         });
-        if(!addSpeedrunLink()) {
+        if(!(await addSpeedrunLink())) {
             observer.observe(bodyList, {attributeFilter: [ "data-testid"], childList:true});
         }
         extractCloudWatchTimeAndAddSnapshot();
@@ -1691,6 +1738,7 @@ body:has(details#srModal[open]) {
         dataAndEvents.srFlush = { events: {'click': async () => {
             GM_deleteValue(`${LAST_CREDS}federate`);
             GM_deleteValue(`${LAST_CREDS}copy`);
+            GM_deleteValue(SR_SESSIONS_KEY);
             credentialsCache = {};
             stackCache = {};
             toast('Credentials flushed');
@@ -1851,7 +1899,7 @@ function cachedValidVarName(name) {
 
 function persistTimestamp(timestamp, key, maxLength=5){
     if(timestamp.label){
-        timestamp.timestamp = Date.now();
+        timestamp.timestamp ||= Date.now();
         let timestamps = GM_getValue(key,[]);
         //remove any already existing entry for this label/value
         timestamps = timestamps.filter((val) => !(timestamp.label === val.label) && !(timestamp.value && timestamp.value === val.value))
@@ -2836,10 +2884,14 @@ async function nope(content, preview = false, anchor, runBtn) {
                     // strip leading / if present or console links won't work
                     variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
                     // use cloudwatch/deeplink.js instead of home to better handle long urls
-                    variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js')
-                    variables.internal.consoleUrl = `https://${variables.region}.console.aws.amazon.com/${variables.internal.result}`;
+                    variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js');
+                    const consoleSubdomain = getConsoleSubdomain(variables);
+                    variables.internal.consoleUrl = `https://${getConsoleSubdomain(variables)}.console.aws.amazon.com/${variables.internal.result}`;
                     console.log('Console url', variables.internal.consoleUrl);
-                    needsNewCreds(variables);
+                    //if there is an active session we don't need new creds
+                    if(!consoleSubdomain.includes('.')) {
+                        needsNewCreds(variables);
+                    }
                     let result = await variables.internal.credentialsBroker.getCredentials(variables);
                     if(result.url) {
                         if(result.url != variables.internal.consoleUrl) {
@@ -3157,6 +3209,26 @@ async function updatePage(reason) {
         toolbarShown = true;
     }
 
+}
+
+function getConsoleSubdomain(variables){
+   if(GM_getValue(SR_MULTI_SESSION, false)) {
+       let cacheKey = variables[variables.internal.credentialsBroker.getCacheKey()];
+       let session = getSessionSubdomain(cacheKey);
+       if(session) {
+           return `${session}.${variables.region}`;
+       }
+   }
+   return variables.region;
+}
+
+function getSessionSubdomain(key) {
+    for (const session of GM_getValue(SR_SESSIONS_KEY,[])) {
+        if(session.label === key && session.timestamp > Date.now()) {
+          return session.value;
+        }
+    }
+    return undefined;
 }
 
 async function updatePageConfig(path) {
