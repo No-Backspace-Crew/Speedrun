@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.127
+// @version      1.128
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -673,9 +673,7 @@ function getCookie(cookieName) {
 async function addSpeedrunLink() {
     if($('#awsc-navigation__more-menu--list').length > 0) {
         if(!awsuserInfoCookieParsed) {
-            if(awsuserInfoCookieParsed) {
-                return true;
-            }
+            awsuserInfoCookieParsed = true;
             let cookie = getCookie('aws-userInfo');
             let session = JSON.parse($("meta[name='awsc-session-data']").attr("content"));
             let region = session.infrastructureRegion;
@@ -688,7 +686,6 @@ async function addSpeedrunLink() {
                 console.log('Session expires:', new dayjs(expiration).fromNow());
             }
 
-            awsuserInfoCookieParsed = true;
             let lastRolePersisted = false;
             if(region) {
                 let userInfo = cookie ? JSON.parse(cookie) : {arn: session.sessionARN};
@@ -723,6 +720,9 @@ async function addSpeedrunLink() {
                             }
                         }
                         addLink = true;
+                    }
+                    if(role) {
+                       $(".awsui-context-top-navigation").css('background-color', role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
                     if(isMultiSession) {
@@ -1677,6 +1677,7 @@ body:has(details#srModal[open]) {
             {
                 click:function () {
                     GM_setValue("srToolbarVisible",$('#toolbar').toggle().is(':visible'));
+                    showToolbarOnPage();
                 }
             }
         };
@@ -2172,7 +2173,7 @@ function doneLoading() {
 }
 
 function showToolbarOnPage() {
-    isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show()}` : `${$("#toolbar").hide()}`) + $("#srToolbar").show() : $("#srToolbar").hide()
+    isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show() + $("#toggleSRToolbar").attr('title','Minimize Speedrun toolbar')}` : `${$("#toolbar").hide()+ $("#toggleSRToolbar").attr('title','Maximize Speedrun toolbar')}`) + $("#srToolbar").show() : $("#srToolbar").hide()
     setFavIcon();
 }
 
