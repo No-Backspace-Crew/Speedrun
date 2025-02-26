@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.128
+// @version      1.129
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
@@ -2157,9 +2157,10 @@ function hasDOMContent(str) {
 
 function persistIfIssue(location=window.location) {
     let issue = isIssue(location);
-    if(issue && $('.gh-header-title > .markdown-title').length) {
+    const title = $('title');
+    if(issue && title.length) {
         let [,issueNumber] = issue;
-        persistTimestamp({label:`#${issueNumber} ${$('.gh-header-title > .markdown-title').text()}`,value:window.location.href}, ISSUES_KEY);
+        persistTimestamp({label:`#${issueNumber} ${title.text().replace(/ · Issue #\d+ · .*/,'')}`,value:window.location.href}, ISSUES_KEY);
         persistLastPath(location);
     }
 }
