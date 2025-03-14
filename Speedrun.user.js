@@ -1,23 +1,23 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.129
+// @version      1.130
 // @description  Markdown to build tools
 // @author       No Backspace Crew
-// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.0/jquery-3.7.0.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
 // @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/dayjs.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/utc.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/duration.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.2/plugin/relativeTime.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/dayjs.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/utc.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/duration.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/relativeTime.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@0.9.3/dayjs-parser.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.1/xregexp.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/json5@2.1.1/index.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.2/xregexp.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/json5@2.2.3/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.0.3/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.4.36/modern-screenshot.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.2.4/purify.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.6.0/modern-screenshot.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -35,6 +35,7 @@
 // @match        https://www.github.com/*
 // @match        https://*.console.aws.amazon.com/*
 // @match        https://console.aws.amazon.com/*
+// @match        https://*.awsapps.com/start*
 // @connect      speedrun-api.us-west-2.nobackspacecrew.com
 // @connect      speedrun-api-beta.us-west-2.nobackspacecrew.com
 // @connect      lambda.us-east-1.amazonaws.com
@@ -238,6 +239,23 @@
 //eval(Babel.transform((<><![CDATA[
 (async function() {
     'use strict';
+    const STORAGE_NAMESPACE = 'SR:';
+    const SSO_URL_LOOKUP = `${STORAGE_NAMESPACE}SSO_URL_LOOKUP`;
+    if(window.location.hostname.endsWith('awsapps.com')) {
+        console.log(window.location);
+        if(window.location.pathname === '/start/' && window.location.hash.startsWith('#/console?')){
+            const params = new URLSearchParams(window.location.hash.split('#/console?')[1]);
+            const account = params.get('account_id');
+            if(account && account.match(/\d+/)){
+                const existingLookup = GM_getValue(SSO_URL_LOOKUP, {});
+                if(existingLookup[account] != window.location.hostname) {
+                    existingLookup[account] = window.location.hostname;
+                    GM_setValue(SSO_URL_LOOKUP, existingLookup);
+                }
+            }
+        }
+        return;
+    }
     let updatingPageTimer = undefined;
     let updatingPage = false;
     let awsuserInfoCookieParsed = false;
@@ -254,7 +272,6 @@ const AsyncFunction = async function () {}.constructor;
 let toolbarShown = false;
 let githubSearchBarObserver = undefined;
 
-const STORAGE_NAMESPACE = 'SR:';
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
 
@@ -629,9 +646,11 @@ function getFederationLink(arn, destination, duration, account) {
         }
     }
     else {
-        url = new URL(`${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console`);
-        url.searchParams.append('account_id', account);
-        url.searchParams.append('role_name', arn);
+        let searchParams = new URLSearchParams();
+        searchParams.append('account_id', account);
+        searchParams.append('role_name', arn);
+        searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+        return `${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console?` + searchParams.toString();
     }
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
     if(normalizedDuration) {
@@ -641,20 +660,20 @@ function getFederationLink(arn, destination, duration, account) {
 }
 
 async function getCookieExpiration(...cookieNames) {
-     for (const cookie of await GM.cookie.list()){
-         for(const cookieName of cookieNames) {
-             if(cookie.name === cookieName){
-                 console.log(`Extracting expiration from: ${cookie.name} with value ${cookie.expirationDate}`);
-                 if(dayjs().isBefore(dayjs(cookie.expirationDate))){
-                     // in testing sometimes the cookie had the expiration of the previous session, not the current one.
+    for (const cookie of await GM.cookie.list()){
+        for(const cookieName of cookieNames) {
+            if(cookie.name === cookieName){
+                console.log(`Extracting expiration from: ${cookie.name} with value ${cookie.expirationDate}`);
+                if(dayjs().isBefore(dayjs(cookie.expirationDate))){
+                    // in testing sometimes the cookie had the expiration of the previous session, not the current one.
                     console.warn('WARN: session expiration is in the past, cookie is stale, ignoring');
                     continue;
-                 }
-                 return cookie.expirationDate;
-             }
-         }
-     }
-     return undefined;
+                }
+                return cookie.expirationDate;
+            }
+        }
+    }
+    return undefined;
 }
 
 function getCookie(cookieName) {
@@ -704,7 +723,13 @@ async function addSpeedrunLink() {
                             IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
                             addLink = true;
                         } else {
-                            console.warn('Unable to determine session issuer');
+                            IDENTITY_CENTER_ENDPOINT = GM_getValue(SSO_URL_LOOKUP)[account];
+                            if(IDENTITY_CENTER_ENDPOINT) {
+                                IDENTITY_CENTER_ENDPOINT = `https://${IDENTITY_CENTER_ENDPOINT}/start`;
+                                addLink = true;
+                            } else {
+                                console.warn('Unable to determine session issuer');
+                            }
                         }
                     } else {
                         arn = `arn:aws:iam::${account}:role/${role}`;
@@ -722,7 +747,7 @@ async function addSpeedrunLink() {
                         addLink = true;
                     }
                     if(role) {
-                       $(".awsui-context-top-navigation").css('background-color', role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
+                        $('div[data-testid="awsc-account-info-tile"]').css('background-color', role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
                     if(isMultiSession) {
@@ -739,7 +764,11 @@ async function addSpeedrunLink() {
                         srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
                         srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
                         srLink.on('click',(event)=>{
-                            let url = getFederationLink(arn,window.location.href,undefined,isIdentityCenter?account:undefined);
+                            let destination = window.location.href;
+                            if(isIdentityCenter && isMultiSession) {
+                                destination = destination.replace(`https://${subdomain}.`,'https://');
+                            }
+                            let url = getFederationLink(arn,destination,undefined,isIdentityCenter?account:undefined);
                             let curHtml = srLink.html();
                             console.log('Speedrun link',url);
                             GM_setClipboard(url);
@@ -1393,25 +1422,25 @@ let templates = {
     }
 };
 
-var pageConfig = {};
+    var pageConfig = {};
 
-//https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
-function escapeRegex(s) {
-    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-};
+    //https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
+    function escapeRegex(s) {
+        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
 
-let user = $("meta[name='user-login']").attr("content");
+    let user = $("meta[name='user-login']").attr("content");
 
-let tabNames = {
-    "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
-    "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
-    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
-    "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
-}
+    let tabNames = {
+        "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
+        "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
+        "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
+        "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
+    }
 
-function injectToolbar() {
-    if(!$('#srToolbar').length) {
-        $("head").append(`<style>${GM_getResourceText('select2css')}
+    function injectToolbar() {
+        if(!$('#srToolbar').length) {
+            $("head").append(`<style>${GM_getResourceText('select2css')}
         input:invalid.srInput , textarea:invalid.srInput {
           border: 2px solid var(--fgColor-danger)
         }
@@ -1747,23 +1776,23 @@ body:has(details#srModal[open]) {
     }
 }
 
-let noop = function() {}
+    let noop = function() {}
 
-function toast(str, runBtn) {
-    let snackbar = $("#snackbar");
-    if(runBtn && runBtn.text().length) {
-        console.log(runBtn.text());
-        snackbar.addClass('position-absolute').removeClass('position-fixed')
-        runBtn.closest('nav').next('div').append(snackbar);
+    function toast(str, runBtn) {
+        let snackbar = $("#snackbar");
+        if(runBtn && runBtn.text().length) {
+            console.log(runBtn.text());
+            snackbar.addClass('position-absolute').removeClass('position-fixed')
+            runBtn.closest('nav').next('div').append(snackbar);
+        }
+        $('#toast').html(str);
+        snackbar.attr('hidden',false);
+        setTimeout(function(){ snackbar.attr('hidden',true); snackbar.addClass('position-fixed').removeClass('position-absolute'); $('body').append(snackbar) }, 2500);
     }
-    $('#toast').html(str);
-    snackbar.attr('hidden',false);
-    setTimeout(function(){ snackbar.attr('hidden',true); snackbar.addClass('position-fixed').removeClass('position-absolute'); $('body').append(snackbar) }, 2500);
-}
 
-function insertSRUpdateButton(add=false){
-    if(newSRVersion){
-        const button = `<a class="minimalPadding btn btn-sm BtnGroup-item" id="srUpdate" href='${GM_info.script.downloadURL}' target='_blank' title="Update Speedrun to V${newSRVersion}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools color-fg-attention"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"></path><path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"></path></svg></a>`
+    function insertSRUpdateButton(add=false){
+        if(newSRVersion){
+            const button = `<a class="minimalPadding btn btn-sm BtnGroup-item" id="srUpdate" href='${GM_info.script.downloadURL}' target='_blank' title="Update Speedrun to V${newSRVersion}"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools color-fg-attention"><path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z"></path><path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.969a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.969Z"></path></svg></a>`
         if(!add) {
             return button;
         } else {
@@ -1775,488 +1804,488 @@ function insertSRUpdateButton(add=false){
     return '';
 }
 
-function nullSafe(obj) {
-    return firstNonNull(obj, {});
-}
-
-//set mustExist to true if region must exist in regionNameMap
-function getPartition(region, mustExist) {
-    if(!region || (mustExist && !(regionNameMap[region]))) {
-        return undefined;
+    function nullSafe(obj) {
+        return firstNonNull(obj, {});
     }
-    for (const [key, value] of Object.entries(partitionPrefixMap)) {
-        if (region.startsWith(key)) {
-            return value;
-        }
-    }
-    return "aws";
-}
 
-function firstNonNull(...args) {
-    return args.find(element => !(element == undefined));
-}
-
-// convert to an array if it isn't already
-// undefined if undefined
-function arrayify(o) {
-    return o == undefined ? o : Array.isArray(o) ? o : [o];
-}
-
-//calls a method on an object or each member of an array
-function filter(method, param, o) {
-    return o == undefined ? o : Array.isArray(o) ? o.filter(str => str[method](param)) : (o[method](param) ? o : undefined);
-}
-//find elements of an array/str that start with a prefix
-function prefixSearch(prefix, o){
-    return filter('startsWith', prefix, o);
-}
-
-//find elements of an array/str that includes a string
-function includesSearch(includes, o){
-    return filter('includes', includes, o);
-}
-
-//find elements of an array/str that contain a regex
-function regexSearch(regex, o){
-    return o == undefined ? o : (Array.isArray(o) ? o.filter(str => regex.test(str)) : (regex.test(o) ? o : undefined));
-}
-
-//prepend a string to each element of an array/str
-function prepend(prefix, o){
-    return o == undefined ? o : (Array.isArray(o) ? o.map(str => prefix + str) : prefix + o);
-}
-
-//return the last non-whitespace line of a string
-function lastLine(str) {
-    return str == undefined ? str : str.trim().match(/.*$/);
-}
-
-//get the first group of a regex
-function firstGroup(regex, str) {
-    return str == undefined ? str : firstNonNull(str.trim().match(regex),[undefined,undefined])[1];
-}
-
-//based on https://gist.github.com/codeguy/6684588
-function slugify(s) {
-    return s != undefined ?
-        s.toString() // Cast to string (optional)
-        .normalize('NFKD') // The normalize() using NFKD method returns the Unicode Normalization Form of a given string.
-        .trim() // Remove whitespace from both sides of a string (optional)
-        .replace(/\s+/g, '-') // Replace spaces with -
-        .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-        .replace(/\-+/g, '-') // Replace multiple - with single -
-        .replace(/-$/g,'') : s; //Remove trailing newline
-}
-
-function parseJSON(str, name) {
-    try {
-        return JSON5.parse(str);
-    } catch(err) {
-        alertAndThrow("Unable to parse '" + (name || str) + "' due to: " + err, err);
-    }
-}
-
-function jsonWithoutInternalVariables(variables) {
-    //return prettyJSON(variables);
-    return prettyJSON(variables,function replacer(key, value) { return (key=="internal" || key=="JSON5") ? undefined : value;});
-}
-
-function prettyJSON(obj, replacer, spaces=2) {
-    return JSON.stringify(obj, replacer, spaces);
-}
-
-//https://stackoverflow.com/questions/38304401/javascript-check-if-dictionary
-function isDict(d) {
-    return !(d == undefined) && d.constructor == Object;
-}
-
-function reverseMap(obj) {
-    return _.invert(obj);
-}
-
-function isValidVarName( name ) {
-    try {
-        Function('var ' + name);
-    } catch( e ) {
-        return false;
-    }
-    return true;
-}
-
-function encodeCloudWatchInsightsParam(str) {
-    return encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m])).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
-}
-
-
-function encodeCloudWatchURL(str, passes=2) {
-    [...Array(passes)].forEach(() => {str = encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m]))});
-    return str.replaceAll('%','$');
-}
-
-function cachedValidVarName(name) {
-    return firstNonNull(varNameCache[name], varNameCache.set(name, isValidVarName(name)).get(name));
-}
-
-
-function persistTimestamp(timestamp, key, maxLength=5){
-    if(timestamp.label){
-        timestamp.timestamp ||= Date.now();
-        let timestamps = GM_getValue(key,[]);
-        //remove any already existing entry for this label/value
-        timestamps = timestamps.filter((val) => !(timestamp.label === val.label) && !(timestamp.value && timestamp.value === val.value))
-        timestamps.splice(0, 0, timestamp);
-        while(timestamps.length>maxLength){
-            timestamps.pop();
-        }
-        console.log('Persisting timestamp for:', timestamp);
-        GM_setValue(key, timestamps);
-    }
-}
-
-//https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
-async function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
-    try {
-        sessionVariables = variables;
-        let keys = Object.keys(variables).filter(key => cachedValidVarName(key) && key !== 'internal');
-        //        keys.delete
-        //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
-        let isAsync = tpl.includes('await ');
-        let cacheKey = tpl+keys;
-        let fn = functionCache[cacheKey];
-        if(!fn) {
-            fn = isAsync ? new AsyncFunction(...keys,`return \`${tpl}\``) : new Function(...keys,`return \`${tpl}\``);
-            functionCache[cacheKey] = fn;
-        }
-        let result = isAsync ? await fn(...keys.map(x => variables[x])) : fn(...keys.map(x => variables[x]));
-        if(!suppressErrors && hasDOMContent(result)){
-            throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
-        }
-        return result;
-    } catch(err) {
-        if(suppressErrors) {
+    //set mustExist to true if region must exist in regionNameMap
+    function getPartition(region, mustExist) {
+        if(!region || (mustExist && !(regionNameMap[region]))) {
             return undefined;
-        } else if(throwErrors) {
-            alertAndThrow(`${err} while parsing:\n${tpl}`, err);
-        } else {
-            throw new Error(`${err} while parsing:\n${tpl}`, err);
         }
-    }
-};
-
-function retrieve(path, raw=false, cache=true) {
-    return new Promise((resolve,reject) => {
-        let [,root] = window.location.href.match(/^(.*?.com\/[^\/]+\/[^\/]+(\/(blob\/[^\/]+|wiki))?)/i);
-        let url = path.startsWith('https://') ? path : `${root}/${path.replaceAll(/^\//g,'')}`;
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url,
-            headers: {...getUserAgentHeader(), ...(cache?{}:{'Cache-Control': 'no-cache'})},
-            onload: function(response) {
-                resolve(raw ? response : response.responseText);
-            },
-            onerror: function(err) {
-                reject(err);
-            }
-        });
-    });
-}
-
-function parseHeaders(headers) {
-    return headers.split('\n').reduce((acc,value) => {if(value.trim()!="")
-    {
-        let header = value.split(":",2);
-        acc[header[0].toLowerCase()]=header[1].trim();
-    }
-                                                      return acc;
-                                                     }
-                                      ,{});
-}
-
-function invoke(request, raw=false) {
-    return new Promise((resolve,reject) => {
-        GM_xmlhttpRequest({
-            method: request.method,
-            url: request.protocol ? `${request.protocol}//${request.host}${request.path}` : request.url,
-            headers: {...getUserAgentHeader(), ...(request.headers ? {...request.headers} : {})},
-            data: request.body,
-            onload: function(response) {
-                const headers = parseHeaders(response.responseHeaders);
-                response.headers = headers;
-                resolve(raw ? response : {headers, responseText:response.responseText, status: response.status, response:headers['content-type']==='application/json' ? JSON.parse(response.responseText) : response.responseText});
-            },
-            onerror: function(err) {
-                reject(err);
-            }
-        });
-    });
-}
-
-function xml2json(xml) {
-    var obj = {};
-    if (xml.children.length > 0) {
-        for (var i = 0; i < xml.children.length; i++) {
-            var item = xml.children.item(i);
-            var nodeName = item.nodeName;
-            if (typeof (obj[nodeName]) == "undefined") {
-                obj[nodeName] = xml2json(item);
-            } else {
-                if (typeof (obj[nodeName].push) == "undefined") {
-                    var old = obj[nodeName];
-
-                    obj[nodeName] = [];
-                    obj[nodeName].push(old);
-                }
-                obj[nodeName].push(xml2json(item));
+        for (const [key, value] of Object.entries(partitionPrefixMap)) {
+            if (region.startsWith(key)) {
+                return value;
             }
         }
-    } else {
-        obj = xml.textContent;
+        return "aws";
     }
-    return obj;
-}
 
-function formatDescribeStacks(obj){
-    let result = {outputs:{}, tags:{}};
-    for(let output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Outputs.member)) {
-        result.outputs[output.OutputKey] = output.OutputValue;
+    function firstNonNull(...args) {
+        return args.find(element => !(element == undefined));
     }
-    for(const output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Tags.member)) {
-        result.tags[output.Key] = output.Value;
+
+    // convert to an array if it isn't already
+    // undefined if undefined
+    function arrayify(o) {
+        return o == undefined ? o : Array.isArray(o) ? o : [o];
     }
-    result.creationTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.CreationTime
-    result.lastUpdatedTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.LastUpdatedTime
-    result.arn = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.StackId.replaceAll(/\/[^\/]+$/g,'');
-    return result;
-}
 
-function acfn(name, path, region) {
-    let regionPortion = region && region!=sessionVariables.region ? ",'${region}":"";
-    return `\$\{(await cfn('${name}'${regionPortion})).${path}\}`;
-}
-
-async function cfn(name, region) {
-    //if in preview mode, throw an exception to prevent making external calls
-    if(!sessionVariables.internal.running || sessionVariables.internal.pass != 2) {
-        throw new Error('Not available in preview');
+    //calls a method on an object or each member of an array
+    function filter(method, param, o) {
+        return o == undefined ? o : Array.isArray(o) ? o.filter(str => str[method](param)) : (o[method](param) ? o : undefined);
     }
-    region = region || sessionVariables.region;
-    const stackCacheKey = `${sessionVariables.account}:${region}:${name}`;
-    let result = stackCache[stackCacheKey];
-    if(!result){
-        sessionVariables.internal.credentialsType = 'cfn';
-        credentialsBroker.validate(sessionVariables);
-        let credentials = await credentialsBroker.getCredentials(sessionVariables);
-        delete sessionVariables.internal.credentialsType;
-        let headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8', 'User-Agent': `Speedrun V${GM_info.script.version}`};
-        let params = new URLSearchParams();
-        params.append('Action','DescribeStacks');
-        params.append('Version','2010-05-15');
-        params.append('StackName',name);
-        const request = await srInvoke.invokeService(credentials, 'cloudformation', region, new URL(`https://cloudformation.${region}.amazonaws.com/`),'POST',headers,params.toString());
-        let response = await invoke(request, true);
-        if(response.status != 200) {
-            throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
-        }
-        let describeStack = formatDescribeStacks(xml2json(new DOMParser().parseFromString(response.responseText,"application/xml")));
-        console.log(`Caching ${stackCacheKey}`,describeStack);
-        stackCache[stackCacheKey] = describeStack;
-        result = describeStack;
+    //find elements of an array/str that start with a prefix
+    function prefixSearch(prefix, o){
+        return filter('startsWith', prefix, o);
     }
-    return result;
-}
 
-async function getWebCredentials(account, role, forceNewCreds, duration) {
-    const cacheKey = `${account}:${role}`;
-    const cachedCredentials = credentialsCache[cacheKey];
-    if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
-        console.log('Using cached credentials');
-        return cachedCredentials.credentials;
+    //find elements of an array/str that includes a string
+    function includesSearch(includes, o){
+        return filter('includes', includes, o);
     }
-    const normalizedDuration = normalizeDuration(duration);
-    const webCredentialsUrl = `${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}${normalizedDuration?`&duration=${normalizedDuration}`:''}`;
-    let result = await retrieve(webCredentialsUrl, true);
-    // if it redirects to github auth
-    if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
-        //authenticate in a popup
-        let popup = undefined;
-        let authToast = $("#authToast");
-        authToast.attr('hidden',false);
 
-        let authPopup = new Promise((resolve, reject) => {
-            popup = GM_openInTab(`${FEDERATION_ENDPOINT}/user/authenticate?closeOnSuccess=true`,{active:true,setParent:true});
-            popup.onclose = () => {
-                resolve();
-            };
-            $('#authToastCancelled').on('click.sr', () => {reject('Authentication cancelled')});
-        });
+    //find elements of an array/str that contain a regex
+    function regexSearch(regex, o){
+        return o == undefined ? o : (Array.isArray(o) ? o.filter(str => regex.test(str)) : (regex.test(o) ? o : undefined));
+    }
 
+    //prepend a string to each element of an array/str
+    function prepend(prefix, o){
+        return o == undefined ? o : (Array.isArray(o) ? o.map(str => prefix + str) : prefix + o);
+    }
+
+    //return the last non-whitespace line of a string
+    function lastLine(str) {
+        return str == undefined ? str : str.trim().match(/.*$/);
+    }
+
+    //get the first group of a regex
+    function firstGroup(regex, str) {
+        return str == undefined ? str : firstNonNull(str.trim().match(regex),[undefined,undefined])[1];
+    }
+
+    //based on https://gist.github.com/codeguy/6684588
+    function slugify(s) {
+        return s != undefined ?
+            s.toString() // Cast to string (optional)
+            .normalize('NFKD') // The normalize() using NFKD method returns the Unicode Normalization Form of a given string.
+            .trim() // Remove whitespace from both sides of a string (optional)
+            .replace(/\s+/g, '-') // Replace spaces with -
+            .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+            .replace(/\-+/g, '-') // Replace multiple - with single -
+            .replace(/-$/g,'') : s; //Remove trailing newline
+    }
+
+    function parseJSON(str, name) {
         try {
-            await authPopup;
-        } catch(e) {
-            console.log(e);
-            return;
-        } finally {
-            $('#authToastCancelled').off('click.sr');
-            authToast.attr('hidden', true);
-            if(!popup.closed) {
-                popup.close();
+            return JSON5.parse(str);
+        } catch(err) {
+            alertAndThrow("Unable to parse '" + (name || str) + "' due to: " + err, err);
+        }
+    }
+
+    function jsonWithoutInternalVariables(variables) {
+        //return prettyJSON(variables);
+        return prettyJSON(variables,function replacer(key, value) { return (key=="internal" || key=="JSON5") ? undefined : value;});
+    }
+
+    function prettyJSON(obj, replacer, spaces=2) {
+        return JSON.stringify(obj, replacer, spaces);
+    }
+
+    //https://stackoverflow.com/questions/38304401/javascript-check-if-dictionary
+    function isDict(d) {
+        return !(d == undefined) && d.constructor == Object;
+    }
+
+    function reverseMap(obj) {
+        return _.invert(obj);
+    }
+
+    function isValidVarName( name ) {
+        try {
+            Function('var ' + name);
+        } catch( e ) {
+            return false;
+        }
+        return true;
+    }
+
+    function encodeCloudWatchInsightsParam(str) {
+        return encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m])).replace(/%([\dA-Z]{2}|(u\d{4}))/g, match => match.replace(/%/g, '*').toLowerCase());
+    }
+
+
+    function encodeCloudWatchURL(str, passes=2) {
+        [...Array(passes)].forEach(() => {str = encodeURIComponent(str).replace(/['()*]/g, m => ({'\'':'%27', '(':'%28', ')':'%29', '*':'%2A'}[m]))});
+        return str.replaceAll('%','$');
+    }
+
+    function cachedValidVarName(name) {
+        return firstNonNull(varNameCache[name], varNameCache.set(name, isValidVarName(name)).get(name));
+    }
+
+
+    function persistTimestamp(timestamp, key, maxLength=5){
+        if(timestamp.label){
+            timestamp.timestamp ||= Date.now();
+            let timestamps = GM_getValue(key,[]);
+            //remove any already existing entry for this label/value
+            timestamps = timestamps.filter((val) => !(timestamp.label === val.label) && !(timestamp.value && timestamp.value === val.value))
+            timestamps.splice(0, 0, timestamp);
+            while(timestamps.length>maxLength){
+                timestamps.pop();
             }
-            window.focus();
-        }
-        // try again to get credentials
-        result = await retrieve(webCredentialsUrl, true);
-        if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
-            throw new Error('Unable to get credentials: GitHub authentication failed');
+            console.log('Persisting timestamp for:', timestamp);
+            GM_setValue(key, timestamps);
         }
     }
 
-
-    if(result.status != 200) {
-        throw new Error(`${result.status} ${result.statusText}: ${result.responseText}`);
-    } else {
-        let parsed = JSON.parse(result.responseText);
-        let credentials = {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken}
-        let expiration = dayjs(parsed.Expiration).valueOf();
-        credentialsCache[cacheKey] = {expiration,credentials,duration:(expiration-Date.now())/1000};
-        return {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken};
-    }
-}
-
-async function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
-    let offset = str.indexOf('${');
-    while(offset>-1) {
-        let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
-        let toReplace = "${" + matches[0] + "}";
-        let replacement = wrap(await interpolate(toReplace, variables, suppressErrors), toReplace);
-        str = str.substring(0,offset) + str.substring(offset).replace(toReplace,()=>replacement);
-        offset = str.indexOf('${',offset+replacement.length);
-    }
-    return str;
-}
-
-//recursively interpolate variables in arrays and dicts
-async function deepInterpolate(obj, variables, suppressErrors){
-    if (_.isString(obj) && obj.match(LITERAL)) {
-        return await interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
-    } else if(isDict(obj)){
-        for (const [key, value] of Object.entries(obj)) {
-            let result = await deepInterpolate(value, variables, suppressErrors);
-            if(result) {
-                obj[key] = result;
+    //https://stackoverflow.com/questions/41117799/string-interpolation-on-variable
+    async function interpolate(tpl, variables, suppressErrors, throwErrors=true) {
+        try {
+            sessionVariables = variables;
+            let keys = Object.keys(variables).filter(key => cachedValidVarName(key) && key !== 'internal');
+            //        keys.delete
+            //fn = new Function(...keys,'return `' + tpl.replace(/`/g, '\\`') + '`;'); //not sure why nested template literals are prevented
+            let isAsync = tpl.includes('await ');
+            let cacheKey = tpl+keys;
+            let fn = functionCache[cacheKey];
+            if(!fn) {
+                fn = isAsync ? new AsyncFunction(...keys,`return \`${tpl}\``) : new Function(...keys,`return \`${tpl}\``);
+                functionCache[cacheKey] = fn;
             }
-        }
-    } else if(Array.isArray(obj)) {
-        obj = Promise.all(obj.map(async (item) => await deepInterpolate(item, variables, suppressErrors)));
-    }
-    return obj;
-}
-
-function hasDOMContent(str) {
-    return !(str == undefined) && HAS_DOM_CONTENT_REGEX.test(str);
-}
-
-function persistIfIssue(location=window.location) {
-    let issue = isIssue(location);
-    const title = $('title');
-    if(issue && title.length) {
-        let [,issueNumber] = issue;
-        persistTimestamp({label:`#${issueNumber} ${title.text().replace(/ · Issue #\d+ · .*/,'')}`,value:window.location.href}, ISSUES_KEY);
-        persistLastPath(location);
-    }
-}
-
-function isIssue(location) {
-    return ISSUES_PATH_REGEX.exec(location.pathname);
-}
-
-function doneLoading() {
-    return $('.srDone').length;
-}
-
-function showToolbarOnPage() {
-    isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show() + $("#toggleSRToolbar").attr('title','Minimize Speedrun toolbar')}` : `${$("#toolbar").hide()+ $("#toggleSRToolbar").attr('title','Maximize Speedrun toolbar')}`) + $("#srToolbar").show() : $("#srToolbar").hide()
-    setFavIcon();
-}
-
-async function setFavIcon() {
-    await sleep(500);
-    let isVisible = isEnabledPath();
-    let head = $('head');
-    $('link[rel~="icon"]').each((i,el) => {
-        el = $(el);
-        let details = favIcons[isVisible+''][el.attr('rel')];
-        if(details.href != el.attr('href')){
-            //el.remove();
-            el.attr('href', details.href);
-            //head.append(el);
-        }
-    });
-}
-
-function getUserConfig() {
-    return {
-        "services" : {
-            [USER_SERVICE] : {
-                "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
-                "profile" : GM_getValue('g_granted_profile', undefined),
-                "permSet" : GM_getValue('g_identity_center_permSet', undefined),
-                "regions" : {
-                    "aws" : {
-                        "account" : GM_getValue('g_aws-accountId')
-                    }
-                }
+            let result = isAsync ? await fn(...keys.map(x => variables[x])) : fn(...keys.map(x => variables[x]));
+            if(!suppressErrors && hasDOMContent(result)){
+                throw new Error(`${result} contained DOM content, in ${tpl} ensure your variables are defined`);
+            }
+            return result;
+        } catch(err) {
+            if(suppressErrors) {
+                return undefined;
+            } else if(throwErrors) {
+                alertAndThrow(`${err} while parsing:\n${tpl}`, err);
+            } else {
+                throw new Error(`${err} while parsing:\n${tpl}`, err);
             }
         }
     };
-}
 
-function escapeHTMLQuotesAnd$(str){
-    return str ? str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m])) : str;
-}
-
-function whitespaceToHTML(str){
-    return str ? str.replace('\n','<br>').replace('  ',' &nbsp;') : str;
-}
-
-function escapeHTMLStartTags(str){
-    return str ? _.escape(str) : str;
-}
-
-function getPrompts(content, tpl, variables){
-    //inject srTimestamp prompt if you have it in your template/content and haven't overridden the start variable
-    if((tpl && tpl.includes("srTimestamp(")) || (content && content.includes("srTimestamp(")) && !nullSafe(variables).start){
-        content += getTimestampsPrompt();
+    function retrieve(path, raw=false, cache=true) {
+        return new Promise((resolve,reject) => {
+            let [,root] = window.location.href.match(/^(.*?.com\/[^\/]+\/[^\/]+(\/(blob\/[^\/]+|wiki))?)/i);
+            let url = path.startsWith('https://') ? path : `${root}/${path.replaceAll(/^\//g,'')}`;
+            GM_xmlhttpRequest({
+                method: 'GET',
+                url,
+                headers: {...getUserAgentHeader(), ...(cache?{}:{'Cache-Control': 'no-cache'})},
+                onload: function(response) {
+                    resolve(raw ? response : response.responseText);
+                },
+                onerror: function(err) {
+                    reject(err);
+                }
+            });
+        });
     }
-    const contentPrompts = [...content.matchAll(PROMPT_G)].map(x => ({location: 'content', prompt: x }));
-    const templatePrompts = [...firstNonNull(tpl,"").matchAll(PROMPT_G)].map(x => ({location: 'template', prompt: x}));
-    return _.concat(contentPrompts, templatePrompts);
-}
 
-function getURLSearchParam(key){
-    return new URLSearchParams(window.location.search).get(key);
-}
-
-function getURLSearchParamOnce(key){
-    return USED_SEARCH_PARAMS.has(key)? undefined : new URLSearchParams(window.location.search).get(key);
-}
-
-//touch the timestamp if a timestamp matches this label
-function touchTimestamp(label, key){
-    let timestamps = GM_getValue(key,[]);
-    timestamps.forEach((val) => {
-        if(val.label === label){
-            persistTimestamp(val, key);
+    function parseHeaders(headers) {
+        return headers.split('\n').reduce((acc,value) => {if(value.trim()!="")
+        {
+            let header = value.split(":",2);
+            acc[header[0].toLowerCase()]=header[1].trim();
         }
-    });
-}
+                                                          return acc;
+                                                         }
+                                          ,{});
+    }
 
-function srTimestamp(type="cloudwatch"){
-    let timestamp = sessionVariables.start ? {type:"relative", start:`${sessionVariables.start}`, end: `${firstNonNull(sessionVariables.end,'0')}`} : firstNonNull(sessionVariables.srTimestampValue,"{}");
-    //A mapping of type to a function to convert a timestamp into the correct format.
-    let conversionFunctionLookup = {
-        "cloudwatch" : {
-            "relative" : () => `end~${timestamp.end}~start~${timestamp.start}~timeType~'RELATIVE~unit~'seconds`,
-            "fixed" : () => `end~'${timestamp.end.replace(/(:\d\d)Z/,"$1.999Z")}~start~'${timestamp.start.replace(/(:\d\d)Z/,"$1.000Z")}~timeType~'ABSOLUTE~tz~'UTC`
+    function invoke(request, raw=false) {
+        return new Promise((resolve,reject) => {
+            GM_xmlhttpRequest({
+                method: request.method,
+                url: request.protocol ? `${request.protocol}//${request.host}${request.path}` : request.url,
+                headers: {...getUserAgentHeader(), ...(request.headers ? {...request.headers} : {})},
+                data: request.body,
+                onload: function(response) {
+                    const headers = parseHeaders(response.responseHeaders);
+                    response.headers = headers;
+                    resolve(raw ? response : {headers, responseText:response.responseText, status: response.status, response:headers['content-type']==='application/json' ? JSON.parse(response.responseText) : response.responseText});
+                },
+                onerror: function(err) {
+                    reject(err);
+                }
+            });
+        });
+    }
+
+    function xml2json(xml) {
+        var obj = {};
+        if (xml.children.length > 0) {
+            for (var i = 0; i < xml.children.length; i++) {
+                var item = xml.children.item(i);
+                var nodeName = item.nodeName;
+                if (typeof (obj[nodeName]) == "undefined") {
+                    obj[nodeName] = xml2json(item);
+                } else {
+                    if (typeof (obj[nodeName].push) == "undefined") {
+                        var old = obj[nodeName];
+
+                        obj[nodeName] = [];
+                        obj[nodeName].push(old);
+                    }
+                    obj[nodeName].push(xml2json(item));
+                }
+            }
+        } else {
+            obj = xml.textContent;
+        }
+        return obj;
+    }
+
+    function formatDescribeStacks(obj){
+        let result = {outputs:{}, tags:{}};
+        for(let output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Outputs.member)) {
+            result.outputs[output.OutputKey] = output.OutputValue;
+        }
+        for(const output of arrayify(obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.Tags.member)) {
+            result.tags[output.Key] = output.Value;
+        }
+        result.creationTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.CreationTime
+        result.lastUpdatedTime = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.LastUpdatedTime
+        result.arn = obj.DescribeStacksResponse.DescribeStacksResult.Stacks.member.StackId.replaceAll(/\/[^\/]+$/g,'');
+        return result;
+    }
+
+    function acfn(name, path, region) {
+        let regionPortion = region && region!=sessionVariables.region ? ",'${region}":"";
+        return `\$\{(await cfn('${name}'${regionPortion})).${path}\}`;
+    }
+
+    async function cfn(name, region) {
+        //if in preview mode, throw an exception to prevent making external calls
+        if(!sessionVariables.internal.running || sessionVariables.internal.pass != 2) {
+            throw new Error('Not available in preview');
+        }
+        region = region || sessionVariables.region;
+        const stackCacheKey = `${sessionVariables.account}:${region}:${name}`;
+        let result = stackCache[stackCacheKey];
+        if(!result){
+            sessionVariables.internal.credentialsType = 'cfn';
+            credentialsBroker.validate(sessionVariables);
+            let credentials = await credentialsBroker.getCredentials(sessionVariables);
+            delete sessionVariables.internal.credentialsType;
+            let headers = {'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8', 'User-Agent': `Speedrun V${GM_info.script.version}`};
+            let params = new URLSearchParams();
+            params.append('Action','DescribeStacks');
+            params.append('Version','2010-05-15');
+            params.append('StackName',name);
+            const request = await srInvoke.invokeService(credentials, 'cloudformation', region, new URL(`https://cloudformation.${region}.amazonaws.com/`),'POST',headers,params.toString());
+            let response = await invoke(request, true);
+            if(response.status != 200) {
+                throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+            }
+            let describeStack = formatDescribeStacks(xml2json(new DOMParser().parseFromString(response.responseText,"application/xml")));
+            console.log(`Caching ${stackCacheKey}`,describeStack);
+            stackCache[stackCacheKey] = describeStack;
+            result = describeStack;
+        }
+        return result;
+    }
+
+    async function getWebCredentials(account, role, forceNewCreds, duration) {
+        const cacheKey = `${account}:${role}`;
+        const cachedCredentials = credentialsCache[cacheKey];
+        if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
+            console.log('Using cached credentials');
+            return cachedCredentials.credentials;
+        }
+        const normalizedDuration = normalizeDuration(duration);
+        const webCredentialsUrl = `${FEDERATION_ENDPOINT}/webcredentials/${account}?role=${role}${normalizedDuration?`&duration=${normalizedDuration}`:''}`;
+        let result = await retrieve(webCredentialsUrl, true);
+        // if it redirects to github auth
+        if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
+            //authenticate in a popup
+            let popup = undefined;
+            let authToast = $("#authToast");
+            authToast.attr('hidden',false);
+
+            let authPopup = new Promise((resolve, reject) => {
+                popup = GM_openInTab(`${FEDERATION_ENDPOINT}/user/authenticate?closeOnSuccess=true`,{active:true,setParent:true});
+                popup.onclose = () => {
+                    resolve();
+                };
+                $('#authToastCancelled').on('click.sr', () => {reject('Authentication cancelled')});
+            });
+
+            try {
+                await authPopup;
+            } catch(e) {
+                console.log(e);
+                return;
+            } finally {
+                $('#authToastCancelled').off('click.sr');
+                authToast.attr('hidden', true);
+                if(!popup.closed) {
+                    popup.close();
+                }
+                window.focus();
+            }
+            // try again to get credentials
+            result = await retrieve(webCredentialsUrl, true);
+            if(result.finalUrl && !result.finalUrl.startsWith(FEDERATION_ENDPOINT)) {
+                throw new Error('Unable to get credentials: GitHub authentication failed');
+            }
+        }
+
+
+        if(result.status != 200) {
+            throw new Error(`${result.status} ${result.statusText}: ${result.responseText}`);
+        } else {
+            let parsed = JSON.parse(result.responseText);
+            let credentials = {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken}
+            let expiration = dayjs(parsed.Expiration).valueOf();
+            credentialsCache[cacheKey] = {expiration,credentials,duration:(expiration-Date.now())/1000};
+            return {accessKeyId:parsed.AccessKeyId, secretAccessKey:parsed.SecretAccessKey, sessionToken:parsed.SessionToken};
+        }
+    }
+
+    async function interpolateLiteralsInString(str, variables, suppressErrors, wrap) {
+        let offset = str.indexOf('${');
+        while(offset>-1) {
+            let matches = XRegExp.matchRecursive(str.substring(offset+1), '\\{', '\\}');
+            let toReplace = "${" + matches[0] + "}";
+            let replacement = wrap(await interpolate(toReplace, variables, suppressErrors), toReplace);
+            str = str.substring(0,offset) + str.substring(offset).replace(toReplace,()=>replacement);
+            offset = str.indexOf('${',offset+replacement.length);
+        }
+        return str;
+    }
+
+    //recursively interpolate variables in arrays and dicts
+    async function deepInterpolate(obj, variables, suppressErrors){
+        if (_.isString(obj) && obj.match(LITERAL)) {
+            return await interpolateLiteralsInString(obj, variables, suppressErrors, (result, match) => firstNonNull(result,match));
+        } else if(isDict(obj)){
+            for (const [key, value] of Object.entries(obj)) {
+                let result = await deepInterpolate(value, variables, suppressErrors);
+                if(result) {
+                    obj[key] = result;
+                }
+            }
+        } else if(Array.isArray(obj)) {
+            obj = Promise.all(obj.map(async (item) => await deepInterpolate(item, variables, suppressErrors)));
+        }
+        return obj;
+    }
+
+    function hasDOMContent(str) {
+        return !(str == undefined) && HAS_DOM_CONTENT_REGEX.test(str);
+    }
+
+    function persistIfIssue(location=window.location) {
+        let issue = isIssue(location);
+        const title = $('title');
+        if(issue && title.length) {
+            let [,issueNumber] = issue;
+            persistTimestamp({label:`#${issueNumber} ${title.text().replace(/ · Issue #\d+ · .*/,'')}`,value:window.location.href}, ISSUES_KEY);
+            persistLastPath(location);
+        }
+    }
+
+    function isIssue(location) {
+        return ISSUES_PATH_REGEX.exec(location.pathname);
+    }
+
+    function doneLoading() {
+        return $('.srDone').length;
+    }
+
+    function showToolbarOnPage() {
+        isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show() + $("#toggleSRToolbar").attr('title','Minimize Speedrun toolbar')}` : `${$("#toolbar").hide()+ $("#toggleSRToolbar").attr('title','Maximize Speedrun toolbar')}`) + $("#srToolbar").show() : $("#srToolbar").hide()
+        setFavIcon();
+    }
+
+    async function setFavIcon() {
+        await sleep(500);
+        let isVisible = isEnabledPath();
+        let head = $('head');
+        $('link[rel~="icon"]').each((i,el) => {
+            el = $(el);
+            let details = favIcons[isVisible+''][el.attr('rel')];
+            if(details.href != el.attr('href')){
+                //el.remove();
+                el.attr('href', details.href);
+                //head.append(el);
+            }
+        });
+    }
+
+    function getUserConfig() {
+        return {
+            "services" : {
+                [USER_SERVICE] : {
+                    "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
+                    "profile" : GM_getValue('g_granted_profile', undefined),
+                    "permSet" : GM_getValue('g_identity_center_permSet', undefined),
+                    "regions" : {
+                        "aws" : {
+                            "account" : GM_getValue('g_aws-accountId')
+                        }
+                    }
+                }
+            }
+        };
+    }
+
+    function escapeHTMLQuotesAnd$(str){
+        return str ? str.replace(/["$~]/g, m => ({'"':'&quot;', '$':'&#36;', '~':'&#126;'}[m])) : str;
+    }
+
+    function whitespaceToHTML(str){
+        return str ? str.replace('\n','<br>').replace('  ',' &nbsp;') : str;
+    }
+
+    function escapeHTMLStartTags(str){
+        return str ? _.escape(str) : str;
+    }
+
+    function getPrompts(content, tpl, variables){
+        //inject srTimestamp prompt if you have it in your template/content and haven't overridden the start variable
+        if((tpl && tpl.includes("srTimestamp(")) || (content && content.includes("srTimestamp(")) && !nullSafe(variables).start){
+            content += getTimestampsPrompt();
+        }
+        const contentPrompts = [...content.matchAll(PROMPT_G)].map(x => ({location: 'content', prompt: x }));
+        const templatePrompts = [...firstNonNull(tpl,"").matchAll(PROMPT_G)].map(x => ({location: 'template', prompt: x}));
+        return _.concat(contentPrompts, templatePrompts);
+    }
+
+    function getURLSearchParam(key){
+        return new URLSearchParams(window.location.search).get(key);
+    }
+
+    function getURLSearchParamOnce(key){
+        return USED_SEARCH_PARAMS.has(key)? undefined : new URLSearchParams(window.location.search).get(key);
+    }
+
+    //touch the timestamp if a timestamp matches this label
+    function touchTimestamp(label, key){
+        let timestamps = GM_getValue(key,[]);
+        timestamps.forEach((val) => {
+            if(val.label === label){
+                persistTimestamp(val, key);
+            }
+        });
+    }
+
+    function srTimestamp(type="cloudwatch"){
+        let timestamp = sessionVariables.start ? {type:"relative", start:`${sessionVariables.start}`, end: `${firstNonNull(sessionVariables.end,'0')}`} : firstNonNull(sessionVariables.srTimestampValue,"{}");
+        //A mapping of type to a function to convert a timestamp into the correct format.
+        let conversionFunctionLookup = {
+            "cloudwatch" : {
+                "relative" : () => `end~${timestamp.end}~start~${timestamp.start}~timeType~'RELATIVE~unit~'seconds`,
+                "fixed" : () => `end~'${timestamp.end.replace(/(:\d\d)Z/,"$1.999Z")}~start~'${timestamp.start.replace(/(:\d\d)Z/,"$1.000Z")}~timeType~'ABSOLUTE~tz~'UTC`
             }
     };
     let conversionFunction = nullSafe(conversionFunctionLookup[type])[timestamp.type];
@@ -2267,252 +2296,252 @@ function srTimestamp(type="cloudwatch"){
     throw new Error(`Unsupported srTimestamp type: ${type} or format: ${timestamp.type}`);
 }
 
-function syntaxHighlight(json) {
-    if (typeof json != 'string') {
-        json = prettyJSON(json);
-    }
-    json = json.replace(/[&<>]/g, m => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'}[m]));
-    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
-        var cls = 'pl-c1';
-        if (/^"/.test(match)) {
-            if (/:$/.test(match)) {
-                cls = 'pl-s';
-            }
+    function syntaxHighlight(json) {
+        if (typeof json != 'string') {
+            json = prettyJSON(json);
         }
-        return `<span class='${cls}'>${match}</span>`;
-    });
-}
-
-function getPromptInfo(prompt) {
-    let variable = prompt[1];
-    let text = prompt[2];
-    let configuration = prompt[3] ? parseJSON(prompt[3]) : {};
-    let isGlobal = variable && variable.startsWith(GLOBAL_PREFIX);
-    let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
-    let sPrompt = localStorage.getItem(text);
-    let urlValue = getURLSearchParamOnce(text);
-    let sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,urlValue, sVariable,sPrompt,configuration.default,"");
-    //override sessionValue if this is srTimestamp, we always want to set it to the default TODO make this a configuration option?
-    if("srTimestampValue" === variable){
-        sessionValue = configuration.default;
-    }
-    return {raw:prompt[0], variable, prompt: text, configuration, urlValue, value: sessionValue, default: configuration.default, condition: configuration.condition};
-}
-
-
-function getService() {
-    return $('#service').val();
-}
-
-function getRegion() {
-    return $('#region').val() || undefined;
-}
-
-function getInputValue(input) {
-    return input.is(':checkbox') ? input.is(':checked') : input.val();
-}
-
-function setInputValue(input, value) {
-    input.is(':checkbox') ? input.prop('checked', value) : input.val(value);
-    if(input.hasClass("select2-hidden-accessible")) {
-        input.select2().trigger("change");
-    }
-}
-
-function stringify(o) {
-    return JSON.stringify(o).replaceAll(/^"(.*)"$/g,"$1");
-}
-
-function bashEscape(str) {
-    return str ? stringify(str).replaceAll("'","\\'") : str;
-}
-
-function throwError() {
-    throw Error();
-}
-
-function isNumeric(n) {
-    return _.isNumber(n) || (!_.isEmpty(n) && !_.isNaN(parseFloat(n)));
-}
-
-var exposedFunctions = {
-    window : noop,
-    alert : noop,
-    document : noop,
-    __proto__ : noop,
-    eval : noop,
-    localStorage: noop,
-    location: noop,
-    lastLine : lastLine,
-    firstGroup: firstGroup,
-    dayjs : dayjs,
-    prettyJSON : prettyJSON,
-    prefixSearch : prefixSearch,
-    includesSearch : includesSearch,
-    regexSearch : regexSearch,
-    firstNonNull: firstNonNull,
-    prepend: prepend,
-    srTimestamp: srTimestamp,
-    encodeCloudWatchInsightsParam: encodeCloudWatchInsightsParam,
-    encodeCloudWatchURL: encodeCloudWatchURL,
-    nullSafe: nullSafe,
-    arrayify: arrayify,
-    slugify: slugify,
-    stringify: stringify,
-    bashEscape: bashEscape,
-    _ : _,
-    cfn: cfn,
-    acfn:acfn,
-    JSON5: JSON5,
-}
-
-function injectCustomFunctions(variables) {
-    if(isDict(variables)) {
-        for (const [key, value] of Object.entries(variables)) {
-            if(key.startsWith('function:')) {
-                const functionName = key.replace('function:','');
-                const args = arrayify(firstNonNull(value.args,"str"));
-                const body = value.body;
-                if(!body) {
-                    throw new Error(`function ${key} must have a body`);
+        json = json.replace(/[&<>]/g, m => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'}[m]));
+        return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+            var cls = 'pl-c1';
+            if (/^"/.test(match)) {
+                if (/:$/.test(match)) {
+                    cls = 'pl-s';
                 }
-                delete variables[key];
-                variables[functionName] = new Function(...args, body);
-            } else {
-                variables[key] = injectCustomFunctions(value);
             }
-        }
-    } else if(Array.isArray(variables)) {
-        return variables.map(item => injectCustomFunctions(item));
+            return `<span class='${cls}'>${match}</span>`;
+        });
     }
-    return variables;
-}
 
-function overlayExposedFunctions(variables) {
-    return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions, getUndefinedGlobals(variables));
-}
-
-function getUndefinedGlobals(variables) {
-    //There are a few variables that are always defined on web pages like name status and title, make them throw an error if used and but not set
-    //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
-    return {name: variables.name||throwError,title: variables.title||throwError,status: variables.status||throwError};
-}
-
-// get variables for service and smash them together allowing for extension
-// if the service name is warp.federation.support
-// overlay the variables of warp, with warp.federation and with warp.federation.support
-function getServiceVariables(service, services) {
-    return service ? service.split('.').reduceRight((variables, current, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(0,arr.length-index).join('.')]), {}) : {};
-}
-
-// get variables for templates and smash them together allowing for extension
-// if the template name is copy.raw.warp
-// overlay the variables of copy with raw and with warp.
-function getTemplateVariables(template, templates) {
-    return template ? template.split('.').reduce((variables, previous, index, arr) => {
-        let templateValues = nullSafe(templates)[arr[index]];
-        if(undefined === templateValues) {
-            throw new Error(`template named: ${arr[index]} not defined`);
+    function getPromptInfo(prompt) {
+        let variable = prompt[1];
+        let text = prompt[2];
+        let configuration = prompt[3] ? parseJSON(prompt[3]) : {};
+        let isGlobal = variable && variable.startsWith(GLOBAL_PREFIX);
+        let sVariable = (variable && !isGlobal) ? localStorage.getItem(variable) : undefined;
+        let sPrompt = localStorage.getItem(text);
+        let urlValue = getURLSearchParamOnce(text);
+        let sessionValue = firstNonNull(isGlobal?GM_getValue(variable,undefined):undefined,urlValue, sVariable,sPrompt,configuration.default,"");
+        //override sessionValue if this is srTimestamp, we always want to set it to the default TODO make this a configuration option?
+        if("srTimestampValue" === variable){
+            sessionValue = configuration.default;
         }
-        if(_.isString(templateValues)) {
-            templateValues = {value: templateValues};
-            if(index == 0) {
-                templateValues.type = firstNonNull(templateValues.value,"").startsWith('http') ? 'link' : arr[0];
+        return {raw:prompt[0], variable, prompt: text, configuration, urlValue, value: sessionValue, default: configuration.default, condition: configuration.condition};
+    }
+
+
+    function getService() {
+        return $('#service').val();
+    }
+
+    function getRegion() {
+        return $('#region').val() || undefined;
+    }
+
+    function getInputValue(input) {
+        return input.is(':checkbox') ? input.is(':checked') : input.val();
+    }
+
+    function setInputValue(input, value) {
+        input.is(':checkbox') ? input.prop('checked', value) : input.val(value);
+        if(input.hasClass("select2-hidden-accessible")) {
+            input.select2().trigger("change");
+        }
+    }
+
+    function stringify(o) {
+        return JSON.stringify(o).replaceAll(/^"(.*)"$/g,"$1");
+    }
+
+    function bashEscape(str) {
+        return str ? stringify(str).replaceAll("'","\\'") : str;
+    }
+
+    function throwError() {
+        throw Error();
+    }
+
+    function isNumeric(n) {
+        return _.isNumber(n) || (!_.isEmpty(n) && !_.isNaN(parseFloat(n)));
+    }
+
+    var exposedFunctions = {
+        window : noop,
+        alert : noop,
+        document : noop,
+        __proto__ : noop,
+        eval : noop,
+        localStorage: noop,
+        location: noop,
+        lastLine : lastLine,
+        firstGroup: firstGroup,
+        dayjs : dayjs,
+        prettyJSON : prettyJSON,
+        prefixSearch : prefixSearch,
+        includesSearch : includesSearch,
+        regexSearch : regexSearch,
+        firstNonNull: firstNonNull,
+        prepend: prepend,
+        srTimestamp: srTimestamp,
+        encodeCloudWatchInsightsParam: encodeCloudWatchInsightsParam,
+        encodeCloudWatchURL: encodeCloudWatchURL,
+        nullSafe: nullSafe,
+        arrayify: arrayify,
+        slugify: slugify,
+        stringify: stringify,
+        bashEscape: bashEscape,
+        _ : _,
+        cfn: cfn,
+        acfn:acfn,
+        JSON5: JSON5,
+    }
+
+    function injectCustomFunctions(variables) {
+        if(isDict(variables)) {
+            for (const [key, value] of Object.entries(variables)) {
+                if(key.startsWith('function:')) {
+                    const functionName = key.replace('function:','');
+                    const args = arrayify(firstNonNull(value.args,"str"));
+                    const body = value.body;
+                    if(!body) {
+                        throw new Error(`function ${key} must have a body`);
+                    }
+                    delete variables[key];
+                    variables[functionName] = new Function(...args, body);
+                } else {
+                    variables[key] = injectCustomFunctions(value);
+                }
             }
-        } else {
-            if(arr[index].startsWith('federate')) {
-                templateValues.type = firstNonNull(variables.type, templateValues.type, 'federate');
+        } else if(Array.isArray(variables)) {
+            return variables.map(item => injectCustomFunctions(item));
+        }
+        return variables;
+    }
+
+    function overlayExposedFunctions(variables) {
+        return $.extend(true, {}, injectCustomFunctions(variables), exposedFunctions, getUndefinedGlobals(variables));
+    }
+
+    function getUndefinedGlobals(variables) {
+        //There are a few variables that are always defined on web pages like name status and title, make them throw an error if used and but not set
+        //https://stackoverflow.com/questions/26562719/is-variable-called-name-always-defined-in-javascript
+        return {name: variables.name||throwError,title: variables.title||throwError,status: variables.status||throwError};
+    }
+
+    // get variables for service and smash them together allowing for extension
+    // if the service name is warp.federation.support
+    // overlay the variables of warp, with warp.federation and with warp.federation.support
+    function getServiceVariables(service, services) {
+        return service ? service.split('.').reduceRight((variables, current, index, arr) => $.extend(true, variables, nullSafe(services)[arr.slice(0,arr.length-index).join('.')]), {}) : {};
+    }
+
+    // get variables for templates and smash them together allowing for extension
+    // if the template name is copy.raw.warp
+    // overlay the variables of copy with raw and with warp.
+    function getTemplateVariables(template, templates) {
+        return template ? template.split('.').reduce((variables, previous, index, arr) => {
+            let templateValues = nullSafe(templates)[arr[index]];
+            if(undefined === templateValues) {
+                throw new Error(`template named: ${arr[index]} not defined`);
+            }
+            if(_.isString(templateValues)) {
+                templateValues = {value: templateValues};
+                if(index == 0) {
+                    templateValues.type = firstNonNull(templateValues.value,"").startsWith('http') ? 'link' : arr[0];
+                }
             } else {
-                templateValues.type = firstNonNull(variables.type, templateValues.type, arr[index]);
+                if(arr[index].startsWith('federate')) {
+                    templateValues.type = firstNonNull(variables.type, templateValues.type, 'federate');
+                } else {
+                    templateValues.type = firstNonNull(variables.type, templateValues.type, arr[index]);
+                }
+            }
+            //make sure creds is set if this is federate
+            if(templateValues.type == 'federate') {
+                templateValues.creds = true;
+            }
+            return $.extend(true, variables, templateValues)}, {})
+        : {} ;
+    }
+
+    //Add spaces before uppercase letters in value
+    function prettyCamelCase(str) {
+        return str.replace(/([a-z]|[A-Z]+)([A-Z])/g, "$1 $2");
+    }
+
+    function getServiceDropdownName(serviceName) {
+        //Only pretty up final name in extension as service name for dropdown
+        //A = A
+        //A.B.C = C
+        return prettyCamelCase(serviceName.replace(USER_SERVICE,GM_getValue("g_usernameOverride") || user).replace(/^.*\./,''));
+    }
+
+    function applyIfNotNull(obj, f) {
+        return (typeof obj === 'undefined') || obj === null ? obj : f.call(obj);
+    }
+
+    function isAlwaysOnPath(path) {
+        if(!path) {
+            let regex = isSRPage();
+            if (regex) {
+                [,path] = regex;
             }
         }
-        //make sure creds is set if this is federate
-        if(templateValues.type == 'federate') {
-            templateValues.creds = true;
-        }
-        return $.extend(true, variables, templateValues)}, {})
-    : {} ;
-}
+        path = applyIfNotNull(path, String.prototype.toLowerCase);
+        return path === '/no-backspace-crew/speedrun' || path === `/${user}/${user}`;
+    }
 
-//Add spaces before uppercase letters in value
-function prettyCamelCase(str) {
-    return str.replace(/([a-z]|[A-Z]+)([A-Z])/g, "$1 $2");
-}
-
-function getServiceDropdownName(serviceName) {
-    //Only pretty up final name in extension as service name for dropdown
-    //A = A
-    //A.B.C = C
-    return prettyCamelCase(serviceName.replace(USER_SERVICE,GM_getValue("g_usernameOverride") || user).replace(/^.*\./,''));
-}
-
-function applyIfNotNull(obj, f) {
-    return (typeof obj === 'undefined') || obj === null ? obj : f.call(obj);
-}
-
-function isAlwaysOnPath(path) {
-    if(!path) {
+    function isEnabledPath() {
         let regex = isSRPage();
         if (regex) {
-            [,path] = regex;
+            let [,path] = regex;
+            path = path.toLowerCase();
+            return GM_getValue(SR_ENABLED_PATHS, {})[path] != undefined || isAlwaysOnPath(path);
+        }
+        return false;
+    }
+
+    function validateInputs() {
+        $("#srModal-link, #srModal-ok").prop('disabled', $(".srInput:invalid").length != 0);
+    }
+
+    function setEnabledPath(enabled) {
+        let regex = isSRPage();
+        if (regex) {
+            let [,path] = regex;
+            path = path.toLowerCase();
+            let currentEnabledPaths = GM_getValue(SR_ENABLED_PATHS, {});
+            if(!enabled) {
+                delete currentEnabledPaths[path];
+            } else {
+                currentEnabledPaths[path] = Date.now();
+            }
+            GM_setValue(SR_ENABLED_PATHS, currentEnabledPaths);
         }
     }
-    path = applyIfNotNull(path, String.prototype.toLowerCase);
-    return path === '/no-backspace-crew/speedrun' || path === `/${user}/${user}`;
-}
 
-function isEnabledPath() {
-    let regex = isSRPage();
-    if (regex) {
-        let [,path] = regex;
-        path = path.toLowerCase();
-        return GM_getValue(SR_ENABLED_PATHS, {})[path] != undefined || isAlwaysOnPath(path);
-    }
-    return false;
-}
+    function getPathFromObject(o, path) { return path.split(".").reduce((r, k) => r?.[k], o) };
 
-function validateInputs() {
-    $("#srModal-link, #srModal-ok").prop('disabled', $(".srInput:invalid").length != 0);
-}
-
-function setEnabledPath(enabled) {
-    let regex = isSRPage();
-    if (regex) {
-        let [,path] = regex;
-        path = path.toLowerCase();
-        let currentEnabledPaths = GM_getValue(SR_ENABLED_PATHS, {});
-        if(!enabled) {
-            delete currentEnabledPaths[path];
-        } else {
-            currentEnabledPaths[path] = Date.now();
+    function safeInterpolate(tpl, variables){
+        if(tpl === undefined || tpl === null){
+            return undefined;
         }
-        GM_setValue(SR_ENABLED_PATHS, currentEnabledPaths);
+        return tpl.replaceAll(/\${(.*?)}/g, (_, path) => {
+            let val = getPathFromObject(variables, path);
+            if(val === undefined) {
+                throw new Error(`${_} cannot be interpolated from untrusted input`);
+            }
+            return val;
+        });
     }
-}
 
-function getPathFromObject(o, path) { return path.split(".").reduce((r, k) => r?.[k], o) };
-
-function safeInterpolate(tpl, variables){
-    if(tpl === undefined || tpl === null){
-        return undefined;
+    function copyAndPrependToOutput(outputText, runBtn, copy=true) {
+        prependToOutput(outputText, runBtn, copy);
     }
-    return tpl.replaceAll(/\${(.*?)}/g, (_, path) => {
-        let val = getPathFromObject(variables, path);
-        if(val === undefined) {
-            throw new Error(`${_} cannot be interpolated from untrusted input`);
-        }
-        return val;
-    });
-}
-
-function copyAndPrependToOutput(outputText, runBtn, copy=true) {
-    prependToOutput(outputText, runBtn, copy);
-}
-function prependToOutput(outputText, runBtn, copy=false) {
-    const outputTabId = runBtn && runBtn.data('outputTab');
-    if(outputTabId) {
-        const output = $(`#${outputTabId} > div`);
-        const timelineItem = `<div class="TimelineItem">
+    function prependToOutput(outputText, runBtn, copy=false) {
+        const outputTabId = runBtn && runBtn.data('outputTab');
+        if(outputTabId) {
+            const output = $(`#${outputTabId} > div`);
+            const timelineItem = `<div class="TimelineItem">
             <div class="TimelineItem-badge">
               <svg class="octicon"
                    width="18" height="18"
@@ -2539,437 +2568,437 @@ function prependToOutput(outputText, runBtn, copy=false) {
     }
 }
 
-async function nope(content, preview = false, anchor, runBtn) {
-    let pageVariables = _.cloneDeep(nullSafe(pageConfig));
-    delete pageVariables.templates;
-    delete pageVariables.services;
-    let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService()};
-    let details = parseContent(content);
-    variables.content = details.body;
-    variables.internal.showPin = details.service != undefined;
-    variables.internal.running = !preview;
-    variables.service = firstNonNull(details.service, variables.service);
-    if(variables.service) {
-        variables.srServiceName = getServiceDropdownName(variables.service);
-    }
-    if(variables.internal.region) {
-        variables.srRegionName = variables.internal.region;
-    }
-    let templateVariables;
-
-    try {
-        templateVariables = getTemplateVariables(details.template, templates);
-    } catch(err) {
-        //rethrow if
-        alertAndThrow(err);
-    }
-
-    variables.internal.template = templateVariables.value || "${content}";
-    variables.internal.templateType = templateVariables.type;
-    variables.internal.preview = variables.internal.content = variables.content;
-    delete templateVariables.value;
-    delete templateVariables.type;
-
-    let serviceVariables = _.cloneDeep(getServiceVariables(variables.service, pageConfig.services));
-
-
-    variables.internal.templateName = details.template
-    variables.partition = getPartition(variables.region, true);
-    let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.regions)[variables.partition]) : {};
-    let regionVariables = variables.internal.region ? nullSafe(nullSafe(serviceVariables.regions)[variables.internal.region]) : {};
-    delete serviceVariables.regions
-
-    const entryVariables = nullSafe(details.variables);
-
-    variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables);
-    variables.internal.overriddenAccount = entryVariables.account && entryVariables.account != variables.account ? entryVariables.account : undefined;
-    variables.internal.overriddenRegion = entryVariables.region && entryVariables.region != variables.region ? entryVariables.region : undefined;
-    variables.internal.showPin ||= (variables.internal.overriddenAccount != undefined && variables.internal.overriddenAccount != variables.account);
-    variables.internal.showRegionPin = (variables.internal.overriddenRegion != undefined && variables.internal.overriddenRegion != variables.region);
-    variables = $.extend(true, variables, entryVariables);
-    variables = overlayExposedFunctions(variables);
-
-    if(!preview && firstNonNull(variables.stripComments, !variables.raw)) {
-        //rip out comments
-        variables.content = variables.content.replace(COMMENT_G, function(prompt) {
-            const [,before,,,,after] = prompt.match(COMMENT);
-            const leadingContent = firstNonNull(before,'').trim();
-            return `${leadingContent.length ? leadingContent.concat(firstNonNull(after,'')) : ''}`;
-        });
-        //if / is escaped so it isn't treated as a comment, unescape it
-        variables.content = variables.content.replace('&sol;','/');
-    }
-
-    //strip output
-    if(!(preview || variables.raw)) {
-        let arr = variables.content.split(OUTPUT,2);
-        if(arr.length > 1) {
-            variables.content = arr[0];
-            variables.internal.output = arr[1].replace(TRAILING_WHITESPACE,"");
+    async function nope(content, preview = false, anchor, runBtn) {
+        let pageVariables = _.cloneDeep(nullSafe(pageConfig));
+        delete pageVariables.templates;
+        delete pageVariables.services;
+        let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService()};
+        let details = parseContent(content);
+        variables.content = details.body;
+        variables.internal.showPin = details.service != undefined;
+        variables.internal.running = !preview;
+        variables.service = firstNonNull(details.service, variables.service);
+        if(variables.service) {
+            variables.srServiceName = getServiceDropdownName(variables.service);
         }
-    }
-    sessionVariables = variables;
-
-    variables.internal.prompts = getPrompts(content, variables.internal.template);
-    let existingUserConfig = {}, existingCredentialsBroker = undefined;
-    if (!preview) {
-        if(hasElements(variables.internal.prompts) && !(variables.prompts === false)) {
-            const div = $('<div>');
-            const table = $('<table>');
-            div.append(table);
-            for(const prompt of variables.internal.prompts) {
-                const info = getPromptInfo(prompt.prompt);
-                const row = $('<tr>');
-                const header = $('<td>', {class: 'p-1 text-right v-align-top'})
-                const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
-                header.append(label);
-                row.append(header);
-                let input = undefined;
-                info.interpolatedDefault = firstNonNull(await interpolate(firstNonNull(info.default,""),variables, true), info.default);
-                //use url value if set and = to value.
-                if(info.urlValue && info.urlValue == info.value) {
-                    info.interpolatedValue = safeInterpolate(info.value,variables);
-                } else {
-                    info.interpolatedValue = firstNonNull(await interpolate(firstNonNull(info.value,""),variables, true), info.value);
-                }
-                info.location = prompt.location;
-                let interpolatedDefaultText;
-                switch(info.configuration.type) {
-                    case "checkbox":
-                        input = $('<input>', {type:'checkbox'});
-                        setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
-                        break;
-                    case "select":
-                        {
-                            let options = info.configuration.options;
-                            if(options && (typeof options === 'string')) {
-                                let literal = options.match(LITERAL);
-                                if(literal){
-                                    options = await interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
-                                }
-                                options = parseJSON(options);
-                            }
-
-                            if(isDict(options) || hasElements(options)){
-                                input = $("<select>", {class:"width-fit"});
-                                if(Array.isArray(options)){
-                                    //convert to a map
-                                    options = _.zipObject(options, options);
-                                }
-                                Object.entries(options).forEach(([key, value]) => {
-                                    input.append($(`<option ${String(value)===info.value ? "selected" : ""}>`).text(key).val(value));
-                                    if(info.interpolatedDefault && info.interpolatedDefault.length && String(value) === info.interpolatedDefault) {
-                                        interpolatedDefaultText = key;
-                                    }
-                                });
-                            } else {
-                                alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
-                            }
-                        }
-                        break;
-                    case "textarea":
-                        input = $('<textarea>', {rows:firstNonNull(info.configuration.rows,5),cols:firstNonNull(info.configuration.cols,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
-                        input.val(info.interpolatedValue);
-                        break;
-                    default:
-                        input = $('<input>', {size:firstNonNull(info.configuration.size,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
-                        info.configuration.type == 'password' ? input.attr('type', 'password') : input.val(info.interpolatedValue);
-                        break;
-                }
-                input.data('prompt', info);
-                let col = $('<td>', {class: 'p-1'})
-                col.append(input);
-                input.addClass('srInput');
-
-                if(info.configuration.label) {
-                    col.append(`<p class="note">${DOMPurify.sanitize(info.configuration.label, {ALLOWED_TAGS: ['b','a','i','u'], ATTRIBUTES: ['target']})}</p>`);
-                }
-                ['pattern', 'maxlength', 'minlength', 'required'].forEach(attr => {
-                    if(info.configuration[attr]) {
-                        input.addClass('srValidated');
-                        input.attr(attr, info.configuration[attr]);
-                        input.on('input', function() {
-                            validateInputs();
-                        });
-                    }
-                });
-                row.append(col);
-                col = $('<td>', {class: 'p-1 v-align-top'})
-                if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
-                    const text = interpolatedDefaultText || info.interpolatedDefault;
-                    const button = $(`<button class="btn btn-sm Truncate" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
-                    button.data('prompt', info);
-                    button.data('source', input);
-                    button.prop('disabled', info.interpolatedValue === info.interpolatedDefault);
-                    input.on('input', function() {
-                        button.prop('disabled', getInputValue(input) === button.data("prompt").interpolatedDefault);
-                    });
-                    button.on("click", function() {
-                        setInputValue($(button.data('source')), button.data('prompt').interpolatedDefault);
-                        button.prop('disabled', true);
-                    });
-                    col.append(button);
-                }
-                row.append(col);
-                table.append(row);
-            };
-
-            try {
-                let isSettings = variables.internal.templateName === 'settings';
-                if(isSettings) {
-                    existingUserConfig = getUserConfig();
-                    existingCredentialsBroker = GM_getValue("g_credentials_broker", 'speedrun')
-                }
-                var deeplink = undefined;
-                if(anchor) {
-                    deeplink = $('<button id="srModal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
-                    deeplink.click(function () {
-                        let url = new URL(`${window.location.origin}${window.location.pathname}`);
-                        if(anchor.length) {
-                            url.hash = anchor.attr('href').substring(1);
-                        }
-                        let parameters = new URLSearchParams();
-                        parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
-                        parameters.append('srService', getValue('#service'));
-                        if(runBtn && runBtn.prop('id')) {
-                            parameters.append('srButton', runBtn.prop('id'));
-                        }
-                        $('#srModal :input' ).not(':input[type=button],button').each(function() {
-                            const prompt = $(this).data('prompt');
-                            if(prompt) {
-                                const value = getInputValue($(this));
-                                parameters.append(prompt.prompt,value);
-                            }
-                            url.search = parameters.toString();
-                            GM_setClipboard(url.toString());
-                            toast("📋 Deeplink Copied");
-                        });
-                    });
-                }
-                let label = runBtn ? runBtn.attr('aria-label') : undefined;
-                await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, async function() {
-                    for(const input of $('#srModal :input' ).not(':input[type=button],button')) {
-                        const $input = $(input);
-                        const prompt = $input.data('prompt');
-                        if(prompt) {
-                            const value = getInputValue($input);
-                            let transformedValue = value;
-                            if(prompt.configuration.transform){
-                                console.log('Transform:', prompt.configuration.transform);
-                                console.log('Value Before:', value);
-                                variables.value = value;
-                                try {
-                                    transformedValue = await interpolate(`\${${prompt.configuration.transform}}`, variables, false, false);
-                                } catch(e) {
-                                    throw new Error(`Unable to run transform: ${prompt.configuration.transform} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
-                                }
-                                console.log('Value After:', transformedValue);
-                            }
-                            try {
-                                if(prompt.configuration.cast){
-                                    switch(prompt.configuration.cast){
-                                        case "json":
-                                            transformedValue = parseJSON(transformedValue);
-                                            break;
-                                        case "Number":
-                                            transformedValue = Number(transformedValue);
-                                            break;
-                                        case "Boolean":
-                                            transformedValue = (String(transformedValue).toLowerCase() == "true")
-                                            break;
-                                        case "dayjs":
-                                            transformedValue = dayjs(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                            break;
-                                        case "dayjs.utc":
-                                            transformedValue = dayjs.utc(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
-                                            break;
-                                        default:
-                                            throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
-                                    }
-                                }
-                            } catch(e) {
-                                throw new Error(`Unable to run cast: ${prompt.configuration.cast} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
-                            }
-                            if(getURLSearchParam(prompt.prompt)) {
-                                USED_SEARCH_PARAMS.add(prompt.prompt);
-                            }
-                            if(prompt.variable) {
-                                variables[prompt.variable] = transformedValue;
-                                if(prompt.type != 'password') {
-                                    prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
-                                }
-                            } else if(prompt.type != 'password') {
-                                localStorage.setItem(prompt.prompt, value);
-                            }
-                            let suffix = "";
-                            if(prompt.configuration.suppress){
-                                suffix = "\n?";
-                                transformedValue = "";
-                            }
-                            let replacement = new RegExp(escapeRegex(prompt.raw)+suffix);
-                            if (prompt.location == 'content') {
-                                variables.content = variables.content.replace(replacement, transformedValue);
-                            } else {
-                                variables.internal.template = variables.internal.template.replace(replacement, transformedValue);
-                            }
-                        }
-                    }
-                }, deeplink, runBtn? runBtn.data('danger'):false);
-            } catch(err) {
-                console.log(err);
-                return;
-            }
-
+        if(variables.internal.region) {
+            variables.srRegionName = variables.internal.region;
         }
-    }
+        let templateVariables;
 
-    // interpolate variables using 2 passes to account for variables that are defined later
-    for(let pass of [1,2]){
-        variables.internal.pass = pass;
-        for(let [key, value] of Object.entries(variables)) {
-            // don't interpolate internal keys or content if raw is turned on
-            if(key == 'internal' || (variables.raw && key == 'content')) {
-                continue;
-            }
-            const result = await deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
-            if(result) {
-                variables[key] = result;
-            }
-        }
-    };
-
-    variables.internal.result = await deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
-    variables.internal.credentialsBroker = (variables.ssoStartUrl && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
-        new IdentityCenterCredentialsBroker()
-    : credentialsBroker;
-
-    if(!preview) {
         try {
-            if(variables.creds) {
-                if(!variables.internal.credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
-                    throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
-                }
-                variables.internal.credentialsBroker.validate(variables);
-            }
-            if(GM_getValue("g_force_new_creds", false)) {
-                variables.forceNewCreds = true;
-            }
-            switch(variables.internal.templateType) {
-                case "copy" :
-                    //refactor to show key if creds are needed
-                    if(needsNewCreds(variables)) {
-                        if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
-                            throw new Error(`Getting credentials not enabled on demo accounts`);
-                        }
-                        variables.internal.result = await variables.internal.credentialsBroker.getCredentials(variables);
-                    } else if(variables.internal.newRegion) {
-                        variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
-                    }
-                    copyAndPrependToOutput(variables.internal.result, runBtn);
+            templateVariables = getTemplateVariables(details.template, templates);
+        } catch(err) {
+            //rethrow if
+            alertAndThrow(err);
+        }
 
-                    persistLastRole(variables);
-                    break;
-                case "link" :
-                    window.open(variables.internal.result);
-                    break;
-                case "settings" :
-                    if(!_.isEqual(existingUserConfig,getUserConfig()) || !_.isEqual(existingCredentialsBroker, GM_getValue("g_credentials_broker", 'speedrun')) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
-                        await sleep(500);
-                        location.reload();
-                        credentialsBroker = getCredentialsBroker();
-                    }
-                    break;
-                case "federate" : {
-                    if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
-                        throw new Error(`Federation not enabled on demo accounts`);
-                    }
-                    // strip leading / if present or console links won't work
-                    variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
-                    // use cloudwatch/deeplink.js instead of home to better handle long urls
-                    variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js');
-                    const consoleSubdomain = getConsoleSubdomain(variables);
-                    variables.internal.consoleUrl = `https://${getConsoleSubdomain(variables)}.console.aws.amazon.com/${variables.internal.result}`;
-                    console.log('Console url', variables.internal.consoleUrl);
-                    //if there is an active session we don't need new creds
-                    if(!consoleSubdomain.includes('.')) {
-                        needsNewCreds(variables);
-                    }
-                    let result = await variables.internal.credentialsBroker.getCredentials(variables);
-                    if(result.url) {
-                        if(result.url != variables.internal.consoleUrl) {
-                            console.log(`Federation url`, result.url)
-                        }
-                        window.open(result.url);
-                    } else {
-                        GM_setClipboard(result.text);
-                        toast("📋 Copied");
-                    }
-                    persistLastRole(variables);
-                    break;
-                }
-                case "download" : {
-                    GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
-                                 onerror: (download)=>{throw new Error(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
-                                 onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
+        variables.internal.template = templateVariables.value || "${content}";
+        variables.internal.templateType = templateVariables.type;
+        variables.internal.preview = variables.internal.content = variables.content;
+        delete templateVariables.value;
+        delete templateVariables.type;
 
-                    break;
-                }
-                case "iframe" : {
-                    injectIFrame($(`#${runBtn.data('previewTab')}`).first('code').get(0), variables);
-                    break;
-                }
-                case "lambda" : {
-                    if(variables.account && String(variables.account).startsWith('-')) {
-                        throw new Error(`Lambda not enabled on demo accounts`);
-                    }
-                    const isFunctionUrl = variables.functionUrl != undefined;
-                    if(!isFunctionUrl && !variables.functionName) {
-                        throw new Error('functionUrl or functionName is required');
-                    }
-                    let lambdaCredentials = await variables.internal.credentialsBroker.getCredentials(variables);
-                    const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
-                    const response = await invoke(request, isFunctionUrl);
-                    let lambdaResult = undefined;
-                    if(isFunctionUrl) {
-                        if(response.headers['x-amzn-requestid']) {
-                            console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
-                        }
-                        if(response.status != 200) {
-                            throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
-                        }
-                        lambdaResult = response.responseText;
+        let serviceVariables = _.cloneDeep(getServiceVariables(variables.service, pageConfig.services));
+
+
+        variables.internal.templateName = details.template
+        variables.partition = getPartition(variables.region, true);
+        let partitionVariables = variables.partition ? nullSafe(nullSafe(serviceVariables.regions)[variables.partition]) : {};
+        let regionVariables = variables.internal.region ? nullSafe(nullSafe(serviceVariables.regions)[variables.internal.region]) : {};
+        delete serviceVariables.regions
+
+        const entryVariables = nullSafe(details.variables);
+
+        variables = $.extend(true, variables, pageVariables, templateVariables, serviceVariables, partitionVariables, regionVariables);
+        variables.internal.overriddenAccount = entryVariables.account && entryVariables.account != variables.account ? entryVariables.account : undefined;
+        variables.internal.overriddenRegion = entryVariables.region && entryVariables.region != variables.region ? entryVariables.region : undefined;
+        variables.internal.showPin ||= (variables.internal.overriddenAccount != undefined && variables.internal.overriddenAccount != variables.account);
+        variables.internal.showRegionPin = (variables.internal.overriddenRegion != undefined && variables.internal.overriddenRegion != variables.region);
+        variables = $.extend(true, variables, entryVariables);
+        variables = overlayExposedFunctions(variables);
+
+        if(!preview && firstNonNull(variables.stripComments, !variables.raw)) {
+            //rip out comments
+            variables.content = variables.content.replace(COMMENT_G, function(prompt) {
+                const [,before,,,,after] = prompt.match(COMMENT);
+                const leadingContent = firstNonNull(before,'').trim();
+                return `${leadingContent.length ? leadingContent.concat(firstNonNull(after,'')) : ''}`;
+            });
+            //if / is escaped so it isn't treated as a comment, unescape it
+            variables.content = variables.content.replace('&sol;','/');
+        }
+
+        //strip output
+        if(!(preview || variables.raw)) {
+            let arr = variables.content.split(OUTPUT,2);
+            if(arr.length > 1) {
+                variables.content = arr[0];
+                variables.internal.output = arr[1].replace(TRAILING_WHITESPACE,"");
+            }
+        }
+        sessionVariables = variables;
+
+        variables.internal.prompts = getPrompts(content, variables.internal.template);
+        let existingUserConfig = {}, existingCredentialsBroker = undefined;
+        if (!preview) {
+            if(hasElements(variables.internal.prompts) && !(variables.prompts === false)) {
+                const div = $('<div>');
+                const table = $('<table>');
+                div.append(table);
+                for(const prompt of variables.internal.prompts) {
+                    const info = getPromptInfo(prompt.prompt);
+                    const row = $('<tr>');
+                    const header = $('<td>', {class: 'p-1 text-right v-align-top'})
+                    const label = $(`<label>${escapeHTMLStartTags(info.prompt)}</label>`);
+                    header.append(label);
+                    row.append(header);
+                    let input = undefined;
+                    info.interpolatedDefault = firstNonNull(await interpolate(firstNonNull(info.default,""),variables, true), info.default);
+                    //use url value if set and = to value.
+                    if(info.urlValue && info.urlValue == info.value) {
+                        info.interpolatedValue = safeInterpolate(info.value,variables);
                     } else {
-                        if(response.headers['x-amzn-requestid']) {
-                            console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
-                        }
-                        console.log(response);
-                        if(!(response.status == 200 || response.response.statusCode == "200")) {
-                            throw new Error(`Invalid lambda response: ${response.status}: ${response.responseText}`);
-                        }
-                        lambdaResult = response.response.body || response.responseText;
+                        info.interpolatedValue = firstNonNull(await interpolate(firstNonNull(info.value,""),variables, true), info.value);
                     }
-                    if(variables.internal.output) {
-                        variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
-                        lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), false);
-                    }
-                    copyAndPrependToOutput(lambdaResult, runBtn);
-                    break;
-                }
-                case "eventbridge" : {
-                    if(variables.account && String(variables.account).startsWith('-')) {
-                        throw new Error(`EventBridge not enabled on demo accounts`);
-                    }
-                    if(!variables.eventBusName){
-                        throw new Error('eventBusName is required');
-                    }
-                    let credentials = await variables.internal.credentialsBroker.getCredentials(variables);
-                    let body = {
-                        "Entries":[
+                    info.location = prompt.location;
+                    let interpolatedDefaultText;
+                    switch(info.configuration.type) {
+                        case "checkbox":
+                            input = $('<input>', {type:'checkbox'});
+                            setInputValue(input, info.interpolatedValue && info.interpolatedValue != "false");
+                            break;
+                        case "select":
                             {
-                                "EventBusName": variables.eventBusName,
-                                "Source": variables.source || "cc.speedrun",
-                                "Detail": variables.internal.result,
-                                "DetailType": variables.detailType || `Speedrun V${GM_info.script.version} Invocation`
+                                let options = info.configuration.options;
+                                if(options && (typeof options === 'string')) {
+                                    let literal = options.match(LITERAL);
+                                    if(literal){
+                                        options = await interpolate(`\${JSON.stringify(${options.substring(2,options.length-1)})}`, variables, true);
+                                    }
+                                    options = parseJSON(options);
+                                }
+
+                                if(isDict(options) || hasElements(options)){
+                                    input = $("<select>", {class:"width-fit"});
+                                    if(Array.isArray(options)){
+                                        //convert to a map
+                                        options = _.zipObject(options, options);
+                                    }
+                                    Object.entries(options).forEach(([key, value]) => {
+                                        input.append($(`<option ${String(value)===info.value ? "selected" : ""}>`).text(key).val(value));
+                                        if(info.interpolatedDefault && info.interpolatedDefault.length && String(value) === info.interpolatedDefault) {
+                                            interpolatedDefaultText = key;
+                                        }
+                                    });
+                                } else {
+                                    alertAndThrow(`No options specified for select prompt: ${info.prompt}`);
+                                }
+                            }
+                            break;
+                        case "textarea":
+                            input = $('<textarea>', {rows:firstNonNull(info.configuration.rows,5),cols:firstNonNull(info.configuration.cols,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
+                            input.val(info.interpolatedValue);
+                            break;
+                        default:
+                            input = $('<input>', {size:firstNonNull(info.configuration.size,40), placeholder: firstNonNull(info.configuration.placeholder,"")});
+                            info.configuration.type == 'password' ? input.attr('type', 'password') : input.val(info.interpolatedValue);
+                            break;
+                    }
+                    input.data('prompt', info);
+                    let col = $('<td>', {class: 'p-1'})
+                    col.append(input);
+                    input.addClass('srInput');
+
+                    if(info.configuration.label) {
+                        col.append(`<p class="note">${DOMPurify.sanitize(info.configuration.label, {ALLOWED_TAGS: ['b','a','i','u'], ATTRIBUTES: ['target']})}</p>`);
+                    }
+                    ['pattern', 'maxlength', 'minlength', 'required'].forEach(attr => {
+                        if(info.configuration[attr]) {
+                            input.addClass('srValidated');
+                            input.attr(attr, info.configuration[attr]);
+                            input.on('input', function() {
+                                validateInputs();
+                            });
+                        }
+                    });
+                    row.append(col);
+                    col = $('<td>', {class: 'p-1 v-align-top'})
+                    if(typeof info.interpolatedDefault === "boolean" || info.interpolatedDefault && info.interpolatedDefault.length) {
+                        const text = interpolatedDefaultText || info.interpolatedDefault;
+                        const button = $(`<button class="btn btn-sm Truncate" style="max-width: 100px;" type="button" aria-label="escapeHTMLStartTags(text)"><span class='Truncate-text' title='${escapeHTMLStartTags(text)}'>${escapeHTMLStartTags(text)}</span></button>`);
+                        button.data('prompt', info);
+                        button.data('source', input);
+                        button.prop('disabled', info.interpolatedValue === info.interpolatedDefault);
+                        input.on('input', function() {
+                            button.prop('disabled', getInputValue(input) === button.data("prompt").interpolatedDefault);
+                        });
+                        button.on("click", function() {
+                            setInputValue($(button.data('source')), button.data('prompt').interpolatedDefault);
+                            button.prop('disabled', true);
+                        });
+                        col.append(button);
+                    }
+                    row.append(col);
+                    table.append(row);
+                };
+
+                try {
+                    let isSettings = variables.internal.templateName === 'settings';
+                    if(isSettings) {
+                        existingUserConfig = getUserConfig();
+                        existingCredentialsBroker = GM_getValue("g_credentials_broker", 'speedrun')
+                    }
+                    var deeplink = undefined;
+                    if(anchor) {
+                        deeplink = $('<button id="srModal-link" class="btn btn-secondary mr-1" type="button" aria-label="Create deeplink" data-close-dialog><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg> Deeplink</button>');
+                        deeplink.click(function () {
+                            let url = new URL(`${window.location.origin}${window.location.pathname}`);
+                            if(anchor.length) {
+                                url.hash = anchor.attr('href').substring(1);
+                            }
+                            let parameters = new URLSearchParams();
+                            parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
+                            parameters.append('srService', getValue('#service'));
+                            if(runBtn && runBtn.prop('id')) {
+                                parameters.append('srButton', runBtn.prop('id'));
+                            }
+                            $('#srModal :input' ).not(':input[type=button],button').each(function() {
+                                const prompt = $(this).data('prompt');
+                                if(prompt) {
+                                    const value = getInputValue($(this));
+                                    parameters.append(prompt.prompt,value);
+                                }
+                                url.search = parameters.toString();
+                                GM_setClipboard(url.toString());
+                                toast("📋 Deeplink Copied");
+                            });
+                        });
+                    }
+                    let label = runBtn ? runBtn.attr('aria-label') : undefined;
+                    await dialog(div, isSettings ? `Speedrun V${GM_info.script.version} Settings` : `${firstNonNull(variables.inputTitle,'Input')}${label ? `: ${label}` : '' }`, async function() {
+                        for(const input of $('#srModal :input' ).not(':input[type=button],button')) {
+                            const $input = $(input);
+                            const prompt = $input.data('prompt');
+                            if(prompt) {
+                                const value = getInputValue($input);
+                                let transformedValue = value;
+                                if(prompt.configuration.transform){
+                                    console.log('Transform:', prompt.configuration.transform);
+                                    console.log('Value Before:', value);
+                                    variables.value = value;
+                                    try {
+                                        transformedValue = await interpolate(`\${${prompt.configuration.transform}}`, variables, false, false);
+                                    } catch(e) {
+                                        throw new Error(`Unable to run transform: ${prompt.configuration.transform} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
+                                    }
+                                    console.log('Value After:', transformedValue);
+                                }
+                                try {
+                                    if(prompt.configuration.cast){
+                                        switch(prompt.configuration.cast){
+                                            case "json":
+                                                transformedValue = parseJSON(transformedValue);
+                                                break;
+                                            case "Number":
+                                                transformedValue = Number(transformedValue);
+                                                break;
+                                            case "Boolean":
+                                                transformedValue = (String(transformedValue).toLowerCase() == "true")
+                                                break;
+                                            case "dayjs":
+                                                transformedValue = dayjs(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                break;
+                                            case "dayjs.utc":
+                                                transformedValue = dayjs.utc(isNumeric(transformedValue) ? _.toNumber(transformedValue)*1000 : transformedValue);
+                                                break;
+                                            default:
+                                                throw new Error(`Unknown cast: ${prompt.configuration.cast}`);
+                                        }
+                                    }
+                                } catch(e) {
+                                    throw new Error(`Unable to run cast: ${prompt.configuration.cast} on: '${value}' for prompt: ${prompt.prompt} due to: ${e.message}`, e);
+                                }
+                                if(getURLSearchParam(prompt.prompt)) {
+                                    USED_SEARCH_PARAMS.add(prompt.prompt);
+                                }
+                                if(prompt.variable) {
+                                    variables[prompt.variable] = transformedValue;
+                                    if(prompt.type != 'password') {
+                                        prompt.variable.startsWith(GLOBAL_PREFIX) ? GM_setValue(prompt.variable, value) : localStorage.setItem(prompt.variable, value);
+                                    }
+                                } else if(prompt.type != 'password') {
+                                    localStorage.setItem(prompt.prompt, value);
+                                }
+                                let suffix = "";
+                                if(prompt.configuration.suppress){
+                                    suffix = "\n?";
+                                    transformedValue = "";
+                                }
+                                let replacement = new RegExp(escapeRegex(prompt.raw)+suffix);
+                                if (prompt.location == 'content') {
+                                    variables.content = variables.content.replace(replacement, transformedValue);
+                                } else {
+                                    variables.internal.template = variables.internal.template.replace(replacement, transformedValue);
+                                }
+                            }
+                        }
+                    }, deeplink, runBtn? runBtn.data('danger'):false);
+                } catch(err) {
+                    console.log(err);
+                    return;
+                }
+
+            }
+        }
+
+        // interpolate variables using 2 passes to account for variables that are defined later
+        for(let pass of [1,2]){
+            variables.internal.pass = pass;
+            for(let [key, value] of Object.entries(variables)) {
+                // don't interpolate internal keys or content if raw is turned on
+                if(key == 'internal' || (variables.raw && key == 'content')) {
+                    continue;
+                }
+                const result = await deepInterpolate(value, variables, pass==1 || preview || variables.ignoreErrors);
+                if(result) {
+                    variables[key] = result;
+                }
+            }
+        };
+
+        variables.internal.result = await deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
+        variables.internal.credentialsBroker = (variables.ssoStartUrl && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
+            new IdentityCenterCredentialsBroker()
+        : credentialsBroker;
+
+        if(!preview) {
+            try {
+                if(variables.creds) {
+                    if(!variables.internal.credentialsBroker.getValidTemplateTypes().includes(variables.internal.templateType)) {
+                        throw new Error(`The template ${variables.internal.templateType} is not supported by the ${credentialsBroker.constructor.name}`);
+                    }
+                    variables.internal.credentialsBroker.validate(variables);
+                }
+                if(GM_getValue("g_force_new_creds", false)) {
+                    variables.forceNewCreds = true;
+                }
+                switch(variables.internal.templateType) {
+                    case "copy" :
+                        //refactor to show key if creds are needed
+                        if(needsNewCreds(variables)) {
+                            if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
+                                throw new Error(`Getting credentials not enabled on demo accounts`);
+                            }
+                            variables.internal.result = await variables.internal.credentialsBroker.getCredentials(variables);
+                        } else if(variables.internal.newRegion) {
+                            variables.internal.result = await interpolate(COPY_WITH_REGION, variables, false) + variables.internal.result;
+                        }
+                        copyAndPrependToOutput(variables.internal.result, runBtn);
+
+                        persistLastRole(variables);
+                        break;
+                    case "link" :
+                        window.open(variables.internal.result);
+                        break;
+                    case "settings" :
+                        if(!_.isEqual(existingUserConfig,getUserConfig()) || !_.isEqual(existingCredentialsBroker, GM_getValue("g_credentials_broker", 'speedrun')) || GM_getValue("g_usernameOverride") ? variables.user != GM_getValue("g_usernameOverride") : user!=variables.user || FEDERATION_ENDPOINT.includes('-beta') != GM_getValue("g_use_beta_endpoint", false) || credentialsBroker.constructor.name != getCredentialsBroker().constructor.name) {
+                            await sleep(500);
+                            location.reload();
+                            credentialsBroker = getCredentialsBroker();
+                        }
+                        break;
+                    case "federate" : {
+                        if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
+                            throw new Error(`Federation not enabled on demo accounts`);
+                        }
+                        // strip leading / if present or console links won't work
+                        variables.internal.result = variables.internal.result.startsWith('/') ? variables.internal.result.substring(1) : variables.internal.result
+                        // use cloudwatch/deeplink.js instead of home to better handle long urls
+                        variables.internal.result = variables.internal.result.replace(/^cloudwatch\/home/,'cloudwatch/deeplink.js');
+                        const consoleSubdomain = getConsoleSubdomain(variables);
+                        variables.internal.consoleUrl = `https://${getConsoleSubdomain(variables)}.console.aws.amazon.com/${variables.internal.result}`;
+                        console.log('Console url', variables.internal.consoleUrl);
+                        //if there is an active session we don't need new creds
+                        if(!consoleSubdomain.includes('.')) {
+                            needsNewCreds(variables);
+                        }
+                        let result = await variables.internal.credentialsBroker.getCredentials(variables);
+                        if(result.url) {
+                            if(result.url != variables.internal.consoleUrl) {
+                                console.log(`Federation url`, result.url)
+                            }
+                            window.open(result.url);
+                        } else {
+                            GM_setClipboard(result.text);
+                            toast("📋 Copied");
+                        }
+                        persistLastRole(variables);
+                        break;
+                    }
+                    case "download" : {
+                        GM_download({url:variables.internal.result, name:variables.filename, saveAs: Boolean(variables.saveAs),
+                                     onerror: (download)=>{throw new Error(`Unable to download: ${download.error}.${download.details? ` ${download.details}`:''}`);},
+                                     onload: () => {toast(`💾 Downloaded as: ${variables.filename}`);}});
+
+                        break;
+                    }
+                    case "iframe" : {
+                        injectIFrame($(`#${runBtn.data('previewTab')}`).first('code').get(0), variables);
+                        break;
+                    }
+                    case "lambda" : {
+                        if(variables.account && String(variables.account).startsWith('-')) {
+                            throw new Error(`Lambda not enabled on demo accounts`);
+                        }
+                        const isFunctionUrl = variables.functionUrl != undefined;
+                        if(!isFunctionUrl && !variables.functionName) {
+                            throw new Error('functionUrl or functionName is required');
+                        }
+                        let lambdaCredentials = await variables.internal.credentialsBroker.getCredentials(variables);
+                        const request = await srInvoke.invokeLambda(variables.functionName, variables.functionUrl, variables.internal.result === 'undefined'? undefined:variables.internal.result,variables.region,lambdaCredentials);
+                        const response = await invoke(request, isFunctionUrl);
+                        let lambdaResult = undefined;
+                        if(isFunctionUrl) {
+                            if(response.headers['x-amzn-requestid']) {
+                                console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
+                            }
+                            if(response.status != 200) {
+                                throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
+                            }
+                            lambdaResult = response.responseText;
+                        } else {
+                            if(response.headers['x-amzn-requestid']) {
+                                console.log(`Lambda RequestId: ${response.headers['x-amzn-requestid']}`);
+                            }
+                            console.log(response);
+                            if(!(response.status == 200 || response.response.statusCode == "200")) {
+                                throw new Error(`Invalid lambda response: ${response.status}: ${response.responseText}`);
+                            }
+                            lambdaResult = response.response.body || response.responseText;
+                        }
+                        if(variables.internal.output) {
+                            variables.$ = lambdaResult.trim().match(/^\{.*?\}$/)? JSON.parse(lambdaResult) : lambdaResult;
+                            lambdaResult = await deepInterpolate(variables.internal.output, $.extend(variables,{raw:false}), false);
+                        }
+                        copyAndPrependToOutput(lambdaResult, runBtn);
+                        break;
+                    }
+                    case "eventbridge" : {
+                        if(variables.account && String(variables.account).startsWith('-')) {
+                            throw new Error(`EventBridge not enabled on demo accounts`);
+                        }
+                        if(!variables.eventBusName){
+                            throw new Error('eventBusName is required');
+                        }
+                        let credentials = await variables.internal.credentialsBroker.getCredentials(variables);
+                        let body = {
+                            "Entries":[
+                                {
+                                    "EventBusName": variables.eventBusName,
+                                    "Source": variables.source || "cc.speedrun",
+                                    "Detail": variables.internal.result,
+                                    "DetailType": variables.detailType || `Speedrun V${GM_info.script.version} Invocation`
                             }
                         ]
                     };
@@ -3033,520 +3062,520 @@ async function nope(content, preview = false, anchor, runBtn) {
     return variables;
 }
 
-if(isSRPage()){
-    await updatePage(`page load: ${lastPath}`);
-} else {
-    persistIfIssue();
-}
+    if(isSRPage()){
+        await updatePage(`page load: ${lastPath}`);
+    } else {
+        persistIfIssue();
+    }
 
-showToolbarOnPage();
+    showToolbarOnPage();
 
-$(document).ready(async function() {
+    $(document).ready(async function() {
 
-    if(window.location.hash && window.location.search) {
-        const el = document.getElementById('user-content-' + window.location.hash.substring(1));
-        if(el) {
-            el.scrollIntoView({behavior: 'smooth', block: 'start'});
-            let buttonId = getURLSearchParam('srButton');
-            const runBtn = buttonId?$(`#${buttonId}`) : $(el).parent().nextAll().find('.srRunBtn').first();
-            if(runBtn && runBtn.length) {
-                runBtn.focus();
-                runBtn.addClass('anim-pulse');
-                let cleanup = (stopPulsing=false)=>{
-                    if(stopPulsing) {
-                        runBtn.removeClass('anim-pulse');
-                    }
-                };
-                runBtn.click(()=>cleanup(true));
-                runBtn.hover(()=>cleanup(true));
+        if(window.location.hash && window.location.search) {
+            const el = document.getElementById('user-content-' + window.location.hash.substring(1));
+            if(el) {
+                el.scrollIntoView({behavior: 'smooth', block: 'start'});
+                let buttonId = getURLSearchParam('srButton');
+                const runBtn = buttonId?$(`#${buttonId}`) : $(el).parent().nextAll().find('.srRunBtn').first();
+                if(runBtn && runBtn.length) {
+                    runBtn.focus();
+                    runBtn.addClass('anim-pulse');
+                    let cleanup = (stopPulsing=false)=>{
+                        if(stopPulsing) {
+                            runBtn.removeClass('anim-pulse');
+                        }
+                    };
+                    runBtn.click(()=>cleanup(true));
+                    runBtn.hover(()=>cleanup(true));
+                }
             }
         }
+    });
+
+    function getUserAgentHeader() {
+        return {'User-Agent': `Speedrun V${GM_info.script.version}`}
     }
-});
 
-function getUserAgentHeader() {
-    return {'User-Agent': `Speedrun V${GM_info.script.version}`}
-}
-
-function injectIFrame(location, variables) {
-    const validAttributes = ['allow','allowfullscreen','height','loading','name','sandbox','allow-top-navigation','src','width','frameBorder'];
-    let overlay = {'name':'Speedrun Content'}
-    if(!variables.name instanceof Function){
-        delete overlay.name;
-    }
-    const attributes = $.extend({'width':860, frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
-    location.textContent = '';
-    GM_addElement(location,'iframe',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
-}
-
-function getValue(selector, useText) {
-    let element = $(selector);
-    if(element && element.is(':visible')) {
-        return useText ? element.text() : element.val();
-    }
-    return undefined;
-}
-
-function extractRegion(textRegionValue) {
-    return textRegionValue ? textRegionValue.replace(/ - [\w \.]+$/,'') : textRegionValue;
-}
-
-function updateRegions() {
-    let service = $('#service');
-    let lastRegion = curRegion || safeInterpolate(getURLSearchParam('srRegion'),{}) || localStorage.getItem(LAST_REGION_KEY);
-    let regions = [];
-    let currentOptGroup = undefined;
-    let numRegions = 0;
-    for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
-        let splits = region.split(' ', 2);
-        let suffix = splits.length > 1 ? splits[1] : '';
-        if(!currentOptGroup || currentOptGroup.attr('label') !== regionNameMap[splits[0]].area) {
-            currentOptGroup = $(`<optgroup label='${regionNameMap[splits[0]].area}'/>`);
-            regions.push(currentOptGroup);
+    function injectIFrame(location, variables) {
+        const validAttributes = ['allow','allowfullscreen','height','loading','name','sandbox','allow-top-navigation','src','width','frameBorder'];
+        let overlay = {'name':'Speedrun Content'}
+        if(!variables.name instanceof Function){
+            delete overlay.name;
         }
-        currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${region}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
-        numRegions++;
+        const attributes = $.extend({'width':860, frameBorder:0, height:480, 'src':variables.internal.result},variables, overlay);
+        location.textContent = '';
+        GM_addElement(location,'iframe',validAttributes.reduce((accumulator,element) => {if(element in attributes) {accumulator[element]=attributes[element]}; return accumulator},{}));
     }
-    const region = $('#region');
-    let hadRegions = region.children().length > 0;
-    if(hadRegions != regions.length>0) {
-        $('.needsRegion').each((index, element)=>{regions.length>0 ? $(element).show() : $(element).hide()});
-    }
-    region.empty().append(regions).prop('disabled',numRegions == 1).attr('hidden',numRegions ==0);
-    regions.length > 0 ? region.next().show() : region.next().hide();
-}
 
-
-async function updatePage(reason) {
-    console.log(`Updating page due to ${reason}`);
-    if(updatingPage) {
-        console.log("Page update in progress, ignoring");
-        return;
-    }
-    try {
-        updatingPage = true;
-        // TODO see if this can be cleaned up, it works, but dirty
-        if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 1) {
-            $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
-            $('#srWikiSearch').on('click', async () => {
-                let searchTerm = getValue('#wiki-pages-filter');
-                if(searchTerm) {
-                    let searchURL = new URL('https://www.github.com/search?type=wikis');
-                    const result = isSRPage();
-                    if(result) {
-                        let [,path] = result;
-                        searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
-                        window.location.href = searchURL.href;
-                    }
-                }
-            });
-            $('#wiki-pages-filter').keypress(function(event) {
-                if (event.key === "Enter") {
-                    $('#srWikiSearch').click();
-                }
-            });
+    function getValue(selector, useText) {
+        let element = $(selector);
+        if(element && element.is(':visible')) {
+            return useText ? element.text() : element.val();
         }
+        return undefined;
+    }
 
-        // hide speedrun toolbar when search is displayed
-        if(isSRPage()) {
-            const searchSelector = 'search-suggestions-dialog';
-            waitForSelector(`#${searchSelector}`).then(async (result) => {
-                if(githubSearchBarObserver) {
-                    githubSearchBarObserver.disconnect();
-                }
+    function extractRegion(textRegionValue) {
+        return textRegionValue ? textRegionValue.replace(/ - [\w \.]+$/,'') : textRegionValue;
+    }
 
-                githubSearchBarObserver = new MutationObserver(mutations => {
-                    //console.log(mutations[0]);
-                    if(doneLoading()){
-                        mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
-                    }
-                });
-
-                githubSearchBarObserver.observe(document.getElementById(searchSelector), {
-                    attributeFilter:['aria-disabled'],
-                    attributeOldValue:true
-                });
-            });
+    function updateRegions() {
+        let service = $('#service');
+        let lastRegion = curRegion || safeInterpolate(getURLSearchParam('srRegion'),{}) || localStorage.getItem(LAST_REGION_KEY);
+        let regions = [];
+        let currentOptGroup = undefined;
+        let numRegions = 0;
+        for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
+            let splits = region.split(' ', 2);
+            let suffix = splits.length > 1 ? splits[1] : '';
+            if(!currentOptGroup || currentOptGroup.attr('label') !== regionNameMap[splits[0]].area) {
+                currentOptGroup = $(`<optgroup label='${regionNameMap[splits[0]].area}'/>`);
+                regions.push(currentOptGroup);
+            }
+            currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${region}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
+            numRegions++;
         }
+        const region = $('#region');
+        let hadRegions = region.children().length > 0;
+        if(hadRegions != regions.length>0) {
+            $('.needsRegion').each((index, element)=>{regions.length>0 ? $(element).show() : $(element).hide()});
+        }
+        region.empty().append(regions).prop('disabled',numRegions == 1).attr('hidden',numRegions ==0);
+        regions.length > 0 ? region.next().show() : region.next().hide();
+    }
 
-        if(doneLoading()){
-            console.log("Page already current, ignoring");
+
+    async function updatePage(reason) {
+        console.log(`Updating page due to ${reason}`);
+        if(updatingPage) {
+            console.log("Page update in progress, ignoring");
             return;
         }
-
-        sessionVariables = {};
-        let result = isSRPage();
-        let path = undefined;
-        if(result) {
-            [,path] = result;
-        }
-        injectToolbar();
-        let pageEnabled = await updatePageConfig(path);
-
-        // second pass to wire up content
-        if(pageEnabled) {
-            await wireUpContent();
-        }
-
-        bindDataAndEvents();
-        $("#service").trigger('change');
-
-        for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
-            $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
-        }
-        $('button.js-wiki-more-pages-link').each(async function(item) {
-            await sleep(500);
-            $(this).trigger('click');
-        });
-        $('img[alt="speedrun required"]').each(async function(item) {
-            if(window.location!='https://github.com/No-Backspace-Crew/Speedrun/wiki/Badges') {
-                $(this).closest('p').remove();
-            }
-        });
-    } catch(e){
-        alertAndThrow(e);
-    } finally {
-        updatingPage = false;
-        $('.markdown-body').append($('<span>', { class : 'srDone'}));
-        toolbarShown = true;
-    }
-
-}
-
-function getConsoleSubdomain(variables){
-   if(GM_getValue(SR_MULTI_SESSION, false)) {
-       let cacheKey = variables[variables.internal.credentialsBroker.getCacheKey()];
-       let session = getSessionSubdomain(cacheKey);
-       if(session) {
-           return `${session}.${variables.region}`;
-       }
-   }
-   return variables.region;
-}
-
-function getSessionSubdomain(key) {
-    for (const session of GM_getValue(SR_SESSIONS_KEY,[])) {
-        if(session.label === key && session.timestamp > Date.now()) {
-          return session.value;
-        }
-    }
-    return undefined;
-}
-
-async function updatePageConfig(path) {
-    let pageEnabled = isEnabledPath();
-    if(path) {
-        setInputValue($('#srEnabled'), pageEnabled);
-        //Don't show toolbar toggle on pages it can't be disabled
-        isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
-        $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
-    }
-    // first pass to build page config
-    pageConfig = await buildConfig(pageEnabled);
-
-
-    let serviceDropdown = $("#service");
-
-    let newServices = [];
-    let lastService = getValue('#service') || safeInterpolate(getURLSearchParam('srService'),{user: GM_getValue("g_usernameOverride") || user}) || localStorage.getItem(LAST_SERVICE_KEY);
-
-    for (const [key, value] of Object.entries(getServices(pageConfig))) {
-        newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
-    };
-    serviceDropdown.empty().append(newServices);
-    serviceDropdown.prop('disabled', newServices.length == 1);
-    newServices.length > 0 ? serviceDropdown.show() : serviceDropdown.hide();
-    return pageEnabled;
-}
-
-function setButtonDanger(btn, variables) {
-    if(variables.danger || (variables.creds && _.isString(variables[variables.internal.credentialsBroker.getDangerKey()]) && variables[variables.internal.credentialsBroker.getDangerKey()].toLowerCase().match(/(full|admin|write)/))) {
-        btn.addClass('color-bg-danger-emphasis');
-        btn.removeClass('btn-primary');
-        btn.data('danger', true);
-    } else {
-        btn.removeClass('color-bg-danger-emphasis');
-        btn.addClass('btn-primary');
-        btn.data('danger', false);
-    }
-
-    if(variables.creds) {
-        let hasService = document.querySelector("#region").length > 0
-        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[variables.internal.credentialsBroker.getDangerKey()]})`);
-        if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
-            btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
-            btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
-        }
-        btn.prop('disabled', !hasService);
-    } else {
-        btn.prop('disabled', false);
-    }
-}
-
-function updateTabs() {
-    let hasService = document.querySelector("#region").length > 0
-    $('#accountRequired').attr('hidden',true);
-    let pageNeedsCreds = false;
-    $('.srRunBtn').each(async function (item) {
-        const btn = $(this);
-        const variables = await nope(btn.data('code'), true);
         try {
-            if(variables.internal.templateType != 'iframe' || (variables.internal.templateType == 'iframe' && variables.internal.prompts && variables.internal.prompts.length)) {
-                $(`#${btn.data('previewTab')}`).first("code").html(await buildPreview(variables));
-            } else {
-                btn.hide();
-                injectIFrame($(`#${btn.data('previewTab')}`).first('code').get(0), variables);
+            updatingPage = true;
+            // TODO see if this can be cleaned up, it works, but dirty
+            if($('#srWikiSearch').length == 0 && $('#wiki-pages-filter').length == 1) {
+                $('#wiki-pages-filter').wrap('<div class="input-group">').after($('<span id="srWikiSearch" class="input-group-button"><button type="button" title="Full-text Search" class="btn btn-sm"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 16" width="14" height="16" class="octicon octicon-search"><path fill-rule="evenodd" d="M11.5 7a4.499 4.499 0 11-8.998 0A4.499 4.499 0 0111.5 7zm-.82 4.74a6 6 0 111.06-1.06l3.04 3.04a.75.75 0 11-1.06 1.06l-3.04-3.04z"></path></svg></button></span>'))
+                $('#srWikiSearch').on('click', async () => {
+                    let searchTerm = getValue('#wiki-pages-filter');
+                    if(searchTerm) {
+                        let searchURL = new URL('https://www.github.com/search?type=wikis');
+                        const result = isSRPage();
+                        if(result) {
+                            let [,path] = result;
+                            searchURL.searchParams.set('q',`${searchTerm} repo:${path.substring(1)}`);
+                            window.location.href = searchURL.href;
+                        }
+                    }
+                });
+                $('#wiki-pages-filter').keypress(function(event) {
+                    if (event.key === "Enter") {
+                        $('#srWikiSearch').click();
+                    }
+                });
             }
-        } catch(e) {
-            alertAndThrow(`Unable to preview: ${e.message}`, e);
-        }
-        $(`#${btn.data('debugTab')}`).first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
-        switch(variables.internal.templateType) {
-            case 'link':
-                btn.text('Open');
-                break;
-            case 'federate':
-                btn.text('Open AWS Console');
-                break;
-            case 'copy':
-                btn.text('Copy');
-                break;
-            case 'download':
-                btn.text('Download');
-                break;
-            case 'iframe':
-                btn.text('Load');
-                break;
-        }
-        setButtonDanger(btn, variables);
-        if(variables.creds) {
-            if(!pageNeedsCreds) {
-                $('#accountRequired').attr('hidden',hasService);
-                pageNeedsCreds = true;
-            }
-        }
-    });
 
-    let variables = undefined;
-    $('.canBeDangerous').each(async function(item) {
-        variables = variables ? variables : await nope('#copy.withCreds', true);
-        setButtonDanger($(this), variables);
-    });
-}
-function getServices(pageConfig) {
-    let result = {};
-    let services = nullSafe(nullSafe(pageConfig).services);
-    if(services) {
-        let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
-        // hide user service if there is > 1 service or hide user service is true
-        let hideUserService = (Object.keys(services).length > 1 && pageConfig[SR_HIDE_USER_SERVICE]) != false || pageConfig[SR_HIDE_USER_SERVICE] == true
-        for(const [service, config] of Object.entries(services)) {
-            if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && hideUserService)) {
-                result[service] = {name : service,
-                                   dropdownName:getServiceDropdownName(service),
-                                   config: getServiceVariables(service, services),
-                                   regions: getRegions(service, pageConfig)};
+            // hide speedrun toolbar when search is displayed
+            if(isSRPage()) {
+                const searchSelector = 'search-suggestions-dialog';
+                waitForSelector(`#${searchSelector}`).then(async (result) => {
+                    if(githubSearchBarObserver) {
+                        githubSearchBarObserver.disconnect();
+                    }
+
+                    githubSearchBarObserver = new MutationObserver(mutations => {
+                        //console.log(mutations[0]);
+                        if(doneLoading()){
+                            mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
+                        }
+                    });
+
+                    githubSearchBarObserver.observe(document.getElementById(searchSelector), {
+                        attributeFilter:['aria-disabled'],
+                        attributeOldValue:true
+                    });
+                });
             }
+
+            if(doneLoading()){
+                console.log("Page already current, ignoring");
+                return;
+            }
+
+            sessionVariables = {};
+            let result = isSRPage();
+            let path = undefined;
+            if(result) {
+                [,path] = result;
+            }
+            injectToolbar();
+            let pageEnabled = await updatePageConfig(path);
+
+            // second pass to wire up content
+            if(pageEnabled) {
+                await wireUpContent();
+            }
+
+            bindDataAndEvents();
+            $("#service").trigger('change');
+
+            for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
+                $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
+            }
+            $('button.js-wiki-more-pages-link').each(async function(item) {
+                await sleep(500);
+                $(this).trigger('click');
+            });
+            $('img[alt="speedrun required"]').each(async function(item) {
+                if(window.location!='https://github.com/No-Backspace-Crew/Speedrun/wiki/Badges') {
+                    $(this).closest('p').remove();
+                }
+            });
+        } catch(e){
+            alertAndThrow(e);
+        } finally {
+            updatingPage = false;
+            $('.markdown-body').append($('<span>', { class : 'srDone'}));
+            toolbarShown = true;
+        }
+
+    }
+
+    function getConsoleSubdomain(variables){
+        if(GM_getValue(SR_MULTI_SESSION, false)) {
+            let cacheKey = variables[variables.internal.credentialsBroker.getCacheKey()];
+            let session = getSessionSubdomain(cacheKey);
+            if(session) {
+                return `${session}.${variables.region}`;
+            }
+        }
+        return variables.region;
+    }
+
+    function getSessionSubdomain(key) {
+        for (const session of GM_getValue(SR_SESSIONS_KEY,[])) {
+            if(session.label === key && session.timestamp > Date.now()) {
+                return session.value;
+            }
+        }
+        return undefined;
+    }
+
+    async function updatePageConfig(path) {
+        let pageEnabled = isEnabledPath();
+        if(path) {
+            setInputValue($('#srEnabled'), pageEnabled);
+            //Don't show toolbar toggle on pages it can't be disabled
+            isAlwaysOnPath(path) ? $('#srToggleTitle').hide() : $('#srToggleTitle').show();
+            $('#srToggleTitle').attr('title', `${pageEnabled ? 'Disable' : 'Enable'} Speedrun for markdown in: ${path.substring(1)}`);
+        }
+        // first pass to build page config
+        pageConfig = await buildConfig(pageEnabled);
+
+
+        let serviceDropdown = $("#service");
+
+        let newServices = [];
+        let lastService = getValue('#service') || safeInterpolate(getURLSearchParam('srService'),{user: GM_getValue("g_usernameOverride") || user}) || localStorage.getItem(LAST_SERVICE_KEY);
+
+        for (const [key, value] of Object.entries(getServices(pageConfig))) {
+            newServices.push(`<option value="${key}" ${key == lastService ? 'selected' : ''} >${value.dropdownName}</option>`);
+        };
+        serviceDropdown.empty().append(newServices);
+        serviceDropdown.prop('disabled', newServices.length == 1);
+        newServices.length > 0 ? serviceDropdown.show() : serviceDropdown.hide();
+        return pageEnabled;
+    }
+
+    function setButtonDanger(btn, variables) {
+        if(variables.danger || (variables.creds && _.isString(variables[variables.internal.credentialsBroker.getDangerKey()]) && variables[variables.internal.credentialsBroker.getDangerKey()].toLowerCase().match(/(full|admin|write)/))) {
+            btn.addClass('color-bg-danger-emphasis');
+            btn.removeClass('btn-primary');
+            btn.data('danger', true);
+        } else {
+            btn.removeClass('color-bg-danger-emphasis');
+            btn.addClass('btn-primary');
+            btn.data('danger', false);
+        }
+
+        if(variables.creds) {
+            let hasService = document.querySelector("#region").length > 0
+            btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[variables.internal.credentialsBroker.getDangerKey()]})`);
+            if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
+                btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
+                btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
+            }
+            btn.prop('disabled', !hasService);
+        } else {
+            btn.prop('disabled', false);
         }
     }
-    return result;
-}
 
-function getRegions(service, pageConfig) {
-    let regionSet = new Set();
-    let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
-    let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
-    for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
-        let regions = isPartition(region) ? partitionMap[region] : [region];
-        regions.forEach(region => {
-            if(!regionFilter.length || regionFilter.includes(region)) {
-                regionSet.add(region);
+    function updateTabs() {
+        let hasService = document.querySelector("#region").length > 0
+        $('#accountRequired').attr('hidden',true);
+        let pageNeedsCreds = false;
+        $('.srRunBtn').each(async function (item) {
+            const btn = $(this);
+            const variables = await nope(btn.data('code'), true);
+            try {
+                if(variables.internal.templateType != 'iframe' || (variables.internal.templateType == 'iframe' && variables.internal.prompts && variables.internal.prompts.length)) {
+                    $(`#${btn.data('previewTab')}`).first("code").html(await buildPreview(variables));
+                } else {
+                    btn.hide();
+                    injectIFrame($(`#${btn.data('previewTab')}`).first('code').get(0), variables);
+                }
+            } catch(e) {
+                alertAndThrow(`Unable to preview: ${e.message}`, e);
+            }
+            $(`#${btn.data('debugTab')}`).first("pre").html(syntaxHighlight(jsonWithoutInternalVariables(variables)));
+            switch(variables.internal.templateType) {
+                case 'link':
+                    btn.text('Open');
+                    break;
+                case 'federate':
+                    btn.text('Open AWS Console');
+                    break;
+                case 'copy':
+                    btn.text('Copy');
+                    break;
+                case 'download':
+                    btn.text('Download');
+                    break;
+                case 'iframe':
+                    btn.text('Load');
+                    break;
+            }
+            setButtonDanger(btn, variables);
+            if(variables.creds) {
+                if(!pageNeedsCreds) {
+                    $('#accountRequired').attr('hidden',hasService);
+                    pageNeedsCreds = true;
+                }
             }
         });
+
+        let variables = undefined;
+        $('.canBeDangerous').each(async function(item) {
+            variables = variables ? variables : await nope('#copy.withCreds', true);
+            setButtonDanger($(this), variables);
+        });
     }
-    return [...regionSet];
-}
-
-function parseContent(str, name) {
-    const groups = str.match(HEADER);
-    if(groups && groups[1] && (!name || name === groups[1])) {
-        let body = str.replace(HEADER,"").replace(TRAILING_WHITESPACE,"");
-        return {template: groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, body};
-    }
-    return undefined;
-}
-
-function hasElements(arr) {
-    return arr && Array.isArray(arr) && arr.length>0;
-}
-
-async function buildConfig(enabled) {
-    let userConfig = getUserConfig();
-    pageConfig = (user && userConfig.services[USER_SERVICE].regions.aws.account) ? _.cloneDeep(userConfig) : {};
-    const configs = [];
-    let numPreBlocks = 0;
-    if(enabled) {
-        let preBlocks = $(".markdown-body pre");
-        for (const pre of preBlocks){
-            numPreBlocks++;
-            const details = parseContent($(pre).text(), SR_CONFIG);
-            if(details) {
-                // hide sr config by default
-                if(!doneLoading() && $(pre).parents('.details-reset').length == 0) {
-                    $(pre).parent().wrap('<details class="details-reset"></details>')
-                        .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
-                        .prev().on('click', function(event) {
-                        let btn = $(event.delegateTarget);
-                        let text = btn.contents().get(0);
-                        let toggleText = text.nodeValue.includes('Show') ? 'Hide' : 'Show';
-                        btn.attr('title', `${toggleText} Speedrun Config`);
-                        text.nodeValue = `${toggleText} `;
-                    });
+    function getServices(pageConfig) {
+        let result = {};
+        let services = nullSafe(nullSafe(pageConfig).services);
+        if(services) {
+            let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
+            // hide user service if there is > 1 service or hide user service is true
+            let hideUserService = (Object.keys(services).length > 1 && pageConfig[SR_HIDE_USER_SERVICE]) != false || pageConfig[SR_HIDE_USER_SERVICE] == true
+            for(const [service, config] of Object.entries(services)) {
+                if((!serviceFilter.length || serviceFilter.includes(service)) && !(service == USER_SERVICE && hideUserService)) {
+                    result[service] = {name : service,
+                                       dropdownName:getServiceDropdownName(service),
+                                       config: getServiceVariables(service, services),
+                                       regions: getRegions(service, pageConfig)};
                 }
-                if(details.variables && details.variables.transclude) {
-                    for (const path of arrayify(details.variables.transclude)) {
-                        const result = await retrieve(path);
-                        $(result).find(".markdown-body pre").each(function () {
-                            const transclude = parseContent($(this).text(), SR_CONFIG);
-                            if(transclude) {
-                                configs.push(parseJSON(transclude.body));
-                            }
+            }
+        }
+        return result;
+    }
+
+    function getRegions(service, pageConfig) {
+        let regionSet = new Set();
+        let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
+        let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
+        for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
+            let regions = isPartition(region) ? partitionMap[region] : [region];
+            regions.forEach(region => {
+                if(!regionFilter.length || regionFilter.includes(region)) {
+                    regionSet.add(region);
+                }
+            });
+        }
+        return [...regionSet];
+    }
+
+    function parseContent(str, name) {
+        const groups = str.match(HEADER);
+        if(groups && groups[1] && (!name || name === groups[1])) {
+            let body = str.replace(HEADER,"").replace(TRAILING_WHITESPACE,"");
+            return {template: groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, body};
+        }
+        return undefined;
+    }
+
+    function hasElements(arr) {
+        return arr && Array.isArray(arr) && arr.length>0;
+    }
+
+    async function buildConfig(enabled) {
+        let userConfig = getUserConfig();
+        pageConfig = (user && userConfig.services[USER_SERVICE].regions.aws.account) ? _.cloneDeep(userConfig) : {};
+        const configs = [];
+        let numPreBlocks = 0;
+        if(enabled) {
+            let preBlocks = $(".markdown-body pre");
+            for (const pre of preBlocks){
+                numPreBlocks++;
+                const details = parseContent($(pre).text(), SR_CONFIG);
+                if(details) {
+                    // hide sr config by default
+                    if(!doneLoading() && $(pre).parents('.details-reset').length == 0) {
+                        $(pre).parent().wrap('<details class="details-reset"></details>')
+                            .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
+                            .prev().on('click', function(event) {
+                            let btn = $(event.delegateTarget);
+                            let text = btn.contents().get(0);
+                            let toggleText = text.nodeValue.includes('Show') ? 'Hide' : 'Show';
+                            btn.attr('title', `${toggleText} Speedrun Config`);
+                            text.nodeValue = `${toggleText} `;
                         });
                     }
+                    if(details.variables && details.variables.transclude) {
+                        for (const path of arrayify(details.variables.transclude)) {
+                            const result = await retrieve(path);
+                            $(result).find(".markdown-body pre").each(function () {
+                                const transclude = parseContent($(this).text(), SR_CONFIG);
+                                if(transclude) {
+                                    configs.push(parseJSON(transclude.body));
+                                }
+                            });
+                        }
+                    }
+                    // if there is any body content overlay that
+                    let body = details.body.trim()
+                    if(body.length > 0) {
+                        configs.push(parseJSON(body));
+                    }
                 }
-                // if there is any body content overlay that
-                let body = details.body.trim()
-                if(body.length > 0) {
-                    configs.push(parseJSON(body));
+            }
+            //smash configs together
+            if(hasElements(configs)) {
+                for(const config of configs){
+                    if(config.templates) {
+                        templates = $.extend(true, templates, config.templates);
+                        delete config.templates;
+                    }
+                    pageConfig = $.extend(true, pageConfig, config);
+                };
+            }
+            if(pageConfig.srShowConfig || numPreBlocks == 1){
+                $('.srConfig[title^="Show"]').trigger('click');
+            }
+        }
+        return pageConfig;
+    }
+
+    function hasTemplate(name) {
+        if(!templates[name]){
+            for(let piece of name.split('.')){
+                if(!templates[piece]) {
+                    return false;
                 }
             }
         }
-        //smash configs together
-        if(hasElements(configs)) {
-            for(const config of configs){
-                if(config.templates) {
-                    templates = $.extend(true, templates, config.templates);
-                    delete config.templates;
+        return true;
+    }
+
+    function persistIfNewRoleOrExpiration(roleArn, region, expiration) {
+        const roleKey = `${LAST_CREDS}federate`;
+        if(!roleArn) {
+            console.log('Console role changed');
+            GM_deleteValue(roleKey);
+        } else {
+            const lastCreds = GM_getValue(roleKey, undefined);
+            if(!lastCreds || (lastCreds.role && lastCreds.role != roleArn || (expiration && (lastCreds.expiration+10000 > expiration || expiration + 10000 > lastCreds.expiration)))) {
+                if(!lastCreds || lastCreds.role != roleArn) {
+                    console.log(`Console role changed from ${lastCreds ? lastCreds.role : 'not set'} to ${roleArn}`);
+                } else {
+                    console.log(`Updating expiration of role for ${roleArn} to: ${new Date(expiration)}`);
                 }
-                pageConfig = $.extend(true, pageConfig, config);
-            };
-        }
-        if(pageConfig.srShowConfig || numPreBlocks == 1){
-            $('.srConfig[title^="Show"]').trigger('click');
-        }
-    }
-    return pageConfig;
-}
-
-function hasTemplate(name) {
-    if(!templates[name]){
-        for(let piece of name.split('.')){
-            if(!templates[piece]) {
-                return false;
+                persistLastRole({internal: {newCreds:true, templateType:'federate', expiration}, roleArn, region});
             }
         }
     }
-    return true;
-}
 
-function persistIfNewRoleOrExpiration(roleArn, region, expiration) {
-    const roleKey = `${LAST_CREDS}federate`;
-    if(!roleArn) {
-        console.log('Console role changed');
-        GM_deleteValue(roleKey);
-    } else {
-        const lastCreds = GM_getValue(roleKey, undefined);
-        if(!lastCreds || (lastCreds.role && lastCreds.role != roleArn || (expiration && (lastCreds.expiration+10000 > expiration || expiration + 10000 > lastCreds.expiration)))) {
-            if(!lastCreds || lastCreds.role != roleArn) {
-                console.log(`Console role changed from ${lastCreds ? lastCreds.role : 'not set'} to ${roleArn}`);
-            } else {
-                console.log(`Updating expiration of role for ${roleArn} to: ${new Date(expiration)}`);
-            }
-            persistLastRole({internal: {newCreds:true, templateType:'federate', expiration}, roleArn, region});
+    // if duration <= 12 it's in hours
+    // if duration <= 720 it's in minutes
+    // if duration > 720 it's in seconds
+    // if missing it's undefined
+    function normalizeDuration(duration) {
+        if(duration === undefined) {
+            return duration;
         }
-    }
-}
-
-// if duration <= 12 it's in hours
-// if duration <= 720 it's in minutes
-// if duration > 720 it's in seconds
-// if missing it's undefined
-function normalizeDuration(duration) {
-    if(duration === undefined) {
+        const originalDuration = duration;
+        if(!isNumeric(duration) || duration <= 0 || duration > 43200) {
+            throw new Error('${duration} is an invalid duration');
+        }
+        if (duration <= 12) {
+            duration *= 3600;
+        } else if (duration <= 720) {
+            duration *= 60;
+        }
+        if(duration < 15*60) {
+            throw new Error(`Invalid duration: ${originalDuration} minimum duration is 15 minutes`);
+        }
         return duration;
     }
-    const originalDuration = duration;
-    if(!isNumeric(duration) || duration <= 0 || duration > 43200) {
-        throw new Error('${duration} is an invalid duration');
+
+    // Refresh 5 minutes before expiration if duration is >= 1 hour else 2 minutes before expiration
+    function needsRefresh(expiration, duration=3600) {
+        return expiration <= (Date.now()+((duration >= 3600 ? 5 : 2) *60000))
     }
-    if (duration <= 12) {
-        duration *= 3600;
-    } else if (duration <= 720) {
-        duration *= 60;
+
+    function needsNewCreds(variables) {
+        const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
+        variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.role != variables[credentialsBroker.getCacheKey()]);
+        variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.region != variables.region);
+        return variables.internal.newCreds
     }
-    if(duration < 15*60) {
-        throw new Error(`Invalid duration: ${originalDuration} minimum duration is 15 minutes`);
+
+    function persistLastRole(variables) {
+        if(variables.internal.newCreds) {
+            let normalizedDuration = normalizeDuration(variables.roleDuration) || 3600;
+            let expiration = variables.internal.expiration ? variables.internal.expiration : Date.now() + normalizedDuration*1000;
+            GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration, duration: normalizedDuration || 3600});
+        }
     }
-    return duration;
-}
 
-// Refresh 5 minutes before expiration if duration is >= 1 hour else 2 minutes before expiration
-function needsRefresh(expiration, duration=3600) {
-    return expiration <= (Date.now()+((duration >= 3600 ? 5 : 2) *60000))
-}
-
-function needsNewCreds(variables) {
-    const lastCreds = variables.creds ? GM_getValue(LAST_CREDS + variables.internal.templateType, undefined) : undefined;
-    variables.internal.newCreds = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.role != variables[credentialsBroker.getCacheKey()]);
-    variables.internal.newRegion = variables.creds && (variables.forceNewCreds || lastCreds==undefined || needsRefresh(lastCreds.expiration, lastCreds.duration) || lastCreds.region != variables.region);
-    return variables.internal.newCreds
-}
-
-function persistLastRole(variables) {
-    if(variables.internal.newCreds) {
-        let normalizedDuration = normalizeDuration(variables.roleDuration) || 3600;
-        let expiration = variables.internal.expiration ? variables.internal.expiration : Date.now() + normalizedDuration*1000;
-        GM_setValue(LAST_CREDS + variables.internal.templateType, {role: variables[credentialsBroker.getCacheKey()], region: variables.region, expiration, duration: normalizedDuration || 3600});
-    }
-}
-
-async function wireUpContent() {
-    let block = 0;
-    for (const pre of $(".markdown-body pre")) {
-        const code = $(pre).text();
-        const groups = code.match(HEADER);
-        if(groups && groups[1] && hasTemplate(groups[1])) {
-            const isEmbed = groups[1].startsWith('!');
-            block++;
-            //wrap the copy content with ticks.
-            let codeFence = "```";
-            while(code.includes(codeFence)){
-                codeFence+='`';
-            }
-            const wrappedCode = `${codeFence}\n${code}${codeFence}`;
-            const copy = $(pre).parent().find('clipboard-copy');
-            if(copy.length){
-                copy.attr('value', wrappedCode);
-            }
-            const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
-            const actions = $('<div class="UnderlineNav-actions">');
-            const runBtnId = `sr-btn-${block}`;
-            const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
-            runBtn.prop('disabled',true);
-            actions.append(runBtn);
-            nav.append(actions);
-            dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
+    async function wireUpContent() {
+        let block = 0;
+        for (const pre of $(".markdown-body pre")) {
+            const code = $(pre).text();
+            const groups = code.match(HEADER);
+            if(groups && groups[1] && hasTemplate(groups[1])) {
+                const isEmbed = groups[1].startsWith('!');
+                block++;
+                //wrap the copy content with ticks.
+                let codeFence = "```";
+                while(code.includes(codeFence)){
+                    codeFence+='`';
+                }
+                const wrappedCode = `${codeFence}\n${code}${codeFence}`;
+                const copy = $(pre).parent().find('clipboard-copy');
+                if(copy.length){
+                    copy.attr('value', wrappedCode);
+                }
+                const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
+                const actions = $('<div class="UnderlineNav-actions">');
+                const runBtnId = `sr-btn-${block}`;
+                const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
+                runBtn.prop('disabled',true);
+                actions.append(runBtn);
+                nav.append(actions);
+                dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
 
 
-            const navBody = $('<div class="UnderlineNav-body">');
-            var index = 0;
-            for (const [key, value] of Object.entries(tabNames)) {
-                const localBlock = block;
-                let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item${key==='Output'?' d-none':''}" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
-                navBody.append(tab);
-                dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
-                    for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
-                        let tabId = `${oTabKey}-${localBlock}`
+                const navBody = $('<div class="UnderlineNav-body">');
+                var index = 0;
+                for (const [key, value] of Object.entries(tabNames)) {
+                    const localBlock = block;
+                    let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item${key==='Output'?' d-none':''}" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
+                    navBody.append(tab);
+                    dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
+                        for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
+                            let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
                                 const clipboard = $(this).closest('nav').next('div').find('div.zeroclipboard-container');
                                 key === 'Preview' ? clipboard.removeClass('d-none') : clipboard.addClass('d-none');
