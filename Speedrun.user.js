@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.130
+// @version      1.131
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -12,7 +12,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/utc.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/duration.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/relativeTime.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@0.9.3/dayjs-parser.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@1.0.2/dayjs-parser.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.2/xregexp.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.2.3/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
@@ -1031,7 +1031,7 @@ function extractCloudWatchTimeAndAddSnapshot() {
                         snapshotButton.off('click');
                         snapshotButton.on('click', (event)=> {
                             if(histogram) {
-                                domSnapshot(histogram.ownerDocument.querySelector('.logs__histogram') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                                domSnapshot(histogram.ownerDocument.querySelector('.query-statistics') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
                             }
                         });
                         $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
@@ -3777,10 +3777,13 @@ function getLatestVersion(remoteVersion) {
 }
 
 function domSnapshot(element, filename){
+    console.log(element);
     domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style, autoDestruct:true,
+                      filter: el => !(el.className == 'query-counters'||el.classList?.contains('histogram-toggle')),
                       //only include certain styles for logs histogram for speed
-                      includeStyleProperties: element.className && element.className.includes('histogram') ?
-                      ['background-color','color','font-weight','line-height','display','font-size','font-family','fill', 'stroke','stroke-width','font']:null}).then(imgURI => {
+                      includeStyleProperties: element.className?.includes('statistics') ?
+                      ['background-color','color','font-weight','line-height','display','font-size','font-family','fill', 'stroke','stroke-width','font','width']:null
+                     }).then(imgURI => {
         const download = GM_addElement('a');
         download.href = imgURI;
         download.download = filename;
