@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.132
+// @version      1.133
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -721,7 +721,7 @@ async function addSpeedrunLink() {
 
             let lastRolePersisted = false;
             if(region) {
-                let userInfo = cookie ? JSON.parse(cookie) : {arn: session.sessionARN};
+                let userInfo = cookie && !isMultiSession ? JSON.parse(cookie) : {arn: session.sessionARN};
                 const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
                 let result = ARN_REGEX.exec(userInfo.arn);
                 if(result) {
