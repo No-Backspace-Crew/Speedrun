@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.133
+// @version      1.134
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -1104,7 +1104,7 @@ async function updatePageTimerFired(location) {
     if(isSRPage()) {
         persistLastPath(location);
         //wait for page to render
-        await waitForSelector('.markdown-body > *');
+        await waitForSelector('.markdown-body > *,.markdown-title > *');
         let maxAttempts = 50;
         while(doneLoading()>0 && maxAttempts-- > 0) {
             await sleep(100);
