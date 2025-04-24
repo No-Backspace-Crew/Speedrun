@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.134
+// @version      1.135
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -761,7 +761,9 @@ async function addSpeedrunLink() {
                         addLink = true;
                     }
                     if(role) {
-                        $('div[data-testid="awsc-account-info-tile"], button[data-testid="more-menu__awsc-nav-account-menu-button"]').css('background-color', role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
+                        let backgroundColor = role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green';
+                        $('div.awsui-context-top-navigation:has(div[data-testid="awsc-account-info-tile"]), button[data-testid="awsc-nav-more-menu"]').css('background-color', backgroundColor);
+                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', backgroundColor);
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
                     if(isMultiSession) {
@@ -771,15 +773,14 @@ async function addSpeedrunLink() {
                     lastRolePersisted=true;
                     if(addLink) {
                         console.log('Adding Speedrun link');
-                        let navBar = $('#awsc-navigation__more-menu--list');
-                        let helpButton = navBar.first().find('button').first();
-                        let srLink = helpButton.clone();
+                        let bellButton = $('div[data-testid="awsc-phd__bell-icon"]');
+                        let srLink = bellButton.clone();
                         srLink.attr('id','speedRunLink');
                         srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
                         srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
                         srLink.on('click',(event)=>{
                             let destination = window.location.href;
-                            if(isIdentityCenter && isMultiSession) {
+                            if(isMultiSession) {
                                 destination = destination.replace(`https://${subdomain}.`,'https://');
                             }
                             let url = getFederationLink(arn,destination,undefined,isIdentityCenter?account:undefined);
@@ -790,7 +791,7 @@ async function addSpeedrunLink() {
                             setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
                         });
-                        helpButton.before(srLink);
+                        bellButton.before(srLink);
                     }
                 }
             }
