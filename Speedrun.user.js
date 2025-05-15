@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.135
+// @version      1.136
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -271,6 +271,7 @@ let functionCache = {};
 const AsyncFunction = async function () {}.constructor;
 let toolbarShown = false;
 let githubSearchBarObserver = undefined;
+const TOAST_DURATION = 2500;
 
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
@@ -1593,6 +1594,10 @@ input:checked + .slider:before {
 body:has(details#srModal[open]) {
     overflow: hidden;
 }
+
+.srCopied {
+  background-color: var(--bgColor-emphasis);
+}
 </style>`);
 
         // https://stackoverflow.com/a/67456813/3006039
@@ -1791,13 +1796,12 @@ let noop = function() {}
 function toast(str, runBtn) {
     let snackbar = $("#snackbar");
     if(runBtn && runBtn.text().length) {
-        console.log(runBtn.text());
         snackbar.addClass('position-absolute').removeClass('position-fixed')
         runBtn.closest('nav').next('div').append(snackbar);
     }
     $('#toast').html(str);
     snackbar.attr('hidden',false);
-    setTimeout(function(){ snackbar.attr('hidden',true); snackbar.addClass('position-fixed').removeClass('position-absolute'); $('body').append(snackbar) }, 2500);
+    setTimeout(function(){ snackbar.attr('hidden',true); snackbar.addClass('position-fixed').removeClass('position-absolute'); $('body').append(snackbar) }, TOAST_DURATION);
 }
 
 function insertSRUpdateButton(add=false){
@@ -2549,9 +2553,10 @@ function copyAndPrependToOutput(outputText, runBtn, copy=true) {
 }
 function prependToOutput(outputText, runBtn, copy=false) {
     const outputTabId = runBtn && runBtn.data('outputTab');
+    let timelineItem = undefined;
     if(outputTabId) {
         const output = $(`#${outputTabId} > div`);
-        const timelineItem = `<div class="TimelineItem">
+        timelineItem = `<div class="TimelineItem">
             <div class="TimelineItem-badge">
               <svg class="octicon"
                    width="18" height="18"
@@ -2570,9 +2575,15 @@ function prependToOutput(outputText, runBtn, copy=false) {
 </svg>
     </clipboard-copy></div><div class="d-flex flex-row"><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div></div>`;
         output.prepend(timelineItem);
+        timelineItem = output.children().first();
         $(`#tab-${outputTabId}`).removeClass('d-none').click();
+        output[0].parentNode.scrollTop=0;
     }
     if(copy) {
+        if(timelineItem) {
+            timelineItem.addClass("srCopied");
+            setTimeout(() => timelineItem.removeClass("srCopied"), TOAST_DURATION);
+        }
         GM_setClipboard(outputText);
         toast("📋 Copied", runBtn);
     }
@@ -3194,7 +3205,6 @@ async function updatePage(reason) {
                 }
 
                 githubSearchBarObserver = new MutationObserver(mutations => {
-                    //console.log(mutations[0]);
                     if(doneLoading()){
                         mutations[0].oldValue == null || mutations[0].oldValue == 'true' ? $("#srToolbar").hide() : $("#srToolbar").show();
                     }
