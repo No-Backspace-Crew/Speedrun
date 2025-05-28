@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.136
+// @version      1.137
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -263,6 +263,11 @@
         false:{},
         true:{}
 };
+
+ let roleColor = undefined;
+ let titleObserver = undefined;
+ let titleInterval = undefined;
+ let favIconData = undefined;
  let curRegion = undefined;
  let dataAndEvents = {};
 let credentialsCache = {};
@@ -279,10 +284,10 @@ const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 
 function flushCredentials() {
     GM_deleteValue(`${LAST_CREDS}federate`);
-            GM_deleteValue(`${LAST_CREDS}copy`);
-            GM_deleteValue(SR_SESSIONS_KEY);
-            credentialsCache = {};
-            stackCache = {};
+    GM_deleteValue(`${LAST_CREDS}copy`);
+    GM_deleteValue(SR_SESSIONS_KEY);
+    credentialsCache = {};
+    stackCache = {};
 }
 if(window.location.hostname == 'signin.aws.amazon.com') {
     if($('h1.error-code').text() == '400') {
@@ -763,6 +768,7 @@ async function addSpeedrunLink() {
                     }
                     if(role) {
                         let backgroundColor = role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green';
+                        roleColor = backgroundColor;
                         $('div.awsui-context-top-navigation:has(div[data-testid="awsc-account-info-tile"]), button[data-testid="awsc-nav-more-menu"]').css('background-color', backgroundColor);
                         $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', backgroundColor);
                     }
@@ -1073,17 +1079,85 @@ function isSRPage() {
     return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
 }
 
+function updateConsoleFavIcon(){
+    if(!titleObserver) {
+        titleObserver = new MutationObserver(async (mutations, o) => {
+            updateConsoleFavIcon();
+        });
+        waitForSelector('title').then(() => {
+            setTimeout(()=>titleObserver.observe(document.querySelector('title'),{ subtree: true, characterData: true, childList: true }),3000);
+        });
+    }
+    $('link[rel~="icon"]').each((i, icon) => {
+        icon = $(icon);
+        let href = icon.attr('href');
+        if(href && href.startsWith('http') && roleColor) {
+            //secrets manager favicon is messed up without this
+            href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
+            const canvas = $('<canvas/>')[0];
+            canvas.width = canvas.height=64;
+            const ctx = canvas.getContext('2d');
+            $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
+                ctx.drawImage($(this)[0], 0, 0, 48, 48);
+                ctx.fillStyle = roleColor;
+                ctx.rect(0, 48, 64, 64);
+                ctx.fill();
+                ctx.rect(48, 0, 64, 64);
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.beginPath();
+                ctx.moveTo(0,48);
+                ctx.lineTo(48,48);
+                ctx.lineTo(48,0);
+                ctx.stroke();
+                favIconData = canvas.toDataURL();
+                icon.attr('href', favIconData);
+                //sometimes something messes with the favicon after it's updated, doing a delayed add and remove overrides it.
+                let count = 10;
+                if(!titleInterval) {
+                    titleInterval = setInterval(()=>{$('link[rel~="icon"]').each((i, icon) => {
+                        icon = $(icon);
+                        if(icon.attr('href').startsWith('data')){
+                            favIconData = icon.attr('href');
+                        } else {
+                            icon.attr('href', favIconData);
+                        }
+                        icon.remove();
+                        $(document.head).append(icon);
+                        if(count-- == 0){
+                          clearInterval(titleInterval)
+                        }
+                    })}, 1000);
+                }
+            }).on('error', function() {
+                //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
+                console.log('Failed to load favicon', href);
+                if(favIconData) {
+                    icon.attr('href', favIconData);
+                }
+            }).attr('src', href);
+        }
+    });
+}
+
 if(location.host.endsWith('console.aws.amazon.com')) {
     window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
-    let bodyList = document.querySelector("body");
-    if(bodyList) {
-        let observer = new MutationObserver(async (mutations, o) => {
-            if(await addSpeedrunLink()) {
-                o.disconnect();
-            }
-        });
+    const body = document.querySelector("body");
+    if(body) {
         if(!(await addSpeedrunLink())) {
-            observer.observe(bodyList, {attributeFilter: [ "data-testid"], childList:true});
+            let observer = new MutationObserver(async (mutations, o) => {
+                if(await addSpeedrunLink()) {
+                    o.disconnect();
+                    if(roleColor) {
+                        waitForSelector('link[rel~="icon"]', document.head).then(()=> {
+                            updateConsoleFavIcon();
+                        });
+                    }
+                }
+            });
+            observer.observe(body, {attributeFilter: [ "data-testid"], childList:true});
+        } else if(roleColor) {
+            updateConsoleFavIcon();
         }
         extractCloudWatchTimeAndAddSnapshot();
     }
@@ -1093,11 +1167,8 @@ if(location.host.endsWith('console.aws.amazon.com')) {
 const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
 if (window.onurlchange === null) {
     window.addEventListener('urlchange', async (info) => {
-        let location = new URL(info.url);
-        //if(lastPath !== location.pathname + location.search) {
         persistIfIssue();
-        scheduleUpdate(location);
-        //}
+        scheduleUpdate(new URL(info.url));
     });
 }
 
@@ -1201,7 +1272,7 @@ const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
 const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
 const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
-const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
+    const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\nexport AWS_REGION=$\{region}\n`;
 const USED_SEARCH_PARAMS = new Set();
@@ -1665,7 +1736,7 @@ body:has(details#srModal[open]) {
       </div>
       </span>
     `);
-        $("body").prepend(toolbar).append(`
+$("body").prepend(toolbar).append(`
 <div class="position-fixed top-0 right-0" hidden style='z-index:100' id='snackbar'>
   <div class="Toast Toast--success">
     <span class="Toast-icon">
@@ -1720,75 +1791,75 @@ body:has(details#srModal[open]) {
     </div>
   </details-dialog>
 </details>`);
-        dataAndEvents.toggleSRToolbar = {
-            events:
-            {
-                click:function () {
-                    GM_setValue("srToolbarVisible",$('#toolbar').toggle().is(':visible'));
-                    showToolbarOnPage();
-                }
-            }
-        };
+dataAndEvents.toggleSRToolbar = {
+    events:
+    {
+        click:function () {
+            GM_setValue("srToolbarVisible",$('#toolbar').toggle().is(':visible'));
+            showToolbarOnPage();
+        }
+    }
+};
 
-        dataAndEvents.srFederate = dataAndEvents.srFederateService = {events: {'click.sr': async (event) => {
-            await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`,false, undefined, $(event.delegateTarget));
-        }}};
+dataAndEvents.srFederate = dataAndEvents.srFederateService = {events: {'click.sr': async (event) => {
+    await nope(`#f${$(event.delegateTarget).attr('id').replace('srF','')}`,false, undefined, $(event.delegateTarget));
+}}};
 
-        /*dataAndEvents.srCloudShell = {events: {'click.sr': async (event) => {
+/*dataAndEvents.srCloudShell = {events: {'click.sr': async (event) => {
             await nope(`#federate {path:'cloudshell'}`,false, undefined, $(event.delegateTarget));
         }}};*/
 
-        dataAndEvents.region = {events: {'change': function() {
-            updateTabs();
-            curRegion = extractRegion($('#region option:selected').text());
-        }}};
+dataAndEvents.region = {events: {'change': function() {
+    updateTabs();
+    curRegion = extractRegion($('#region option:selected').text());
+}}};
 
-        dataAndEvents.service = {events: {'change': function() {
-            updateRegions();
-            $("#region").trigger('change');
-        }}};
+dataAndEvents.service = {events: {'change': function() {
+    updateRegions();
+    $("#region").trigger('change');
+}}};
 
 
-        dataAndEvents.githubIssues = { events: {'click.sr': () => {
-            if(!$('#githubIssuesList').is(':visible')){
-                let issues = GM_getValue(ISSUES_KEY, []);
-                if(issues.length) {
-                    $('#githubIssuesList').empty();
-                    for(let issue of issues) {
-                        $('#githubIssuesList').append($("<a>", {class:"SelectMenu-item", role: "menuitem", href:issue.value, text:issue.label, target:"_blank"}));
-                    }
-                }
+dataAndEvents.githubIssues = { events: {'click.sr': () => {
+    if(!$('#githubIssuesList').is(':visible')){
+        let issues = GM_getValue(ISSUES_KEY, []);
+        if(issues.length) {
+            $('#githubIssuesList').empty();
+            for(let issue of issues) {
+                $('#githubIssuesList').append($("<a>", {class:"SelectMenu-item", role: "menuitem", href:issue.value, text:issue.label, target:"_blank"}));
             }
-        }}};
-        dataAndEvents.srSettings = { events: {'click.sr': async () => {
-            await nope('#settings');
-        }}};
-
-        dataAndEvents.srUpdate = { events: {'click.sr': srUpdateClickHandler}};
-
-        dataAndEvents.srEnabled = { events: {'change': async (event) => {
-            setEnabledPath(event.target.checked);
-            if(event.target.checked) {
-                $('.srDone').remove();
-                await updatePage('srEnabled');
-            } else {
-                location.reload();
-            }
-        }}};
-
-        dataAndEvents.srCopyAccount = { events: {'click': async () => {
-            await nope('#copy\n${account}');
-        }}};
-
-        dataAndEvents.srGetCreds = { events: {'click': async (event) => {
-            await nope('#copy.withCreds {"forceNewCreds": true}\necho Credentials Expiration: $AWS_CREDENTIAL_EXPIRATION',false);
-        }}};
-
-        dataAndEvents.srFlush = { events: {'click': async () => {
-            flushCredentials();
-            toast('Credentials flushed');
-        }}};
+        }
     }
+}}};
+dataAndEvents.srSettings = { events: {'click.sr': async () => {
+    await nope('#settings');
+}}};
+
+dataAndEvents.srUpdate = { events: {'click.sr': srUpdateClickHandler}};
+
+dataAndEvents.srEnabled = { events: {'change': async (event) => {
+    setEnabledPath(event.target.checked);
+    if(event.target.checked) {
+        $('.srDone').remove();
+        await updatePage('srEnabled');
+    } else {
+        location.reload();
+    }
+}}};
+
+dataAndEvents.srCopyAccount = { events: {'click': async () => {
+    await nope('#copy\n${account}');
+}}};
+
+dataAndEvents.srGetCreds = { events: {'click': async (event) => {
+    await nope('#copy.withCreds {"forceNewCreds": true}\necho Credentials Expiration: $AWS_CREDENTIAL_EXPIRATION',false);
+}}};
+
+dataAndEvents.srFlush = { events: {'click': async () => {
+    flushCredentials();
+    toast('Credentials flushed');
+}}};
+}
 }
 
 let noop = function() {}
