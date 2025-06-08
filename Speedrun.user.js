@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.137
+// @version      1.138
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -280,6 +280,7 @@ const TOAST_DURATION = 2500;
 
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
+const SR_CONSOLE_COLORS_KEY = `${STORAGE_NAMESPACE}consoleColors`;
 const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
 
 function flushCredentials() {
@@ -728,7 +729,7 @@ async function addSpeedrunLink() {
             let lastRolePersisted = false;
             if(region) {
                 let userInfo = cookie && !isMultiSession ? JSON.parse(cookie) : {arn: session.sessionARN};
-                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|speedrun-[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
+                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
                 let result = ARN_REGEX.exec(userInfo.arn);
                 if(result) {
                     let [,arn, account, role] = result;
@@ -751,7 +752,7 @@ async function addSpeedrunLink() {
                                 console.warn('Unable to determine session issuer');
                             }
                         }
-                    } else {
+                    } else if (role?.startsWith('speedrun-')) {
                         arn = `arn:aws:iam::${account}:role/${role}`;
                         //attempt to extract expiration time from speedrun issuer
                         if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
@@ -765,14 +766,16 @@ async function addSpeedrunLink() {
                             }
                         }
                         addLink = true;
-                    }
-                    if(role) {
-                        let backgroundColor = role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green';
-                        roleColor = backgroundColor;
-                        $('div.awsui-context-top-navigation:has(div[data-testid="awsc-account-info-tile"]), button[data-testid="awsc-nav-more-menu"]').css('background-color', backgroundColor);
-                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', backgroundColor);
+                    } else {
+                        arn = `arn:aws:iam::${account}:role/${role}`;
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
+                    if(role) {
+                        let defaultColor = role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green';
+                        roleColor = getConsoleColor(cacheKey,defaultColor);
+                        $('div.awsui-context-top-navigation:has(div[data-testid="awsc-account-info-tile"]), button[data-testid="awsc-nav-more-menu"]').css('background-color', roleColor);
+                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor);
+                    }
                     if(isMultiSession) {
                         persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
                     }
@@ -3019,6 +3022,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         if(result.url != variables.internal.consoleUrl) {
                             console.log(`Federation url`, result.url)
                         }
+                        setConsoleColor(variables);
                         window.open(result.url);
                     } else {
                         GM_setClipboard(result.text);
@@ -3127,6 +3131,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                         throw new Error(`${response.status} ${response.statusText}: ${response.responseText}`);
                     }
                     let executionArn = JSON.parse(response.responseText).executionArn;
+                    setConsoleColor(variables);
                     await nope(`#stepfunctionExecution {region: "${variables.region}", account: "${variables.account}", partition: "${variables.partition}", role: "${variables.role}", executionArn: "${executionArn}"}\n`);
                     break;
                 }
@@ -3351,6 +3356,33 @@ function getSessionSubdomain(key) {
     }
     return undefined;
 }
+
+function setConsoleColor(variables) {
+    const color = variables.srColor;
+    if(variables?.internal?.credentialsBroker?.getCacheKey()) {
+        let cacheKey = variables[variables.internal.credentialsBroker.getCacheKey()];
+        let colors = GM_getValue(SR_CONSOLE_COLORS_KEY,{});
+        if(colors[cacheKey] != color) {
+            if(color == undefined) {
+                delete colors[cacheKey];
+            }
+            else {
+                colors[cacheKey] = color;
+            }
+            GM_setValue(SR_CONSOLE_COLORS_KEY, colors);
+        }
+    }
+}
+
+function getConsoleColor(cacheKey, defaultColor) {
+    if(cacheKey) {
+        let colors = GM_getValue(SR_CONSOLE_COLORS_KEY,{});
+        let color = colors[cacheKey];
+        return color || defaultColor;
+    }
+    return defaultColor;
+}
+
 
 async function updatePageConfig(path) {
     let pageEnabled = isEnabledPath();
