@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.139
+// @version      1.140
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -1068,8 +1068,8 @@ function extractCloudWatchTimeAndAddSnapshot() {
 }
 
 function isSRPage() {
-    // when page not found this id appears
-    if($('#not-found-search').length) {
+    // omit page not found and marketing pages
+    if($('#not-found-search,#register').length) {
         return false;
     }
     let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname) || ACTIONS_REGEX.exec(location.pathname);
@@ -1385,6 +1385,7 @@ let templates = {
             AppSync: "appsync",
             Athena: "athena/home?region=${region}#query",
             "Auto Scaling": "awsautoscaling",
+            "Aurora DSQL": "dsql",
             Bedrock: "bedrock",
             Billing: "billing",
             "Certificate Manager": "acm",
