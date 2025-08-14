@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.140
+// @version      1.141
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -17,7 +17,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.2.3/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.2.4/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.6.0/modern-screenshot.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.6.5/modern-screenshot.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -912,6 +912,10 @@ function getFormattedTimeUnit(relativeTimeInSeconds) {
     }
 }
 
+function getBackgroundColor() {
+    return document.getElementsByTagName("body")[0].className.match(/dark/)? '#161d26' : '#fff'
+}
+
 function getTimestampsPrompt() {
     let timestamps = GM_getValue(TIMESTAMPS_KEY,[]);
     let lastHour = { label: "last hour", type: "relative", start: "-3600", end:"0" };
@@ -948,11 +952,16 @@ function waitForSelector(selector, source = document) {
             }
 
         });
+        try {
+            observer.observe(source.body, {
+                childList: true,
+                subtree: true
+            });
+        }catch (e) {
+            //there is a race condition where source.body is not a typeof Node
+            console.log(`Unable to observe ${selector}`, e);
+        }
 
-        observer.observe(source.body, {
-            childList: true,
-            subtree: true
-        });
     });
 }
 
@@ -1045,7 +1054,11 @@ function extractCloudWatchTimeAndAddSnapshot() {
                             snapshotButton = $(histogram).find('button');
                             isLargeButton = true;
                         }
+                        let snapshotButtonParentParent = snapshotButton.last().parent().parent();
+                        let snapshotButtonContainer = snapshotButton.last().parent().clone();
                         snapshotButton = snapshotButton.last().clone();
+                        snapshotButtonContainer.empty();
+                        snapshotButtonContainer.append(snapshotButton);
                         snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
                         if (isLargeButton) {
                             snapshotButton.addClass('logs--button-separator-left');
@@ -1059,7 +1072,11 @@ function extractCloudWatchTimeAndAddSnapshot() {
                                 domSnapshot(histogram.ownerDocument.querySelector('.query-statistics') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
                             }
                         });
-                        $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
+                        if(!isLargeButton) {
+                            snapshotButtonParentParent.append(snapshotButtonContainer);
+                        } else {
+                            $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
+                        }
                     }
                 }
             );
@@ -1115,20 +1132,14 @@ function updateConsoleFavIcon(){
                 ctx.stroke();
                 favIconData = canvas.toDataURL();
                 icon.attr('href', favIconData);
-                //sometimes something messes with the favicon after it's updated, doing a delayed add and remove overrides it.
-                let count = 10;
+                //sometimes something messes with the favicon after it's updated repeating updating it on an interval addresses this.
                 if(!titleInterval) {
                     titleInterval = setInterval(()=>{$('link[rel~="icon"]').each((i, icon) => {
                         icon = $(icon);
-                        if(icon.attr('href').startsWith('data')){
+                        if(icon.attr('href').startsWith('data') && favIconData != icon.attr('href')){
                             favIconData = icon.attr('href');
                         } else {
                             icon.attr('href', favIconData);
-                        }
-                        icon.remove();
-                        $(document.head).append(icon);
-                        if(count-- == 0){
-                          clearInterval(titleInterval)
                         }
                     })}, 1000);
                 }
@@ -3902,10 +3913,10 @@ function getLatestVersion(remoteVersion) {
 function domSnapshot(element, filename){
     domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style, autoDestruct:true,
                       filter: el => !(el.className == 'query-counters'||el.classList?.contains('histogram-toggle')),
-                      style: {backgroundColor:'#fff', fill:'#fff'},
+                      style: {'backgroundColor':getBackgroundColor()},
                       //only include certain styles for logs histogram for speed
                       includeStyleProperties: element.className?.includes('statistics') ?
-                      ['background-color','color','font-weight','line-height','display','font-size','font-family','opacity','fill', 'stroke','stroke-width','font','width', 'height']:null
+                      ['text-anchor','color','font-weight','fill','line-height','display','font-size','font-family','opacity', 'stroke','stroke-width','font','width', 'height','visibility']:null
                      }).then(imgURI => {
         const download = GM_addElement('a');
         download.href = imgURI;
