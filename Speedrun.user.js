@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.141
+// @version      1.142
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -1445,6 +1445,10 @@ let templates = {
         }
     },
     link : "${lastLine(content)}",
+    go: {
+        type: "federate",
+        value: "go/view?arn=${encodeURIComponent((typeof arn === 'undefined') ? lastLine(content) : arn.trim())}"
+    },
     DDBItem: {
         type : "federate",
         value : "dynamodbv2/home?region=${region}#edit-item?table=${tableName}&itemMode=2&pk=${partitionKey}&sk${typeof sortKey === 'undefined' ? '' : `=${sortKey}`}&route=ROUTE_ITEM_EXPLORER"
