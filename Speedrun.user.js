@@ -262,14 +262,13 @@
     let favIcons = {
         false:{},
         true:{}
-};
+    };
 
- let roleColor = undefined;
- let titleObserver = undefined;
- let titleInterval = undefined;
- let favIconData = undefined;
- let curRegion = undefined;
- let dataAndEvents = {};
+let roleColor = undefined;
+let favIconObserver = undefined;
+let favIconData = undefined;
+let curRegion = undefined;
+let dataAndEvents = {};
 let credentialsCache = {};
 let stackCache = {};
 let functionCache = {};
@@ -802,6 +801,7 @@ async function addSpeedrunLink() {
 
                         });
                         bellButton.before(srLink);
+                        updateConsoleFavIcon();
                     }
                 }
             }
@@ -939,7 +939,7 @@ function convertDuration(timestamp) {
     return timestamp;
 }
 
-function waitForSelector(selector, source = document) {
+function waitForSelector(selector, source=document) {
     return new Promise(resolve => {
         if (source.querySelector(selector)) {
             return resolve(source.querySelector(selector));
@@ -953,12 +953,11 @@ function waitForSelector(selector, source = document) {
 
         });
         try {
-            observer.observe(source.body, {
+            observer.observe(source.body ? source.body : source, {
                 childList: true,
                 subtree: true
             });
         }catch (e) {
-            //there is a race condition where source.body is not a typeof Node
             console.log(`Unable to observe ${selector}`, e);
         }
 
@@ -1100,14 +1099,6 @@ function isSRPage() {
 }
 
 function updateConsoleFavIcon(){
-    if(!titleObserver) {
-        titleObserver = new MutationObserver(async (mutations, o) => {
-            updateConsoleFavIcon();
-        });
-        waitForSelector('title').then(() => {
-            setTimeout(()=>titleObserver.observe(document.querySelector('title'),{ subtree: true, characterData: true, childList: true }),3000);
-        });
-    }
     $('link[rel~="icon"]').each((i, icon) => {
         icon = $(icon);
         let href = icon.attr('href');
@@ -1132,17 +1123,12 @@ function updateConsoleFavIcon(){
                 ctx.stroke();
                 favIconData = canvas.toDataURL();
                 icon.attr('href', favIconData);
-                //sometimes something messes with the favicon after it's updated repeating updating it on an interval addresses this.
-                if(!titleInterval) {
-                    titleInterval = setInterval(()=>{$('link[rel~="icon"]').each((i, icon) => {
-                        icon = $(icon);
-                        if(icon.attr('href').startsWith('data') && favIconData != icon.attr('href')){
-                            favIconData = icon.attr('href');
-                        } else {
-                            icon.attr('href', favIconData);
-                        }
-                    })}, 1000);
-                }
+                // if the browser loaded a different favicon, force it to reload by adding and removing it.
+                setTimeout(()=>{
+                    let cloned = icon.clone();
+                    icon.remove();
+                    $(document.head).append(cloned);
+                }, 2000);
             }).on('error', function() {
                 //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
                 console.log('Failed to load favicon', href);
@@ -1152,6 +1138,22 @@ function updateConsoleFavIcon(){
             }).attr('src', href);
         }
     });
+    if(!favIconObserver) {
+        favIconObserver = new MutationObserver((mutationsList) => {
+           for (const mutation of mutationsList) {
+              // Check for attribute changes on favIcons
+              if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.tagName === 'LINK' && mutation.target.rel && mutation.target.rel.includes('icon') && mutation.target.href.includes('http')) {
+                 updateConsoleFavIcon();
+              }
+           }
+        });
+
+        favIconObserver.observe(document.head,{
+           attributes: true,
+           childList: false,
+           subtree: true,
+        });
+    }
 }
 
 if(location.host.endsWith('console.aws.amazon.com')) {
@@ -1162,16 +1164,9 @@ if(location.host.endsWith('console.aws.amazon.com')) {
             let observer = new MutationObserver(async (mutations, o) => {
                 if(await addSpeedrunLink()) {
                     o.disconnect();
-                    if(roleColor) {
-                        waitForSelector('link[rel~="icon"]', document.head).then(()=> {
-                            updateConsoleFavIcon();
-                        });
-                    }
                 }
             });
             observer.observe(body, {attributeFilter: [ "data-testid"], childList:true});
-        } else if(roleColor) {
-            updateConsoleFavIcon();
         }
         extractCloudWatchTimeAndAddSnapshot();
     }
