@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.142
+// @version      1.143
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -265,6 +265,7 @@
     };
 
 let roleColor = undefined;
+let accountColor = undefined;
 let favIconObserver = undefined;
 let favIconData = undefined;
 let curRegion = undefined;
@@ -281,7 +282,17 @@ const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
 const SR_CONSOLE_COLORS_KEY = `${STORAGE_NAMESPACE}consoleColors`;
 const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
-
+const CONSOLE_COLOR_LOOKUP = {
+    red: "#FE6E73",
+    orange: "#F89256",
+    yellow: "#DFB52C",
+    green: "#7DBD4C",
+    teal: "#40BFA9",
+    lightBlue: "#44B9DD",
+    darkBlue: "#7698fE",
+    purple: "#CBABFC",
+    pink: "#E07F9D"
+};
 function flushCredentials() {
     GM_deleteValue(`${LAST_CREDS}federate`);
     GM_deleteValue(`${LAST_CREDS}copy`);
@@ -769,11 +780,29 @@ async function addSpeedrunLink() {
                         arn = `arn:aws:iam::${account}:role/${role}`;
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
+                    const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
+                    const accountInfo = accountInfoParent.find('div[data-testid]:first');
+                    let defaultFontColor = 'inherit';
+                    if(cookie = getCookie('awsc-settings-info')){
+                        let colorPortion = cookie.replaceAll(/.*&/g,'');
+                        if(colorPortion.trim()) {
+                            console.log('Detected account color as: ' + colorPortion.trim());
+                            accountColor = CONSOLE_COLOR_LOOKUP[colorPortion.trim()];
+                        }
+                    }
+                    if(accountInfo.length) {
+                        accountColor = accountColor || CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')];
+                        try {
+                            defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
+                        } catch(e) {
+                            console.error('Unable to set default font color for role');
+                        }
+                    }
                     if(role) {
-                        let defaultColor = role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green';
-                        roleColor = getConsoleColor(cacheKey,defaultColor);
-                        $('div.awsui-context-top-navigation:has(div[data-testid="awsc-account-info-tile"]), button[data-testid="awsc-nav-more-menu"]').css('background-color', roleColor);
-                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor);
+                        let defaultColor = (role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
+                        roleColor = getConsoleColor(cacheKey, defaultColor);
+                        accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor);
+                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor).css('color', defaultFontColor);
                     }
                     if(isMultiSession) {
                         persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
@@ -1102,7 +1131,7 @@ function updateConsoleFavIcon(){
     $('link[rel~="icon"]').each((i, icon) => {
         icon = $(icon);
         let href = icon.attr('href');
-        if(href && href.startsWith('http') && roleColor) {
+        if(href && href.startsWith('http') && (roleColor || accountColor)) {
             //secrets manager favicon is messed up without this
             href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
             const canvas = $('<canvas/>')[0];
@@ -1110,11 +1139,10 @@ function updateConsoleFavIcon(){
             const ctx = canvas.getContext('2d');
             $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
                 ctx.drawImage($(this)[0], 0, 0, 48, 48);
-                ctx.fillStyle = roleColor;
-                ctx.rect(0, 48, 64, 64);
-                ctx.fill();
-                ctx.rect(48, 0, 64, 64);
-                ctx.fill();
+                ctx.fillStyle = roleColor || accountColor;
+                ctx.fillRect(0, 48, 64, 64);
+                ctx.fillStyle = accountColor || roleColor;
+                ctx.fillRect(48, 0, 64, 64);
                 ctx.strokeStyle = 'white';
                 ctx.beginPath();
                 ctx.moveTo(0,48);
@@ -1125,10 +1153,10 @@ function updateConsoleFavIcon(){
                 icon.attr('href', favIconData);
                 // if the browser loaded a different favicon, force it to reload by adding and removing it.
                 setTimeout(()=>{
-                    let cloned = icon.clone();
+                    const cloned = icon.clone();
                     icon.remove();
                     $(document.head).append(cloned);
-                }, 2000);
+                }, 3000);
             }).on('error', function() {
                 //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
                 console.log('Failed to load favicon', href);
