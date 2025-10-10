@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.143
+// @version      1.144
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -291,7 +291,8 @@ const CONSOLE_COLOR_LOOKUP = {
     lightBlue: "#44B9DD",
     darkBlue: "#7698fE",
     purple: "#CBABFC",
-    pink: "#E07F9D"
+    pink: "#E07F9D",
+    default: "#7D8998"
 };
 function flushCredentials() {
     GM_deleteValue(`${LAST_CREDS}federate`);
@@ -791,7 +792,7 @@ async function addSpeedrunLink() {
                         }
                     }
                     if(accountInfo.length) {
-                        accountColor = accountColor || CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')];
+                        accountColor = (CONSOLE_COLOR_LOOKUP.default == accountColor)? CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')] || CONSOLE_COLOR_LOOKUP.default : accountColor;
                         try {
                             defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
                         } catch(e) {
@@ -1307,7 +1308,7 @@ const ACTIONS_REGEX = /^(?<path>\/.*?\/.*?\/actions)\/runs\/\d+$/i;
 const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
 const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
 const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
-const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' -X POST ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
+const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
 const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
@@ -3355,7 +3356,7 @@ async function updatePage(reason) {
         $("#service").trigger('change');
 
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
-            $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${$(block).text()}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
+            $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${escapeHTMLStartTags($(block).text())}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
         }
         $('button.js-wiki-more-pages-link').each(async function(item) {
             await sleep(500);
