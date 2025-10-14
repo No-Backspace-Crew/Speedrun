@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.144
+// @version      1.145
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -262,12 +262,11 @@
     let favIcons = {
         false:{},
         true:{}
-    };
+};
 
-let roleColor = undefined;
-let accountColor = undefined;
-let favIconObserver = undefined;
-let favIconData = undefined;
+ let roleColor = undefined;
+ let accountColor = undefined;
+ let favIconState = {};
 let curRegion = undefined;
 let dataAndEvents = {};
 let credentialsCache = {};
@@ -350,6 +349,7 @@ var IDENTITY_CENTER_ENDPOINT = GM_getValue('g_identity_center_endpoint', undefin
 const ASSUME_COMMAND = `${GM_getValue('g_use_beta_endpoint', false)?"d":""}assume`;
 var sessionVariables = {};
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
+
 
 class CredentialsBroker {
     getValidTemplateTypes() {throw new Error('Not implemented');};
@@ -781,25 +781,17 @@ async function addSpeedrunLink() {
                         arn = `arn:aws:iam::${account}:role/${role}`;
                     }
                     let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
-                    const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
-                    const accountInfo = accountInfoParent.find('div[data-testid]:first');
-                    let defaultFontColor = 'inherit';
-                    if(cookie = getCookie('awsc-settings-info')){
-                        let colorPortion = cookie.replaceAll(/.*&/g,'');
-                        if(colorPortion.trim()) {
-                            console.log('Detected account color as: ' + colorPortion.trim());
-                            accountColor = CONSOLE_COLOR_LOOKUP[colorPortion.trim()];
-                        }
-                    }
-                    if(accountInfo.length) {
-                        accountColor = (CONSOLE_COLOR_LOOKUP.default == accountColor)? CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')] || CONSOLE_COLOR_LOOKUP.default : accountColor;
-                        try {
-                            defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
-                        } catch(e) {
-                            console.error('Unable to set default font color for role');
-                        }
-                    }
                     if(role) {
+                        const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
+                        const accountInfo = accountInfoParent.find('div[data-testid]:first');
+                        let defaultFontColor = 'inherit';
+                        if(accountInfo.length) {
+                            try {
+                                defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
+                            } catch(e) {
+                                console.error('Unable to set default font color for role');
+                            }
+                        }
                         let defaultColor = (role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
                         roleColor = getConsoleColor(cacheKey, defaultColor);
                         accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor);
@@ -831,18 +823,45 @@ async function addSpeedrunLink() {
 
                         });
                         bellButton.before(srLink);
-                        updateConsoleFavIcon();
                     }
                 }
             }
+
             if(!lastRolePersisted && !awsuserInfoCookieParsed) {
                 persistIfNewRoleOrExpiration();
                 lastRolePersisted = true;
             }
         }
+        updateConsoleFavIcon();
         return true;
     }
     return false;
+}
+
+function setConsoleAccountColor() {
+    const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
+    const accountInfo = accountInfoParent.find('div[data-testid]:first');
+    if(accountInfo.length) {
+        if(accountColor == undefined || accountColor != CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')]) {
+            console.log(`Setting console color to: ${accountInfo.attr('data-testid')}`);
+        }
+        accountColor = CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')] || CONSOLE_COLOR_LOOKUP.default;
+        if(!favIconState.colorObserver) {
+            favIconState.colorObserver = new MutationObserver((mutationsList) => {
+                for (const mutation of mutationsList) {
+                    // Check for attribute changes on favIcons
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-testid') {
+                        updateConsoleFavIcon();
+                    }
+                }
+            });
+            favIconState.colorObserver.observe(accountInfo[0],{
+                    attributes: true,
+                    childList: false,
+                    subtree: true,
+            });
+        }
+    }
 }
 
 function decodeCloudWatchURIComponent(s) {
@@ -1128,59 +1147,76 @@ function isSRPage() {
     return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
 }
 
+function getFavIconData(icon){
+    const canvas = $('<canvas/>')[0];
+    canvas.width = canvas.height=64;
+    const ctx = canvas.getContext('2d');
+
+    ctx.drawImage(icon, 0, 0, 48, 48);
+    ctx.fillStyle = roleColor || accountColor;
+    ctx.fillRect(0, 48, 64, 64);
+    ctx.fillStyle = accountColor || roleColor;
+    ctx.fillRect(48, 0, 64, 64);
+    ctx.strokeStyle = 'white';
+    ctx.beginPath();
+    ctx.moveTo(0,48);
+    ctx.lineTo(48,48);
+    ctx.lineTo(48,0);
+    ctx.stroke();
+    favIconState.favIconData = canvas.toDataURL();
+    favIconState.lastFavIconColors = `${accountColor}${roleColor}`;
+    return favIconState.favIconData;
+}
+
+function setConsoleFavIconHref(icon) {
+    icon.attr('href', getFavIconData(favIconState.lastFavIcon));
+                    // if the browser loaded a different favicon, force it to reload by adding and removing it.
+                    setTimeout(()=>{
+                        const cloned = icon.clone();
+                        icon.remove();
+                        $(document.head).append(cloned);
+                    }, 3000);
+}
+
 function updateConsoleFavIcon(){
+    setConsoleAccountColor();
     $('link[rel~="icon"]').each((i, icon) => {
         icon = $(icon);
         let href = icon.attr('href');
-        if(href && href.startsWith('http') && (roleColor || accountColor)) {
-            //secrets manager favicon is messed up without this
-            href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
-            const canvas = $('<canvas/>')[0];
-            canvas.width = canvas.height=64;
-            const ctx = canvas.getContext('2d');
-            $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
-                ctx.drawImage($(this)[0], 0, 0, 48, 48);
-                ctx.fillStyle = roleColor || accountColor;
-                ctx.fillRect(0, 48, 64, 64);
-                ctx.fillStyle = accountColor || roleColor;
-                ctx.fillRect(48, 0, 64, 64);
-                ctx.strokeStyle = 'white';
-                ctx.beginPath();
-                ctx.moveTo(0,48);
-                ctx.lineTo(48,48);
-                ctx.lineTo(48,0);
-                ctx.stroke();
-                favIconData = canvas.toDataURL();
-                icon.attr('href', favIconData);
-                // if the browser loaded a different favicon, force it to reload by adding and removing it.
-                setTimeout(()=>{
-                    const cloned = icon.clone();
-                    icon.remove();
-                    $(document.head).append(cloned);
-                }, 3000);
-            }).on('error', function() {
-                //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
-                console.log('Failed to load favicon', href);
-                if(favIconData) {
-                    icon.attr('href', favIconData);
-                }
-            }).attr('src', href);
+        if(href && (roleColor || accountColor)) {
+            if(href.startsWith('http') ) {
+                //secrets manager favicon is messed up without this
+                href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
+                $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
+                    favIconState.lastFavIcon = $(this)[0];
+                    setConsoleFavIconHref(icon);
+                }).on('error', function() {
+                    //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
+                    console.log('Failed to load favicon', href);
+                    if(favIconState.favIconData) {
+                        icon.attr('href', favIconState.favIconData);
+                    }
+                }).attr('src', href);
+            } else if(favIconState.lastFavIconColors != `${accountColor}${roleColor}`) {
+                console.log('Rerendering favIcon due to account color change');
+                setConsoleFavIconHref(icon);
+            }
         }
     });
-    if(!favIconObserver) {
-        favIconObserver = new MutationObserver((mutationsList) => {
-           for (const mutation of mutationsList) {
-              // Check for attribute changes on favIcons
-              if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.tagName === 'LINK' && mutation.target.rel && mutation.target.rel.includes('icon') && mutation.target.href.includes('http')) {
-                 updateConsoleFavIcon();
-              }
-           }
+    if(!favIconState.favIconObserver) {
+        favIconState.favIconObserver = new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                // Check for attribute changes on favIcons
+                if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.tagName === 'LINK' && mutation.target.rel && mutation.target.rel.includes('icon')) {
+                    updateConsoleFavIcon();
+                }
+            }
         });
 
-        favIconObserver.observe(document.head,{
-           attributes: true,
-           childList: false,
-           subtree: true,
+        favIconState.favIconObserver.observe(document.head,{
+            attributes: true,
+            childList: false,
+            subtree: true,
         });
     }
 }
@@ -1552,25 +1588,25 @@ let templates = {
     }
 };
 
-var pageConfig = {};
+    var pageConfig = {};
 
-//https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
-function escapeRegex(s) {
-    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-};
+    //https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
+    function escapeRegex(s) {
+        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
 
-let user = $("meta[name='user-login']").attr("content");
+    let user = $("meta[name='user-login']").attr("content");
 
-let tabNames = {
-    "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
-    "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
-    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
-    "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
-}
+    let tabNames = {
+        "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
+        "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
+        "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
+        "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
+    }
 
-function injectToolbar() {
-    if(!$('#srToolbar').length) {
-        $("head").append(`<style type="text/css">${GM_getResourceText('select2css')}
+    function injectToolbar() {
+        if(!$('#srToolbar').length) {
+            $("head").append(`<style type="text/css">${GM_getResourceText('select2css')}
         input:invalid.srInput , textarea:invalid.srInput {
           border: 2px solid var(--fgColor-danger)
         }
