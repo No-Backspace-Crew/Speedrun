@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.145
+// @version      1.146
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -1171,10 +1171,14 @@ function getFavIconData(icon){
 function setConsoleFavIconHref(icon) {
     icon.attr('href', getFavIconData(favIconState.lastFavIcon));
                     // if the browser loaded a different favicon, force it to reload by adding and removing it.
-                    setTimeout(()=>{
-                        const cloned = icon.clone();
+                    const cloned = icon.clone();
+                    if(favIconState.refreshTimer) {
+                        clearTimeout(favIconState.refreshTimer);
+                    }
+                    favIconState.refreshTimer = setTimeout(()=>{
                         icon.remove();
                         $(document.head).append(cloned);
+                        favIconState.refreshTimer = 0;
                     }, 3000);
 }
 
