@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.146
+// @version      1.147
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -1423,12 +1423,12 @@ let templates = {
     settings : `~~~g_usernameOverride=Username Override {label:'Override your GitHub username when setting the user variable (optional)'}~~~
                     ~~~g_aws-accountId=AWS Account Id {placeholder:'123456789012', pattern:'\\\\d{12}', label:"Your personal AWS account id <a href='https://github.com/No-Backspace-Crew/Speedrun/wiki/Creating-Speedrun-Roles'>Read more</a>"}~~~
                     ~~~g_role=Role {"default":"speedrun-ReadOnly", label:"Your personal default role"}~~~
-                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~
                     ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Identity Center (Experimental)':'identitycenter','Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
                     ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~
                     ~~~g_identity_center_endpoint=Identity Center Url {label:"Identity Center start url if using your personal profile", placeholder:'https://your_subdomain.awsapps.com', pattern:'https:\\\\/\\\\/[a-z0-9\\\\-]+\\\\.awsapps\\\\.com(\\\\/(start(\\\\/)?))?'}~~~
                     ~~~g_identity_center_permSet=Identity Center Permission Set  {label:"If using Identity Center, your permission set"}~~~
-                    ~~~g_force_new_creds=Force New Credentials {"type":"checkbox","default":false, "cast":"Boolean", label:"Gets new credentials every request, useful during testing"}~~~`,
+                    ~~~g_force_new_creds=Force New Credentials {"type":"checkbox","default":false, "cast":"Boolean", label:"Gets new credentials every request, useful during testing"}~~~
+                    ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~`,
     copy : "${content}",
     download : {
         value: "data:${contentType};base64,${btoa(unescape(encodeURIComponent(content)))}",
@@ -3503,7 +3503,7 @@ function setButtonDanger(btn, variables) {
 
     if(variables.creds) {
         let hasService = document.querySelector("#region").length > 0
-        btn.attr('aria-label', !hasService ? 'Configure an account in settings to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[variables.internal.credentialsBroker.getDangerKey()]})`);
+        btn.attr('aria-label', !hasService ? 'Configure an account to use this' : `${variables.internal.overriddenAccount || variables.srServiceName}${variables.internal.showPin? "📌":""}: ${(variables.internal.overriddenRegion || curRegion||"")}${variables.internal.showRegionPin? "📌":""} (${variables[variables.internal.credentialsBroker.getDangerKey()]})`);
         if(!btn.hasClass('canBeDangerous') && !btn.find('svg').length > 0) {
             btn.prepend($('<svg xmlns="http://www.w3.org/2000/svg" class="octicon color-fg-on-emphasis" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M6.5 5.5a4 4 0 112.731 3.795.75.75 0 00-.768.18L7.44 10.5H6.25a.75.75 0 00-.75.75v1.19l-.06.06H4.25a.75.75 0 00-.75.75v1.19l-.06.06H1.75a.25.25 0 01-.25-.25v-1.69l5.024-5.023a.75.75 0 00.181-.768A3.995 3.995 0 016.5 5.5zm4-5.5a5.5 5.5 0 00-5.348 6.788L.22 11.72a.75.75 0 00-.22.53v2C0 15.216.784 16 1.75 16h2a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V14h.75a.75.75 0 00.53-.22l.5-.5a.75.75 0 00.22-.53V12h.75a.75.75 0 00.53-.22l.932-.932A5.5 5.5 0 1010.5 0zm.5 6a1 1 0 100-2 1 1 0 000 2z"></path></svg><span> </span>'));
             btn.addClass('tooltipped tooltipped-e tooltipped-no-delay');
@@ -3553,6 +3553,9 @@ function updateTabs() {
         if(variables.creds) {
             if(!pageNeedsCreds) {
                 $('#accountRequired').attr('hidden',hasService);
+                if(!hasService) {
+                    $('#accountRequired').text(`Required account not set on some blocks${variables.service === variables.user? ', click to configure':''}`);
+                }
                 pageNeedsCreds = true;
             }
         }
@@ -3590,7 +3593,7 @@ function getRegions(service, pageConfig) {
     for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
         let regions = isPartition(region) ? partitionMap[region] : [region];
         regions.forEach(region => {
-            if(!regionFilter.length || regionFilter.includes(region)) {
+            if(!regionFilter.length || region.includes(regionFilter)) {
                 regionSet.add(region);
             }
         });
