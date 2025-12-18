@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.148
+// @version      1.149
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -279,6 +279,7 @@ let githubSearchBarObserver = undefined;
 const TOAST_DURATION = 2500;
 
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
+const SR_LAST_SPEEDRUN_LINK = `${STORAGE_NAMESPACE}lastSRLink`;
 const SR_SESSIONS_KEY = `${STORAGE_NAMESPACE}sessions`;
 const SR_CONSOLE_COLORS_KEY = `${STORAGE_NAMESPACE}consoleColors`;
 const LAST_CREDS = `${STORAGE_NAMESPACE}lastCreds`;
@@ -301,12 +302,21 @@ function flushCredentials() {
     credentialsCache = {};
     stackCache = {};
 }
-if(window.location.hostname == 'signin.aws.amazon.com') {
-    if($('h1.error-code').text() == '400') {
-        console.log('Turning off multisession and flushing creds in case that is causing signin failures');
-        GM_setValue(SR_MULTI_SESSION, false);
-        flushCredentials();
+if(window.location.hostname.endsWith('signin.aws.amazon.com')) {
+    const multiSession = getCookie('aws-prism-opt-in') != undefined;
+    if(GM_getValue(SR_MULTI_SESSION, undefined) != multiSession) {
+        console.log(`Setting multisession to: ${multiSession}`);
+        GM_setValue(SR_MULTI_SESSION, multiSession);
     }
+    if($('h1.error-code').text() == '400') {
+        let lastSpeedrunLink = GM_getValue(SR_LAST_SPEEDRUN_LINK, undefined);
+        if(lastSpeedrunLink && lastSpeedrunLink.timestamp >= Date.now() - 10000) {
+            console.log('Detected incorrect Speedrun multisession setting causing this login error, retrying without bouncing through logout endpoint.')
+            GM_deleteValue(SR_LAST_SPEEDRUN_LINK);
+            window.location = lastSpeedrunLink.url;
+        }
+    }
+    flushCredentials();
     return;
 }
 //update check
@@ -688,6 +698,11 @@ function getFederationLink(arn, destination, duration, account) {
     url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
     if(normalizedDuration) {
         url.searchParams.append('duration', normalizedDuration);
+    }
+    if(!url.searchParams.has('logout') && isRole){
+        const urlWithoutLogout = new URL(url);
+        urlWithoutLogout.searchParams.append('logout',false);
+        GM_setValue(SR_LAST_SPEEDRUN_LINK, {timestamp: Date.now(), url: urlWithoutLogout.toString()});
     }
     return url.toString();
 }
@@ -1244,7 +1259,7 @@ if(location.host.endsWith('console.aws.amazon.com')) {
 }
 
 const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
-if (window.onurlchange === null) {
+if (window.onurlchange === null && location.host.endsWith('github.com')) {
     window.addEventListener('urlchange', async (info) => {
         persistIfIssue();
         scheduleUpdate(new URL(info.url));
