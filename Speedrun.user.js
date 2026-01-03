@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.149
+// @version      1.150
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -314,6 +314,27 @@ if(window.location.hostname.endsWith('signin.aws.amazon.com')) {
             console.log('Detected incorrect Speedrun multisession setting causing this login error, retrying without bouncing through logout endpoint.')
             GM_deleteValue(SR_LAST_SPEEDRUN_LINK);
             window.location = lastSpeedrunLink.url;
+        }else{
+            const searchParams = new URLSearchParams(window.location.search);
+            if(searchParams) {
+                try {
+                    const issuer = (new URL(searchParams.get('redirect_uri')))?.searchParams?.get('Issuer');
+                    if(issuer) {
+                        const issuerURL = new URL(issuer);
+                        if(issuerURL.hostname.startsWith('speedrun-api')){
+                            const logout = issuerURL.searchParams.get('logout');
+                            if(logout==undefined || logout == 'true'){
+                                issuerURL.searchParams.set('logout','false');
+                                window.location = issuerURL.toString();
+                                return;
+                            }
+                        }
+                    }
+                }catch(e) {
+                    console.error('Unexpected exception parsing issuer', e);
+                    return;
+                }
+            }
         }
     }
     flushCredentials();
@@ -424,223 +445,223 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
     }
 }
 
-class GrantedCredentialsBroker extends CredentialsBroker {
-    getValidTemplateTypes() {return ['federate','copy']};
-    validate(variables) {
-        if(!variables.profile || !variables.region) {
-            throw new Error("profile and region must be defined");
+    class GrantedCredentialsBroker extends CredentialsBroker {
+        getValidTemplateTypes() {return ['federate','copy']};
+        validate(variables) {
+            if(!variables.profile || !variables.region) {
+                throw new Error("profile and region must be defined");
+            }
+        }
+        async getCredentials(variables) {
+            return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
+            : await interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
+        }
+        getCacheKey() {
+            return 'profile';
+        }
+        getDangerKey() {
+            return 'profile'
         }
     }
-    async getCredentials(variables) {
-        return variables.internal.templateType == 'federate' ? { text: `${ASSUME_COMMAND} ${variables.internal.newCreds ? variables.profile : '-ar' } -cd '${variables.internal.consoleUrl.replaceAll("'","%27")}'`}
-        : await interpolate(COPY_WITH_CREDS_GRANTED, variables, false) + '\nif [ $? -eq 0 ]; then\n' + variables.internal.result + "\nfi";
-    }
-    getCacheKey() {
-        return 'profile';
-    }
-    getDangerKey() {
-        return 'profile'
-    }
-}
 
-class IdentityCenterCredentialsBroker extends CredentialsBroker {
-    getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge']};
-    validate(variables) {
-        if(!variables.permSet || !variables.region || !variables.account) {
-            throw new Error("permission set (permSet) and region must be defined");
+    class IdentityCenterCredentialsBroker extends CredentialsBroker {
+        getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge']};
+        validate(variables) {
+            if(!variables.permSet || !variables.region || !variables.account) {
+                throw new Error("permission set (permSet) and region must be defined");
+            }
+            variables.accountAndPermSet = `${variables.account}:${variables.permSet}`;
         }
-        variables.accountAndPermSet = `${variables.account}:${variables.permSet}`;
-    }
-    async detectIDCRegion(startUrl) {
-        let existingCreds = GM_getValue(startUrl,{});
-        if(!existingCreds.region) {
-            const text = await retrieve(startUrl);
-            existingCreds.region = text.replaceAll(/.*?region\":\"([^\"]+).*/gm, '$1');
+        async detectIDCRegion(startUrl) {
+            let existingCreds = GM_getValue(startUrl,{});
             if(!existingCreds.region) {
-                throw new Error('Unable to detect Identity Center region to get credentials, check your url');
+                const text = await retrieve(startUrl);
+                existingCreds.region = text.replaceAll(/.*?region\":\"([^\"]+).*/gm, '$1');
+                if(!existingCreds.region) {
+                    throw new Error('Unable to detect Identity Center region to get credentials, check your url');
+                }
+                GM_setValue(startUrl, existingCreds);
             }
-            GM_setValue(startUrl, existingCreds);
-        }
-        return existingCreds;
-    }
-
-    async registerClient(startUrl, existingCreds) {
-        if(!existingCreds.clientId || (existingCreds.clientSecretExpiresAt || 0)*1000 < (Date.now()+10000)) {
-            const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/client/register`,
-                             method: 'POST',
-                             headers:{'Content-Type': 'application/json'},
-                             body: JSON.stringify({"clientName": "Speedrun", "clientType": "public", "scopes": ["sso:account:access"]})};
-            const result = await invoke(request);
-            delete existingCreds.refreshToken;
-            if(result.status != 200) {
-                throw new Error('Unable to register Speedrun as a client with Identity Center to get credentials');
-            }
-            existingCreds = {...existingCreds, ...result.response};
-            GM_setValue(startUrl, existingCreds);
-        }
-        return existingCreds;
-    }
-
-    async startDeviceAuthorization(startUrl, existingCreds) {
-        if(!existingCreds.refreshToken) {
-            const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/device_authorization`,
-
-                             method: 'POST',
-                             headers:{'Content-Type': 'application/json'},
-                             body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, startUrl})};
-            const result = await invoke(request);
-            if(result.status != 200) {
-                throw new Error('Unable to register this browser with Identity Center to get credentials');
-            }
-            existingCreds.deviceCode = result.response.deviceCode;
-            return result.response.verificationUriComplete;
-        }
-        return undefined;
-    }
-
-    async completeDeviceAuthorization(startUrl, existingCreds, url) {
-        if(!url) {
             return existingCreds;
         }
-        let authToast = $("#authToast");
-        let tab = undefined;
-        try {
-            return await new Promise(async (resolve, reject) => {
-                authToast.attr('hidden',false);
-                await sleep(200);
-                tab = GM_openInTab(url, {active:true,setParent:true});
-                let attempts = 550;
-                tab.onclose = () => {
-                    attempts = 0;
-                };
-                $('#authToastCancelled').on('click.sr', () => {authToast.attr('hidden', true);attempts = 0});
-                let timer = setInterval(async ()=>{
-                    try {
-                        if(attempts-- == 0) {
-                            throw new Error('Timed out waiting for user authentication.  Unable to get credentials');
-                        }
-                        const tokenRequest = {
-                            url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
-                            method: 'POST',
-                            headers:{'Content-Type': 'application/json'},
-                            body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"urn:ietf:params:oauth:grant-type:device_code",
-                                                  "deviceCode":existingCreds.deviceCode})};
-                        const tokenResult = await invoke(tokenRequest);
-                        //todo expired
-                        if(tokenResult.status == 400) {
-                            if(tokenResult.response.error != 'authorization_pending'){
-                                throw new Error('Unable to complete browser registration with Identity Center to get credentials');
-                            }
-                        }
-                        else if(tokenResult.status != 200) {
-                            throw attempts == -1 ? new Error('Unable to get credentials, user cancelled authentication') : new Error('Unable to complete browser registration with Identity Center to get credentials');
-                        } else {
-                            clearInterval(timer);
-                            existingCreds = {...existingCreds, ...tokenResult.response};
-                            existingCreds.accessTokenExpiration = Date.now() + 3600000;
-                            GM_setValue(startUrl, existingCreds);
-                            resolve(existingCreds);
-                        }
-                    } catch(e) {
-                        clearInterval(timer);
-                        reject(e);
-                    }
-                }, 1000)
-                });
-        }finally {
-            authToast.attr('hidden', true);
-            $('#authToastCancelled').off('click.sr');
-            if(tab && !tab.closed) {
-                tab.close();
-            }
-            window.focus();
-        }
-    }
 
-    async refreshAccessToken(startUrl, existingCreds){
-        if(!existingCreds.accessTokenExpiration || existingCreds.accessTokenExpiration < Date.now() - 10000) {
-            const tokenRequest = {url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
-                                  method: 'POST',
-                                  headers:{'Content-Type': 'application/json'},
-                                  body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"refresh_token",
-                                                        "refreshToken":existingCreds.refreshToken})};
-            const tokenResult = await invoke(tokenRequest);
-            if(tokenResult.response.error == 'invalid_grant') {
-                //refresh token is bad or expired, clear it so we can restart device auth
+        async registerClient(startUrl, existingCreds) {
+            if(!existingCreds.clientId || (existingCreds.clientSecretExpiresAt || 0)*1000 < (Date.now()+10000)) {
+                const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/client/register`,
+                                 method: 'POST',
+                                 headers:{'Content-Type': 'application/json'},
+                                 body: JSON.stringify({"clientName": "Speedrun", "clientType": "public", "scopes": ["sso:account:access"]})};
+                const result = await invoke(request);
                 delete existingCreds.refreshToken;
-                return existingCreds;
+                if(result.status != 200) {
+                    throw new Error('Unable to register Speedrun as a client with Identity Center to get credentials');
+                }
+                existingCreds = {...existingCreds, ...result.response};
+                GM_setValue(startUrl, existingCreds);
             }
-            if(tokenResult.status != 200) {
-                throw new Error('Unable to refresh access token with Identity Center to get credentials');
-            }
-            existingCreds = {...existingCreds, ...tokenResult.response};
-            existingCreds.accessTokenExpiration = Date.now() + 3600000;
-            GM_setValue(startUrl, existingCreds);
+            return existingCreds;
         }
-        return existingCreds;
-    }
 
-    getCachedCredentials(account, role, forceNewCreds, duration) {
-        const cacheKey = `${account}:${role}`;
-        const cachedCredentials = credentialsCache[cacheKey];
-        if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
-            console.log('Using cached credentials');
-            return cachedCredentials.credentials;
-        }
-    }
+        async startDeviceAuthorization(startUrl, existingCreds) {
+            if(!existingCreds.refreshToken) {
+                const request = {url:`https://oidc.${existingCreds.region}.amazonaws.com/device_authorization`,
 
-    async getCredentials(variables) {
-        const type = variables.internal.credentialsType || variables.internal.templateType;
-        switch(type) {
-            case 'federate':
-                IDENTITY_CENTER_ENDPOINT = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
-                return {
-                    url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
-                }
-                break;
-            case 'lambda':
-            case 'stepfunction':
-            case 'cfn':
-            case 'eventbridge':
-            case 'copy': {
-                let credentials = this.getCachedCredentials(variables.account, variables.permSet, variables.forceNewCreds, variables.roleDuration);
-                if(credentials) {
-                    return credentials;
-                }
-                const startUrl = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
-                if(!startUrl) {
-                    throw new Error('ssoStartUrl is required to get credentials');
-                }
-                startUrl.replaceAll(/\/(start(\/)?)$/gm,'/start');
-
-                // detect region
-                let existingCreds = await this.detectIDCRegion(startUrl);
-
-                // get sso client
-                existingCreds = await this.registerClient(startUrl, existingCreds);
-
-                for(let pass=0; pass<2; pass++) {
-                    // start device auth
-                    let deviceUrl = await this.startDeviceAuthorization(startUrl, existingCreds);
-                    existingCreds = await this.completeDeviceAuthorization(startUrl, existingCreds, deviceUrl);
-                    existingCreds = await this.refreshAccessToken(startUrl, existingCreds);
-                    //if refresh token still exists it's good, break out of loop, no need do another device auth pass
-                    if(existingCreds.refreshToken) {
-                        pass = 2;
-                    }
-                }
-                const request = {url:`https://portal.sso.${existingCreds.region}.amazonaws.com/federation/credentials?role_name=${variables.permSet}&account_id=${variables.account}`,
-                                 method: 'GET',
-                                 headers:{'x-amz-sso_bearer_token': existingCreds.accessToken},
-                                };
+                                 method: 'POST',
+                                 headers:{'Content-Type': 'application/json'},
+                                 body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, startUrl})};
                 const result = await invoke(request);
                 if(result.status != 200) {
-                    throw new Error(`Unable to get credentials: ${result.responseText}`);
+                    throw new Error('Unable to register this browser with Identity Center to get credentials');
                 }
-                credentialsCache[`${variables.account}:${variables.permSet}`] = {credentials: result.response.roleCredentials};
+                existingCreds.deviceCode = result.response.deviceCode;
+                return result.response.verificationUriComplete;
+            }
+            return undefined;
+        }
 
-                if(type=='copy') {
-                    return `export AWS_CREDENTIAL_EXPIRATION=${dayjs(result.response.roleCredentials.expiration).toISOString()}
+        async completeDeviceAuthorization(startUrl, existingCreds, url) {
+            if(!url) {
+                return existingCreds;
+            }
+            let authToast = $("#authToast");
+            let tab = undefined;
+            try {
+                return await new Promise(async (resolve, reject) => {
+                    authToast.attr('hidden',false);
+                    await sleep(200);
+                    tab = GM_openInTab(url, {active:true,setParent:true});
+                    let attempts = 550;
+                    tab.onclose = () => {
+                        attempts = 0;
+                    };
+                    $('#authToastCancelled').on('click.sr', () => {authToast.attr('hidden', true);attempts = 0});
+                    let timer = setInterval(async ()=>{
+                        try {
+                            if(attempts-- == 0) {
+                                throw new Error('Timed out waiting for user authentication.  Unable to get credentials');
+                            }
+                            const tokenRequest = {
+                                url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
+                                method: 'POST',
+                                headers:{'Content-Type': 'application/json'},
+                                body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"urn:ietf:params:oauth:grant-type:device_code",
+                                                      "deviceCode":existingCreds.deviceCode})};
+                            const tokenResult = await invoke(tokenRequest);
+                            //todo expired
+                            if(tokenResult.status == 400) {
+                                if(tokenResult.response.error != 'authorization_pending'){
+                                    throw new Error('Unable to complete browser registration with Identity Center to get credentials');
+                                }
+                            }
+                            else if(tokenResult.status != 200) {
+                                throw attempts == -1 ? new Error('Unable to get credentials, user cancelled authentication') : new Error('Unable to complete browser registration with Identity Center to get credentials');
+                            } else {
+                                clearInterval(timer);
+                                existingCreds = {...existingCreds, ...tokenResult.response};
+                                existingCreds.accessTokenExpiration = Date.now() + 3600000;
+                                GM_setValue(startUrl, existingCreds);
+                                resolve(existingCreds);
+                            }
+                        } catch(e) {
+                            clearInterval(timer);
+                            reject(e);
+                        }
+                    }, 1000)
+                    });
+            }finally {
+                authToast.attr('hidden', true);
+                $('#authToastCancelled').off('click.sr');
+                if(tab && !tab.closed) {
+                    tab.close();
+                }
+                window.focus();
+            }
+        }
+
+        async refreshAccessToken(startUrl, existingCreds){
+            if(!existingCreds.accessTokenExpiration || existingCreds.accessTokenExpiration < Date.now() - 10000) {
+                const tokenRequest = {url:`https://oidc.${existingCreds.region}.amazonaws.com/token`,
+                                      method: 'POST',
+                                      headers:{'Content-Type': 'application/json'},
+                                      body: JSON.stringify({"clientId": existingCreds.clientId, "clientSecret": existingCreds.clientSecret, "grantType":"refresh_token",
+                                                            "refreshToken":existingCreds.refreshToken})};
+                const tokenResult = await invoke(tokenRequest);
+                if(tokenResult.response.error == 'invalid_grant') {
+                    //refresh token is bad or expired, clear it so we can restart device auth
+                    delete existingCreds.refreshToken;
+                    return existingCreds;
+                }
+                if(tokenResult.status != 200) {
+                    throw new Error('Unable to refresh access token with Identity Center to get credentials');
+                }
+                existingCreds = {...existingCreds, ...tokenResult.response};
+                existingCreds.accessTokenExpiration = Date.now() + 3600000;
+                GM_setValue(startUrl, existingCreds);
+            }
+            return existingCreds;
+        }
+
+        getCachedCredentials(account, role, forceNewCreds, duration) {
+            const cacheKey = `${account}:${role}`;
+            const cachedCredentials = credentialsCache[cacheKey];
+            if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
+                console.log('Using cached credentials');
+                return cachedCredentials.credentials;
+            }
+        }
+
+        async getCredentials(variables) {
+            const type = variables.internal.credentialsType || variables.internal.templateType;
+            switch(type) {
+                case 'federate':
+                    IDENTITY_CENTER_ENDPOINT = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
+                    return {
+                        url: variables.internal.newCreds ? getFederationLink(variables.permSet, variables.internal.consoleUrl, variables.roleDuration, variables.account) : variables.internal.consoleUrl
+                    }
+                    break;
+                case 'lambda':
+                case 'stepfunction':
+                case 'cfn':
+                case 'eventbridge':
+                case 'copy': {
+                    let credentials = this.getCachedCredentials(variables.account, variables.permSet, variables.forceNewCreds, variables.roleDuration);
+                    if(credentials) {
+                        return credentials;
+                    }
+                    const startUrl = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
+                    if(!startUrl) {
+                        throw new Error('ssoStartUrl is required to get credentials');
+                    }
+                    startUrl.replaceAll(/\/(start(\/)?)$/gm,'/start');
+
+                    // detect region
+                    let existingCreds = await this.detectIDCRegion(startUrl);
+
+                    // get sso client
+                    existingCreds = await this.registerClient(startUrl, existingCreds);
+
+                    for(let pass=0; pass<2; pass++) {
+                        // start device auth
+                        let deviceUrl = await this.startDeviceAuthorization(startUrl, existingCreds);
+                        existingCreds = await this.completeDeviceAuthorization(startUrl, existingCreds, deviceUrl);
+                        existingCreds = await this.refreshAccessToken(startUrl, existingCreds);
+                        //if refresh token still exists it's good, break out of loop, no need do another device auth pass
+                        if(existingCreds.refreshToken) {
+                            pass = 2;
+                        }
+                    }
+                    const request = {url:`https://portal.sso.${existingCreds.region}.amazonaws.com/federation/credentials?role_name=${variables.permSet}&account_id=${variables.account}`,
+                                     method: 'GET',
+                                     headers:{'x-amz-sso_bearer_token': existingCreds.accessToken},
+                                    };
+                    const result = await invoke(request);
+                    if(result.status != 200) {
+                        throw new Error(`Unable to get credentials: ${result.responseText}`);
+                    }
+                    credentialsCache[`${variables.account}:${variables.permSet}`] = {credentials: result.response.roleCredentials};
+
+                    if(type=='copy') {
+                        return `export AWS_CREDENTIAL_EXPIRATION=${dayjs(result.response.roleCredentials.expiration).toISOString()}
 export AWS_ACCESS_KEY_ID=${result.response.roleCredentials.accessKeyId}
 export AWS_SECRET_ACCESS_KEY=${result.response.roleCredentials.secretAccessKey}
 export AWS_SESSION_TOKEN=${result.response.roleCredentials.sessionToken}
@@ -662,710 +683,710 @@ ${variables.internal.result}`
     }
 }
 
-let credentialsBroker = getCredentialsBroker();
+    let credentialsBroker = getCredentialsBroker();
 
-dayjs.extend(window.dayjs_plugin_utc);
-dayjs.extend(window.dayjs_plugin_duration);
-dayjs.extend(window.dayjs_plugin_relativeTime);
-dayjs.extend(window.dayjs_plugin_dayjs_parser);
-DOMPurify.addHook('afterSanitizeAttributes', function (node) {
-    // set all elements owning target to target=_blank
-    if ('target' in node) {
-        node.setAttribute('target', '_blank');
-        node.setAttribute('rel', 'noopener');
-    }
-});
-var lastPath = location.pathname + location.search;
-
-function getFederationLink(arn, destination, duration, account) {
-    const normalizedDuration = normalizeDuration(duration);
-    const isRole = arn.includes(":role/");
-    let url = undefined;
-    if(isRole) {
-        url = new URL(`${FEDERATION_ENDPOINT}/federate/${arn.split(':')[4]}`)
-        url.searchParams.append('role',arn.split(/:(?:assumed-)?role\//)[1]);
-        if(GM_getValue(SR_MULTI_SESSION, false)) {
-            url.searchParams.append('logout',false);
+    dayjs.extend(window.dayjs_plugin_utc);
+    dayjs.extend(window.dayjs_plugin_duration);
+    dayjs.extend(window.dayjs_plugin_relativeTime);
+    dayjs.extend(window.dayjs_plugin_dayjs_parser);
+    DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+        // set all elements owning target to target=_blank
+        if ('target' in node) {
+            node.setAttribute('target', '_blank');
+            node.setAttribute('rel', 'noopener');
         }
-    }
-    else {
-        let searchParams = new URLSearchParams();
-        searchParams.append('account_id', account);
-        searchParams.append('role_name', arn);
-        searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
-        return `${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console?` + searchParams.toString();
-    }
-    url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
-    if(normalizedDuration) {
-        url.searchParams.append('duration', normalizedDuration);
-    }
-    if(!url.searchParams.has('logout') && isRole){
-        const urlWithoutLogout = new URL(url);
-        urlWithoutLogout.searchParams.append('logout',false);
-        GM_setValue(SR_LAST_SPEEDRUN_LINK, {timestamp: Date.now(), url: urlWithoutLogout.toString()});
-    }
-    return url.toString();
-}
+    });
+    var lastPath = location.pathname + location.search;
 
-async function getCookieExpiration(...cookieNames) {
-    for (const cookie of await GM.cookie.list()){
-        for(const cookieName of cookieNames) {
-            if(cookie.name === cookieName){
-                console.log(`Extracting expiration from: ${cookie.name} with value ${cookie.expirationDate}`);
-                if(dayjs().isBefore(dayjs(cookie.expirationDate))){
-                    // in testing sometimes the cookie had the expiration of the previous session, not the current one.
-                    console.warn('WARN: session expiration is in the past, cookie is stale, ignoring');
-                    continue;
+    function getFederationLink(arn, destination, duration, account) {
+        const normalizedDuration = normalizeDuration(duration);
+        const isRole = arn.includes(":role/");
+        let url = undefined;
+        if(isRole) {
+            url = new URL(`${FEDERATION_ENDPOINT}/federate/${arn.split(':')[4]}`)
+            url.searchParams.append('role',arn.split(/:(?:assumed-)?role\//)[1]);
+            if(GM_getValue(SR_MULTI_SESSION, false)) {
+                url.searchParams.append('logout',false);
+            }
+        }
+        else {
+            let searchParams = new URLSearchParams();
+            searchParams.append('account_id', account);
+            searchParams.append('role_name', arn);
+            searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+            return `${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console?` + searchParams.toString();
+        }
+        url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
+        if(normalizedDuration) {
+            url.searchParams.append('duration', normalizedDuration);
+        }
+        if(!url.searchParams.has('logout') && isRole){
+            const urlWithoutLogout = new URL(url);
+            urlWithoutLogout.searchParams.append('logout',false);
+            GM_setValue(SR_LAST_SPEEDRUN_LINK, {timestamp: Date.now(), url: urlWithoutLogout.toString()});
+        }
+        return url.toString();
+    }
+
+    async function getCookieExpiration(...cookieNames) {
+        for (const cookie of await GM.cookie.list()){
+            for(const cookieName of cookieNames) {
+                if(cookie.name === cookieName){
+                    console.log(`Extracting expiration from: ${cookie.name} with value ${cookie.expirationDate}`);
+                    if(dayjs().isBefore(dayjs(cookie.expirationDate))){
+                        // in testing sometimes the cookie had the expiration of the previous session, not the current one.
+                        console.warn('WARN: session expiration is in the past, cookie is stale, ignoring');
+                        continue;
+                    }
+                    return cookie.expirationDate;
                 }
-                return cookie.expirationDate;
             }
         }
+        return undefined;
     }
-    return undefined;
-}
 
-function getCookie(cookieName) {
-    let name = `${cookieName}=`;
-    let decodedCookie = decodeURIComponent(document.cookie);
-    let cookies = decodedCookie.split(';');
-    for(let cookie of cookies) {
-        cookie = cookie.trimStart();
-        if (cookie.startsWith(name)){
-            return cookie.substring(name.length);
-        }
-    }
-    return undefined;
-}
-
-async function addSpeedrunLink() {
-    if($('#awsc-navigation__more-menu--list').length > 0) {
-        if(!awsuserInfoCookieParsed) {
-            awsuserInfoCookieParsed = true;
-            let cookie = getCookie('aws-userInfo');
-            let session = JSON.parse($("meta[name='awsc-session-data']").attr("content"));
-            let region = session.infrastructureRegion;
-            let subdomain = window.location.host.split('.')[0];
-            let isMultiSession = (subdomain.split('-').length-1)==1;
-            GM_setValue(SR_MULTI_SESSION, isMultiSession);
-            let expiration = await getCookieExpiration(`__Secure-aws-session-id-${subdomain}`,`aws-signer-token_${region}`);
-            if(expiration) {
-                expiration*=1000; //convert to millis
-                console.log('Session expires:', new dayjs(expiration).fromNow());
+    function getCookie(cookieName) {
+        let name = `${cookieName}=`;
+        let decodedCookie = decodeURIComponent(document.cookie);
+        let cookies = decodedCookie.split(';');
+        for(let cookie of cookies) {
+            cookie = cookie.trimStart();
+            if (cookie.startsWith(name)){
+                return cookie.substring(name.length);
             }
+        }
+        return undefined;
+    }
 
-            let lastRolePersisted = false;
-            if(region) {
-                let userInfo = cookie && !isMultiSession ? JSON.parse(cookie) : {arn: session.sessionARN};
-                const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
-                let result = ARN_REGEX.exec(userInfo.arn);
-                if(result) {
-                    let [,arn, account, role] = result;
-                    let isIdentityCenter = false;
-                    let addLink = false;
-                    let permSet = undefined;
-                    if(role.startsWith('AWSReservedSSO_')){
-                        isIdentityCenter = true;
-                        permSet = role.substring(15);
-                        arn = permSet = permSet.substring(0,permSet.lastIndexOf('_'));
-                        if(userInfo.issuer) {
-                            IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
-                            addLink = true;
-                        } else {
-                            IDENTITY_CENTER_ENDPOINT = GM_getValue(SSO_URL_LOOKUP)[account];
-                            if(IDENTITY_CENTER_ENDPOINT) {
-                                IDENTITY_CENTER_ENDPOINT = `https://${IDENTITY_CENTER_ENDPOINT}/start`;
+    async function addSpeedrunLink() {
+        if($('#awsc-navigation__more-menu--list').length > 0) {
+            if(!awsuserInfoCookieParsed) {
+                awsuserInfoCookieParsed = true;
+                let cookie = getCookie('aws-userInfo');
+                let session = JSON.parse($("meta[name='awsc-session-data']").attr("content"));
+                let region = session.infrastructureRegion;
+                let subdomain = window.location.host.split('.')[0];
+                let isMultiSession = (subdomain.split('-').length-1)==1;
+                GM_setValue(SR_MULTI_SESSION, isMultiSession);
+                let expiration = await getCookieExpiration(`__Secure-aws-session-id-${subdomain}`,`aws-signer-token_${region}`);
+                if(expiration) {
+                    expiration*=1000; //convert to millis
+                    console.log('Session expires:', new dayjs(expiration).fromNow());
+                }
+
+                let lastRolePersisted = false;
+                if(region) {
+                    let userInfo = cookie && !isMultiSession ? JSON.parse(cookie) : {arn: session.sessionARN};
+                    const ARN_REGEX = /^(arn:aws:sts::(?<account>\d+):assumed-role\/(?<role>(AWSReservedSSO_[\w+=,.@-]+?(_[a-z0-9]+)|[\w+=,.@-]{1,53})))\/[\w+=,.@-]{2,64}$/m
+                    let result = ARN_REGEX.exec(userInfo.arn);
+                    if(result) {
+                        let [,arn, account, role] = result;
+                        let isIdentityCenter = false;
+                        let addLink = false;
+                        let permSet = undefined;
+                        if(role.startsWith('AWSReservedSSO_')){
+                            isIdentityCenter = true;
+                            permSet = role.substring(15);
+                            arn = permSet = permSet.substring(0,permSet.lastIndexOf('_'));
+                            if(userInfo.issuer) {
+                                IDENTITY_CENTER_ENDPOINT = userInfo.issuer.substring(0,userInfo.issuer.indexOf('/start')+6);
                                 addLink = true;
                             } else {
-                                console.warn('Unable to determine session issuer');
-                            }
-                        }
-                    } else if (role?.startsWith('speedrun-')) {
-                        arn = `arn:aws:iam::${account}:role/${role}`;
-                        //attempt to extract expiration time from speedrun issuer
-                        if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
-                            try {
-                                expiration = new URL(userInfo.issuer).searchParams.get('expiration');
-                                if(expiration) {
-                                    expiration = parseInt(expiration);
+                                IDENTITY_CENTER_ENDPOINT = GM_getValue(SSO_URL_LOOKUP)[account];
+                                if(IDENTITY_CENTER_ENDPOINT) {
+                                    IDENTITY_CENTER_ENDPOINT = `https://${IDENTITY_CENTER_ENDPOINT}/start`;
+                                    addLink = true;
+                                } else {
+                                    console.warn('Unable to determine session issuer');
                                 }
-                            } catch(e) {
-                                console.error('Invalid issuer expiration',userInfo.issuer);
                             }
+                        } else if (role?.startsWith('speedrun-')) {
+                            arn = `arn:aws:iam::${account}:role/${role}`;
+                            //attempt to extract expiration time from speedrun issuer
+                            if(userInfo.issuer && userInfo.issuer.startsWith(FEDERATION_ENDPOINT)){
+                                try {
+                                    expiration = new URL(userInfo.issuer).searchParams.get('expiration');
+                                    if(expiration) {
+                                        expiration = parseInt(expiration);
+                                    }
+                                } catch(e) {
+                                    console.error('Invalid issuer expiration',userInfo.issuer);
+                                }
+                            }
+                            addLink = true;
+                        } else {
+                            arn = `arn:aws:iam::${account}:role/${role}`;
                         }
-                        addLink = true;
-                    } else {
-                        arn = `arn:aws:iam::${account}:role/${role}`;
-                    }
-                    let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
-                    if(role) {
-                        const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
-                        const accountInfo = accountInfoParent.find('div[data-testid]:first');
-                        let defaultFontColor = 'inherit';
-                        if(accountInfo.length) {
-                            try {
-                                defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
-                            } catch(e) {
-                                console.error('Unable to set default font color for role');
+                        let cacheKey = isIdentityCenter?`${account}:${permSet}`:arn;
+                        if(role) {
+                            const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
+                            const accountInfo = accountInfoParent.find('div[data-testid]:first');
+                            let defaultFontColor = 'inherit';
+                            if(accountInfo.length) {
+                                try {
+                                    defaultFontColor = window.getComputedStyle(accountInfo.find('span:first')[0]).color;
+                                } catch(e) {
+                                    console.error('Unable to set default font color for role');
+                                }
                             }
+                            let defaultColor = (role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
+                            roleColor = getConsoleColor(cacheKey, defaultColor);
+                            accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor);
+                            $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor).css('color', defaultFontColor);
                         }
-                        let defaultColor = (role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
-                        roleColor = getConsoleColor(cacheKey, defaultColor);
-                        accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor);
-                        $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor).css('color', defaultFontColor);
-                    }
-                    if(isMultiSession) {
-                        persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
-                    }
-                    persistIfNewRoleOrExpiration(cacheKey, region, expiration);
-                    lastRolePersisted=true;
-                    if(addLink) {
-                        console.log('Adding Speedrun link');
-                        let bellButton = $('div[data-testid="awsc-phd__bell-icon"]');
-                        let srLink = bellButton.clone();
-                        srLink.attr('id','speedRunLink');
-                        srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
-                        srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
-                        srLink.on('click',(event)=>{
-                            let destination = window.location.href;
-                            if(isMultiSession) {
-                                destination = destination.replace(`https://${subdomain}.`,'https://');
-                            }
-                            let url = getFederationLink(arn,destination,undefined,isIdentityCenter?account:undefined);
-                            let curHtml = srLink.html();
-                            console.log('Speedrun link',url);
-                            GM_setClipboard(url);
-                            srLink.html('Copied!');
-                            setTimeout(()=>{srLink.html(curHtml)}, 2000);
+                        if(isMultiSession) {
+                            persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
+                        }
+                        persistIfNewRoleOrExpiration(cacheKey, region, expiration);
+                        lastRolePersisted=true;
+                        if(addLink) {
+                            console.log('Adding Speedrun link');
+                            let bellButton = $('div[data-testid="awsc-phd__bell-icon"]');
+                            let srLink = bellButton.clone();
+                            srLink.attr('id','speedRunLink');
+                            srLink.attr('title',`Speedrun Link in account: ${account} with ${isIdentityCenter? `permission set: ${permSet}` : `role: ${role}`}`);
+                            srLink.html(`<img width="20" height="20" style="vertical-align:middle" src="${GM_info.script.icon}"/>`);
+                            srLink.on('click',(event)=>{
+                                let destination = window.location.href;
+                                if(isMultiSession) {
+                                    destination = destination.replace(`https://${subdomain}.`,'https://');
+                                }
+                                let url = getFederationLink(arn,destination,undefined,isIdentityCenter?account:undefined);
+                                let curHtml = srLink.html();
+                                console.log('Speedrun link',url);
+                                GM_setClipboard(url);
+                                srLink.html('Copied!');
+                                setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
-                        });
-                        bellButton.before(srLink);
+                            });
+                            bellButton.before(srLink);
+                        }
                     }
                 }
-            }
 
-            if(!lastRolePersisted && !awsuserInfoCookieParsed) {
-                persistIfNewRoleOrExpiration();
-                lastRolePersisted = true;
+                if(!lastRolePersisted && !awsuserInfoCookieParsed) {
+                    persistIfNewRoleOrExpiration();
+                    lastRolePersisted = true;
+                }
             }
+            updateConsoleFavIcon();
+            return true;
         }
-        updateConsoleFavIcon();
-        return true;
+        return false;
     }
-    return false;
-}
 
-function setConsoleAccountColor() {
-    const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
-    const accountInfo = accountInfoParent.find('div[data-testid]:first');
-    if(accountInfo.length) {
-        if(accountColor == undefined || accountColor != CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')]) {
-            console.log(`Setting console color to: ${accountInfo.attr('data-testid')}`);
-        }
-        accountColor = CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')] || CONSOLE_COLOR_LOOKUP.default;
-        if(!favIconState.colorObserver) {
-            favIconState.colorObserver = new MutationObserver((mutationsList) => {
-                for (const mutation of mutationsList) {
-                    // Check for attribute changes on favIcons
-                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-testid') {
-                        updateConsoleFavIcon();
+    function setConsoleAccountColor() {
+        const accountInfoParent = $('div[data-testid="awsc-account-info-tile"], button[data-testid="awsc-nav-more-menu"]');
+        const accountInfo = accountInfoParent.find('div[data-testid]:first');
+        if(accountInfo.length) {
+            if(accountColor == undefined || accountColor != CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')]) {
+                console.log(`Setting console color to: ${accountInfo.attr('data-testid')}`);
+            }
+            accountColor = CONSOLE_COLOR_LOOKUP[accountInfo.attr('data-testid')] || CONSOLE_COLOR_LOOKUP.default;
+            if(!favIconState.colorObserver) {
+                favIconState.colorObserver = new MutationObserver((mutationsList) => {
+                    for (const mutation of mutationsList) {
+                        // Check for attribute changes on favIcons
+                        if (mutation.type === 'attributes' && mutation.attributeName === 'data-testid') {
+                            updateConsoleFavIcon();
+                        }
                     }
-                }
-            });
-            favIconState.colorObserver.observe(accountInfo[0],{
+                });
+                favIconState.colorObserver.observe(accountInfo[0],{
                     attributes: true,
                     childList: false,
                     subtree: true,
+                });
+            }
+        }
+    }
+
+    function decodeCloudWatchURIComponent(s) {
+        return decodeURIComponent(s.toUpperCase().replace(/(\$25|\*)/g,'%'));
+    }
+
+    function unescapeCloudwatch(s) {
+        return unescape(unescape(s.replaceAll('$','%')));
+    }
+
+    function unescapeCloudwatchLogs(s) {
+        let result = {};
+        let unescaped = unescape(s.replaceAll('$','%'));
+        if(unescaped.indexOf('?')>-1){
+            let params = new URLSearchParams(unescape(s.replaceAll('$','%')).replace(/^.*\?/,''));
+            params.forEach(function(value, key) {
+                result[key] = isNaN(parseInt(value)) ? unescape(value) : +value;
             });
         }
+        return result;
     }
-}
 
-function decodeCloudWatchURIComponent(s) {
-    return decodeURIComponent(s.toUpperCase().replace(/(\$25|\*)/g,'%'));
-}
+    function unescapeCloudwatchQueryDetails(obj){
+        if (_.isString(obj) && obj.includes('*')) {
+            try {
+                return decodeURIComponent(obj.replace(/\*/g,'%'));
+            } catch(e) {
+                return obj;
+            }
+        } else if(isDict(obj)){
+            for (const [key, value] of Object.entries(obj)) {
+                obj[key] = unescapeCloudwatchQueryDetails(value);
+            }
+        } else if(Array.isArray(obj)) {
+            obj = obj.map(item => unescapeCloudwatchQueryDetails(item));
+        }
+        return obj;
+    }
 
-function unescapeCloudwatch(s) {
-    return unescape(unescape(s.replaceAll('$','%')));
-}
+    function unescapeCloudwatchInsights(s) {
+        //make ' into strings
+        s = s.replaceAll(/'([^~\)]*)/g,"\"$1\"");
+        //make =~();? into objects
+        s = s.replaceAll(/.*?(\w+)=~\((\w.*)\)(;?)/g, '{"$1":{$2}}$3');
+        s = s.replaceAll(/;(\w+)=(~[^~]+)/g, ';{"$2":$3}');
+        let offset = s.indexOf('~(');
+        while(offset>-1) {
+            let matches = XRegExp.matchRecursive(s.substring(offset), '~\\(', '\\)');
+            let toReplace = "~(" + matches[0] + ")";
+            //if it is $((\w)+(.*)) make it {"$1":$2}
+            let replacement = /^\w+/.test(matches[0]) ? `${matches[0].replace(/^(\w+)(.*)/,'{"$1":$2}')}` : `[${matches[0]}]`;
+            s = s.replace(toReplace,replacement);
+            offset = s.indexOf('~(',offset);
+        }
 
-function unescapeCloudwatchLogs(s) {
-    let result = {};
-    let unescaped = unescape(s.replaceAll('$','%'));
-    if(unescaped.indexOf('?')>-1){
-        let params = new URLSearchParams(unescape(s.replaceAll('$','%')).replace(/^.*\?/,''));
-        params.forEach(function(value, key) {
-            result[key] = isNaN(parseInt(value)) ? unescape(value) : +value;
+        //make keys that prefix an array
+        s = s.replaceAll(/(\w+)\[/g,'\"$1\":[');
+        //make keys into keys
+        s = s.replaceAll(/([~\[{])(\w+)~/g,"$1\"$2\":");
+        //replace any remaining ~ with ,
+        s = s.replaceAll('~',',');
+        //replace straggling keys i.e. ,\w+{
+        s = s.replaceAll(/(,)(\w+)([{\[])/g,'$1"$2":$3');
+        //replace any leading commas i.e. {, or [,
+        s = s.replaceAll(/([{\[:]),/g,'$1');
+        //insert comma between things like [] "[ and }{
+        s = s.replaceAll(/([}\]"])([{\[])/g,'$1,$2');
+        let result = {};
+        for(let seg of s.split(';')){
+            try {
+                $.extend(result, JSON.parse(seg.split('&')[0]));
+            }catch(error) {
+                console.log(`Unable to parse: ${seg}`);
+            }
+        }
+        return unescapeCloudwatchQueryDetails(result);
+    }
+    //console.log(unescapeCloudwatchLogs("#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255Ddf1b3ad5025b42aeb659fc10468fe964$3Fstart$3D1650006000000$26end$3D1650092399000$26filterPattern$3Da$253Db"));
+    //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))")));
+    //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~(expression~'SEARCH*28*27*7bAWS*2fApiGateway*2cApiName*7d*27*2c*20*27Average*27*2c*20300*29~id~'e1~period~300))~(~'AWS*2fApiGateway~'4XXError~'ApiName~'dev-serverless-api-sample~(id~'m1)))~region~'us-west-2~stat~'Average~period~300~start~'2022-04-14T20*3a13*3a00.988Z~end~'2022-04-14T20*3a26*3a00.741Z);query=~'*7bAWS*2fApiGateway*2cApiName*7d")));
+    //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)")));
+
+    function getFormattedTimeUnit(relativeTimeInSeconds) {
+        const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+        let mapping = [{month:relativeTimeInSeconds/30/24/3600},
+                       {week:relativeTimeInSeconds/7/24/3600},
+                       {day:relativeTimeInSeconds/24/3600},
+                       {hour:relativeTimeInSeconds/3600},
+                       {minute:relativeTimeInSeconds/60},
+                       {second:relativeTimeInSeconds}];
+        for(let i=0; i<mapping.length; i++) {
+            let key = Object.keys(mapping[i])[0];
+            let value = mapping[i][key];
+            if(value <= -1 || value>= 1 || i==mapping.length-1){
+                return rtf.format(value, key);
+            }
+        }
+    }
+
+    function getBackgroundColor() {
+        return document.getElementsByTagName("body")[0].className.match(/dark/)? '#161d26' : '#fff'
+    }
+
+    function getTimestampsPrompt() {
+        let timestamps = GM_getValue(TIMESTAMPS_KEY,[]);
+        let lastHour = { label: "last hour", type: "relative", start: "-3600", end:"0" };
+        //If you have accessed a timestamp <= 1 hour ago, push last hour to end of list, otherwise put it on front
+        if(timestamps.length && dayjs(timestamps[0].timestamp).diff(dayjs(),'hour') < 0) {
+            timestamps.unshift(lastHour);
+        } else {
+            timestamps.push(lastHour);
+        }
+        let timestampsMap = {};
+        timestamps.forEach((item) => {
+            timestampsMap[item.label] = JSON.stringify(item);
         });
+        return `~~~srTimestampValue=Time Interval {"type":"select","cast":"json","options":${JSON.stringify(timestampsMap)},"default":${JSON.stringify(timestampsMap[timestamps[0].label])},"suppress":true}~~~`;
     }
-    return result;
-}
 
-function unescapeCloudwatchQueryDetails(obj){
-    if (_.isString(obj) && obj.includes('*')) {
-        try {
-            return decodeURIComponent(obj.replace(/\*/g,'%'));
-        } catch(e) {
-            return obj;
+    function convertDuration(timestamp) {
+        if((timestamp+"").includes('P')) {
+            return (timestamp.startsWith("-") ? -1 : 1) * dayjs.duration(timestamp.replace("-","")).asSeconds();
         }
-    } else if(isDict(obj)){
-        for (const [key, value] of Object.entries(obj)) {
-            obj[key] = unescapeCloudwatchQueryDetails(value);
-        }
-    } else if(Array.isArray(obj)) {
-        obj = obj.map(item => unescapeCloudwatchQueryDetails(item));
-    }
-    return obj;
-}
-
-function unescapeCloudwatchInsights(s) {
-    //make ' into strings
-    s = s.replaceAll(/'([^~\)]*)/g,"\"$1\"");
-    //make =~();? into objects
-    s = s.replaceAll(/.*?(\w+)=~\((\w.*)\)(;?)/g, '{"$1":{$2}}$3');
-    s = s.replaceAll(/;(\w+)=(~[^~]+)/g, ';{"$2":$3}');
-    let offset = s.indexOf('~(');
-    while(offset>-1) {
-        let matches = XRegExp.matchRecursive(s.substring(offset), '~\\(', '\\)');
-        let toReplace = "~(" + matches[0] + ")";
-        //if it is $((\w)+(.*)) make it {"$1":$2}
-        let replacement = /^\w+/.test(matches[0]) ? `${matches[0].replace(/^(\w+)(.*)/,'{"$1":$2}')}` : `[${matches[0]}]`;
-        s = s.replace(toReplace,replacement);
-        offset = s.indexOf('~(',offset);
+        return timestamp;
     }
 
-    //make keys that prefix an array
-    s = s.replaceAll(/(\w+)\[/g,'\"$1\":[');
-    //make keys into keys
-    s = s.replaceAll(/([~\[{])(\w+)~/g,"$1\"$2\":");
-    //replace any remaining ~ with ,
-    s = s.replaceAll('~',',');
-    //replace straggling keys i.e. ,\w+{
-    s = s.replaceAll(/(,)(\w+)([{\[])/g,'$1"$2":$3');
-    //replace any leading commas i.e. {, or [,
-    s = s.replaceAll(/([{\[:]),/g,'$1');
-    //insert comma between things like [] "[ and }{
-    s = s.replaceAll(/([}\]"])([{\[])/g,'$1,$2');
-    let result = {};
-    for(let seg of s.split(';')){
-        try {
-            $.extend(result, JSON.parse(seg.split('&')[0]));
-        }catch(error) {
-            console.log(`Unable to parse: ${seg}`);
-        }
-    }
-    return unescapeCloudwatchQueryDetails(result);
-}
-//console.log(unescapeCloudwatchLogs("#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255Ddf1b3ad5025b42aeb659fc10468fe964$3Fstart$3D1650006000000$26end$3D1650092399000$26filterPattern$3Da$253Db"));
-//console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))")));
-//console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~(expression~'SEARCH*28*27*7bAWS*2fApiGateway*2cApiName*7d*27*2c*20*27Average*27*2c*20300*29~id~'e1~period~300))~(~'AWS*2fApiGateway~'4XXError~'ApiName~'dev-serverless-api-sample~(id~'m1)))~region~'us-west-2~stat~'Average~period~300~start~'2022-04-14T20*3a13*3a00.988Z~end~'2022-04-14T20*3a26*3a00.741Z);query=~'*7bAWS*2fApiGateway*2cApiName*7d")));
-//console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)")));
-
-function getFormattedTimeUnit(relativeTimeInSeconds) {
-    const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-    let mapping = [{month:relativeTimeInSeconds/30/24/3600},
-                   {week:relativeTimeInSeconds/7/24/3600},
-                   {day:relativeTimeInSeconds/24/3600},
-                   {hour:relativeTimeInSeconds/3600},
-                   {minute:relativeTimeInSeconds/60},
-                   {second:relativeTimeInSeconds}];
-    for(let i=0; i<mapping.length; i++) {
-        let key = Object.keys(mapping[i])[0];
-        let value = mapping[i][key];
-        if(value <= -1 || value>= 1 || i==mapping.length-1){
-            return rtf.format(value, key);
-        }
-    }
-}
-
-function getBackgroundColor() {
-    return document.getElementsByTagName("body")[0].className.match(/dark/)? '#161d26' : '#fff'
-}
-
-function getTimestampsPrompt() {
-    let timestamps = GM_getValue(TIMESTAMPS_KEY,[]);
-    let lastHour = { label: "last hour", type: "relative", start: "-3600", end:"0" };
-    //If you have accessed a timestamp <= 1 hour ago, push last hour to end of list, otherwise put it on front
-    if(timestamps.length && dayjs(timestamps[0].timestamp).diff(dayjs(),'hour') < 0) {
-        timestamps.unshift(lastHour);
-    } else {
-        timestamps.push(lastHour);
-    }
-    let timestampsMap = {};
-    timestamps.forEach((item) => {
-        timestampsMap[item.label] = JSON.stringify(item);
-    });
-    return `~~~srTimestampValue=Time Interval {"type":"select","cast":"json","options":${JSON.stringify(timestampsMap)},"default":${JSON.stringify(timestampsMap[timestamps[0].label])},"suppress":true}~~~`;
-}
-
-function convertDuration(timestamp) {
-    if((timestamp+"").includes('P')) {
-        return (timestamp.startsWith("-") ? -1 : 1) * dayjs.duration(timestamp.replace("-","")).asSeconds();
-    }
-    return timestamp;
-}
-
-function waitForSelector(selector, source=document) {
-    return new Promise(resolve => {
-        if (source.querySelector(selector)) {
-            return resolve(source.querySelector(selector));
-        }
-
-        const observer = new MutationObserver(mutations => {
+    function waitForSelector(selector, source=document) {
+        return new Promise(resolve => {
             if (source.querySelector(selector)) {
-                resolve(source.querySelector(selector));
-                observer.disconnect();
+                return resolve(source.querySelector(selector));
+            }
+
+            const observer = new MutationObserver(mutations => {
+                if (source.querySelector(selector)) {
+                    resolve(source.querySelector(selector));
+                    observer.disconnect();
+                }
+
+            });
+            try {
+                observer.observe(source.body ? source.body : source, {
+                    childList: true,
+                    subtree: true
+                });
+            }catch (e) {
+                console.log(`Unable to observe ${selector}`, e);
             }
 
         });
-        try {
-            observer.observe(source.body ? source.body : source, {
-                childList: true,
-                subtree: true
-            });
-        }catch (e) {
-            console.log(`Unable to observe ${selector}`, e);
+    }
+
+    function extractCloudWatchTimeAndAddSnapshot() {
+        if (!/^\/cloudwatch\/home/.test(window.location.pathname)) {
+            return;
+        }
+        let obj;
+        let hash = window.location.hash;
+        let src = firstGroup(/#(\w+:\w+-?\w*)/, hash);
+        switch(src) {
+            case 'logsV2:log-groups':
+                obj = unescapeCloudwatchLogs(hash);
+                break;
+            case 'logsV2:logs-insights':
+            case 'metricsV2:graph':
+                obj = unescapeCloudwatchInsights(unescapeCloudwatch(hash));
+                break;
+            case 'alarmsV2:alarm':
+                waitForSelector('#microConsole-Alarms').then(async (result) => {
+                    while(result.contentWindow.document.readyState !== 'complete'){
+                        await sleep(500);
+                    }
+                    waitForSelector('div > button[data-test-id=btn-refresh]', result.contentWindow.document).then(
+                        async(refreshDiv) =>
+                        {
+                            if(!result.contentWindow.document.getElementById('srSnapshot')) {
+                                // sleep until refresh button stops spinning.
+                                while($(refreshDiv).attr('disabled') == 'disabled'){
+                                    await sleep(100);
+                                }
+                                let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
+                                let snapshotDiv = $(refreshDiv).parent().clone();
+                                let snapshotButton = $(snapshotDiv).find('button');
+                                snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
+                                snapshotButton.off('click');
+                                let span = snapshotButton.find('span');
+                                span.find('svg').replaceWith($(svg));
+                                snapshotButton.on('click', (event)=> {
+                                    domSnapshot(refreshDiv.ownerDocument.querySelector('.graph-section-content').parentElement, `CloudWatch-${dayjs().format()}.png`);
+                                });
+                                $(refreshDiv).parent().after(snapshotDiv);
+                            }
+                        }
+                    );
+                });
+                return;
+            default:
+                return;
         }
 
-    });
-}
+        //unescape(unescape(s.replaceAll('$','%')))
+        //#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255D456616728e3e40d093af1981cbe2d8b1$3Fstart$3D1649228400000$26end$3D1649235600000
+        //#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))
+        //#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)
+        let start = firstNonNull(nullSafe(obj.queryDetail).start,nullSafe(obj.graph).start);
+        let end = firstNonNull(nullSafe(obj.queryDetail).end,nullSafe(obj.graph).end);
+        let timeType = nullSafe(obj.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
+        if(start != undefined && end != undefined && timeType != undefined){
+            let timestamp = {};
+            timestamp.start = start;
+            timestamp.end = end;
+            if(timeType === 'RELATIVE'){
+                timestamp.type = 'relative';
+                timestamp.label = `${getFormattedTimeUnit(convertDuration(start))} - ${getFormattedTimeUnit(convertDuration(end))}`;
+            }else{
+                timestamp.label = `${timestamp.start} - ${timestamp.end}`.replace(/T/g,' ').replace(/\.\d{3}Z/g,'Z');
+                timestamp.type = 'fixed';
+            }
+            if(timestamp.label) {
+                console.log(`Extracted ${timestamp.type} timestamp`,timestamp);
+                persistTimestamp(timestamp, TIMESTAMPS_KEY);
+            }
+        }
 
-function extractCloudWatchTimeAndAddSnapshot() {
-    if (!/^\/cloudwatch\/home/.test(window.location.pathname)) {
-        return;
-    }
-    let obj;
-    let hash = window.location.hash;
-    let src = firstGroup(/#(\w+:\w+-?\w*)/, hash);
-    switch(src) {
-        case 'logsV2:log-groups':
-            obj = unescapeCloudwatchLogs(hash);
-            break;
-        case 'logsV2:logs-insights':
-        case 'metricsV2:graph':
-            obj = unescapeCloudwatchInsights(unescapeCloudwatch(hash));
-            break;
-        case 'alarmsV2:alarm':
-            waitForSelector('#microConsole-Alarms').then(async (result) => {
+        if(src=='logsV2:logs-insights') {
+            waitForSelector('#microConsole-Logs').then(async (result) => {
                 while(result.contentWindow.document.readyState !== 'complete'){
                     await sleep(500);
                 }
-                waitForSelector('div > button[data-test-id=btn-refresh]', result.contentWindow.document).then(
-                    async(refreshDiv) =>
+                const buttonPortalSelector = '.query-detail-tab-button-options';
+                waitForSelector(buttonPortalSelector, result.contentWindow.document).then(
+                    histogram =>
                     {
                         if(!result.contentWindow.document.getElementById('srSnapshot')) {
-                            // sleep until refresh button stops spinning.
-                            while($(refreshDiv).attr('disabled') == 'disabled'){
-                                await sleep(100);
-                            }
                             let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
-                            let snapshotDiv = $(refreshDiv).parent().clone();
-                            let snapshotButton = $(snapshotDiv).find('button');
+                            let isLargeButton = false;
+                            let snapshotButton = $(histogram).find('button[title="table-preferences"]');
+                            if (!snapshotButton.length) {
+                                snapshotButton = $(histogram).find('button');
+                                isLargeButton = true;
+                            }
+                            let snapshotButtonParentParent = snapshotButton.last().parent().parent();
+                            let snapshotButtonContainer = snapshotButton.last().parent().clone();
+                            snapshotButton = snapshotButton.last().clone();
+                            snapshotButtonContainer.empty();
+                            snapshotButtonContainer.append(snapshotButton);
                             snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
+                            if (isLargeButton) {
+                                snapshotButton.addClass('logs--button-separator-left');
+                                snapshotButton.find('span').text('Snapshot');
+                            } else {
+                                snapshotButton.find('svg').replaceWith(svg);
+                            }
                             snapshotButton.off('click');
-                            let span = snapshotButton.find('span');
-                            span.find('svg').replaceWith($(svg));
                             snapshotButton.on('click', (event)=> {
-                                domSnapshot(refreshDiv.ownerDocument.querySelector('.graph-section-content').parentElement, `CloudWatch-${dayjs().format()}.png`);
+                                if(histogram) {
+                                    domSnapshot(histogram.ownerDocument.querySelector('.query-statistics') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                                }
                             });
-                            $(refreshDiv).parent().after(snapshotDiv);
+                            if(!isLargeButton) {
+                                snapshotButtonParentParent.append(snapshotButtonContainer);
+                            } else {
+                                $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
+                            }
                         }
                     }
                 );
             });
-            return;
-        default:
-            return;
-    }
-
-    //unescape(unescape(s.replaceAll('$','%')))
-    //#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255D456616728e3e40d093af1981cbe2d8b1$3Fstart$3D1649228400000$26end$3D1649235600000
-    //#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))
-    //#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)
-    let start = firstNonNull(nullSafe(obj.queryDetail).start,nullSafe(obj.graph).start);
-    let end = firstNonNull(nullSafe(obj.queryDetail).end,nullSafe(obj.graph).end);
-    let timeType = nullSafe(obj.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
-    if(start != undefined && end != undefined && timeType != undefined){
-        let timestamp = {};
-        timestamp.start = start;
-        timestamp.end = end;
-        if(timeType === 'RELATIVE'){
-            timestamp.type = 'relative';
-            timestamp.label = `${getFormattedTimeUnit(convertDuration(start))} - ${getFormattedTimeUnit(convertDuration(end))}`;
-        }else{
-            timestamp.label = `${timestamp.start} - ${timestamp.end}`.replace(/T/g,' ').replace(/\.\d{3}Z/g,'Z');
-            timestamp.type = 'fixed';
-        }
-        if(timestamp.label) {
-            console.log(`Extracted ${timestamp.type} timestamp`,timestamp);
-            persistTimestamp(timestamp, TIMESTAMPS_KEY);
         }
     }
 
-    if(src=='logsV2:logs-insights') {
-        waitForSelector('#microConsole-Logs').then(async (result) => {
-            while(result.contentWindow.document.readyState !== 'complete'){
-                await sleep(500);
-            }
-            const buttonPortalSelector = '.query-detail-tab-button-options';
-            waitForSelector(buttonPortalSelector, result.contentWindow.document).then(
-                histogram =>
-                {
-                    if(!result.contentWindow.document.getElementById('srSnapshot')) {
-                        let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
-                        let isLargeButton = false;
-                        let snapshotButton = $(histogram).find('button[title="table-preferences"]');
-                        if (!snapshotButton.length) {
-                            snapshotButton = $(histogram).find('button');
-                            isLargeButton = true;
-                        }
-                        let snapshotButtonParentParent = snapshotButton.last().parent().parent();
-                        let snapshotButtonContainer = snapshotButton.last().parent().clone();
-                        snapshotButton = snapshotButton.last().clone();
-                        snapshotButtonContainer.empty();
-                        snapshotButtonContainer.append(snapshotButton);
-                        snapshotButton.attr('id','srSnapshot').attr('title','Snapshot visualization').attr('aria-label','Snapshot visualization').attr('data-test-id','snapshot');
-                        if (isLargeButton) {
-                            snapshotButton.addClass('logs--button-separator-left');
-                            snapshotButton.find('span').text('Snapshot');
-                        } else {
-                            snapshotButton.find('svg').replaceWith(svg);
-                        }
-                        snapshotButton.off('click');
-                        snapshotButton.on('click', (event)=> {
-                            if(histogram) {
-                                domSnapshot(histogram.ownerDocument.querySelector('.query-statistics') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
-                            }
-                        });
-                        if(!isLargeButton) {
-                            snapshotButtonParentParent.append(snapshotButtonContainer);
-                        } else {
-                            $(result.contentWindow.document).find(buttonPortalSelector).append(snapshotButton);
-                        }
-                    }
-                }
-            );
-        });
-    }
-}
-
-function isSRPage() {
-    // omit page not found and marketing pages
-    if($('#not-found-search,#register').length) {
-        return false;
-    }
-    let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname) || ACTIONS_REGEX.exec(location.pathname);
-    if(REPO_REGEX.exec(location.pathname) && location.search) {
-        const params = new URLSearchParams(location.search);
-        if(params.has('plain')) {
+    function isSRPage() {
+        // omit page not found and marketing pages
+        if($('#not-found-search,#register').length) {
             return false;
         }
-    }
-    return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
-}
-
-function getFavIconData(icon){
-    const canvas = $('<canvas/>')[0];
-    canvas.width = canvas.height=64;
-    const ctx = canvas.getContext('2d');
-
-    ctx.drawImage(icon, 0, 0, 48, 48);
-    ctx.fillStyle = roleColor || accountColor;
-    ctx.fillRect(0, 48, 64, 64);
-    ctx.fillStyle = accountColor || roleColor;
-    ctx.fillRect(48, 0, 64, 64);
-    ctx.strokeStyle = 'white';
-    ctx.beginPath();
-    ctx.moveTo(0,48);
-    ctx.lineTo(48,48);
-    ctx.lineTo(48,0);
-    ctx.stroke();
-    favIconState.favIconData = canvas.toDataURL();
-    favIconState.lastFavIconColors = `${accountColor}${roleColor}`;
-    return favIconState.favIconData;
-}
-
-function setConsoleFavIconHref(icon) {
-    icon.attr('href', getFavIconData(favIconState.lastFavIcon));
-                    // if the browser loaded a different favicon, force it to reload by adding and removing it.
-                    const cloned = icon.clone();
-                    if(favIconState.refreshTimer) {
-                        clearTimeout(favIconState.refreshTimer);
-                    }
-                    favIconState.refreshTimer = setTimeout(()=>{
-                        icon.remove();
-                        $(document.head).append(cloned);
-                        favIconState.refreshTimer = 0;
-                    }, 3000);
-}
-
-function updateConsoleFavIcon(){
-    setConsoleAccountColor();
-    $('link[rel~="icon"]').each((i, icon) => {
-        icon = $(icon);
-        let href = icon.attr('href');
-        if(href && (roleColor || accountColor)) {
-            if(href.startsWith('http') ) {
-                //secrets manager favicon is messed up without this
-                href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
-                $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
-                    favIconState.lastFavIcon = $(this)[0];
-                    setConsoleFavIconHref(icon);
-                }).on('error', function() {
-                    //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
-                    console.log('Failed to load favicon', href);
-                    if(favIconState.favIconData) {
-                        icon.attr('href', favIconState.favIconData);
-                    }
-                }).attr('src', href);
-            } else if(favIconState.lastFavIconColors != `${accountColor}${roleColor}`) {
-                console.log('Rerendering favIcon due to account color change');
-                setConsoleFavIconHref(icon);
+        let result = WIKI_REGEX.exec(location.pathname) || REPO_REGEX.exec(location.pathname) || ACTIONS_REGEX.exec(location.pathname);
+        if(REPO_REGEX.exec(location.pathname) && location.search) {
+            const params = new URLSearchParams(location.search);
+            if(params.has('plain')) {
+                return false;
             }
         }
-    });
-    if(!favIconState.favIconObserver) {
-        favIconState.favIconObserver = new MutationObserver((mutationsList) => {
-            for (const mutation of mutationsList) {
-                // Check for attribute changes on favIcons
-                if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.tagName === 'LINK' && mutation.target.rel && mutation.target.rel.includes('icon')) {
-                    updateConsoleFavIcon();
+        return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
+    }
+
+    function getFavIconData(icon){
+        const canvas = $('<canvas/>')[0];
+        canvas.width = canvas.height=64;
+        const ctx = canvas.getContext('2d');
+
+        ctx.drawImage(icon, 0, 0, 48, 48);
+        ctx.fillStyle = roleColor || accountColor;
+        ctx.fillRect(0, 48, 64, 64);
+        ctx.fillStyle = accountColor || roleColor;
+        ctx.fillRect(48, 0, 64, 64);
+        ctx.strokeStyle = 'white';
+        ctx.beginPath();
+        ctx.moveTo(0,48);
+        ctx.lineTo(48,48);
+        ctx.lineTo(48,0);
+        ctx.stroke();
+        favIconState.favIconData = canvas.toDataURL();
+        favIconState.lastFavIconColors = `${accountColor}${roleColor}`;
+        return favIconState.favIconData;
+    }
+
+    function setConsoleFavIconHref(icon) {
+        icon.attr('href', getFavIconData(favIconState.lastFavIcon));
+        // if the browser loaded a different favicon, force it to reload by adding and removing it.
+        const cloned = icon.clone();
+        if(favIconState.refreshTimer) {
+            clearTimeout(favIconState.refreshTimer);
+        }
+        favIconState.refreshTimer = setTimeout(()=>{
+            icon.remove();
+            $(document.head).append(cloned);
+            favIconState.refreshTimer = 0;
+        }, 3000);
+    }
+
+    function updateConsoleFavIcon(){
+        setConsoleAccountColor();
+        $('link[rel~="icon"]').each((i, icon) => {
+            icon = $(icon);
+            let href = icon.attr('href');
+            if(href && (roleColor || accountColor)) {
+                if(href.startsWith('http') ) {
+                    //secrets manager favicon is messed up without this
+                    href = href.replaceAll(/(https:\/\/.*?)https:\/\/.*?\/(images\/.*)$/g,'$1$2');
+                    $('<img/>',{crossOrigin: "anonymous"}).on('load', function() {
+                        favIconState.lastFavIcon = $(this)[0];
+                        setConsoleFavIconHref(icon);
+                    }).on('error', function() {
+                        //this is usually due to a CORS error, if so, fallback to the one that didn't have an error
+                        console.log('Failed to load favicon', href);
+                        if(favIconState.favIconData) {
+                            icon.attr('href', favIconState.favIconData);
+                        }
+                    }).attr('src', href);
+                } else if(favIconState.lastFavIconColors != `${accountColor}${roleColor}`) {
+                    console.log('Rerendering favIcon due to account color change');
+                    setConsoleFavIconHref(icon);
                 }
             }
         });
-
-        favIconState.favIconObserver.observe(document.head,{
-            attributes: true,
-            childList: false,
-            subtree: true,
-        });
-    }
-}
-
-if(location.host.endsWith('console.aws.amazon.com')) {
-    window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
-    const body = document.querySelector("body");
-    if(body) {
-        if(!(await addSpeedrunLink())) {
-            let observer = new MutationObserver(async (mutations, o) => {
-                if(await addSpeedrunLink()) {
-                    o.disconnect();
+        if(!favIconState.favIconObserver) {
+            favIconState.favIconObserver = new MutationObserver((mutationsList) => {
+                for (const mutation of mutationsList) {
+                    // Check for attribute changes on favIcons
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'href' && mutation.target.tagName === 'LINK' && mutation.target.rel && mutation.target.rel.includes('icon')) {
+                        updateConsoleFavIcon();
+                    }
                 }
             });
-            observer.observe(body, {attributeFilter: [ "data-testid"], childList:true});
+
+            favIconState.favIconObserver.observe(document.head,{
+                attributes: true,
+                childList: false,
+                subtree: true,
+            });
         }
-        extractCloudWatchTimeAndAddSnapshot();
     }
-    return;
-}
 
-const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
-if (window.onurlchange === null && location.host.endsWith('github.com')) {
-    window.addEventListener('urlchange', async (info) => {
-        persistIfIssue();
-        scheduleUpdate(new URL(info.url));
-    });
-}
-
-async function updatePageTimerFired(location) {
-    updatingPageTimer = undefined;
-    if(isSRPage()) {
-        persistLastPath(location);
-        //wait for page to render
-        await waitForSelector('.markdown-body > *,.markdown-title > *');
-        let maxAttempts = 50;
-        while(doneLoading()>0 && maxAttempts-- > 0) {
-            await sleep(100);
-        }
-        if(maxAttempts > 0) {
-            await updatePage(`urlchange ${lastPath}`);
-        } else {
-            console.log('No changes detected');
-            return;
-        }
-    } else {
-        persistLastPath(location);
-    }
-    showToolbarOnPage();
-}
-
-function scheduleUpdate(location) {
-    if(updatingPageTimer) {
-        clearTimeout(updatingPageTimer);
-    }
-    updatingPageTimer = setTimeout(updatePageTimerFired, 100, location);
-}
-
-function persistLastPath(location) {
-    console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
-    lastPath = location.pathname + location.search;
-}
-
-async function sleep(interval=500) {
-    return new Promise(resolve => setTimeout(resolve, interval));
-}
-
-function destroySelect2(...selectors) {
-    selectors.forEach(selector => {
-        let element = $(selector);
-        if (element && element.hasClass("select2-hidden-accessible")) {
-            element.next().remove();
-        }});
-}
-
-function bindDataAndEvents() {
-    destroySelect2("#service","#region");
-    Object.keys(dataAndEvents).forEach((key) => {
-        let element = $(`#${key}`);
-        if(element) {
-            if(dataAndEvents[key].data) {
-                for (const [dKey, value] of Object.entries(dataAndEvents[key].data)) {
-                    element.data(dKey, value);
-                }
+    if(location.host.endsWith('console.aws.amazon.com')) {
+        window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
+        const body = document.querySelector("body");
+        if(body) {
+            if(!(await addSpeedrunLink())) {
+                let observer = new MutationObserver(async (mutations, o) => {
+                    if(await addSpeedrunLink()) {
+                        o.disconnect();
+                    }
+                });
+                observer.observe(body, {attributeFilter: [ "data-testid"], childList:true});
             }
-            if(dataAndEvents[key].events) {
-                element.off();
-                for (const [event, value] of Object.entries(dataAndEvents[key].events)) {
-                    element.on(event, value);
-                }
-            }
-        } else {
-            console.warning(`Unable to bind, no such id: ${key}`);
+            extractCloudWatchTimeAndAddSnapshot();
         }
-    })
-    $('#service,#region').select2(
-        {
-            dropdownAutoWidth : true,
-            width:'copy'
+        return;
+    }
+
+    const ISSUES_PATH_REGEX = /\/issues\/(\d+)$/;
+    if (window.onurlchange === null && location.host.endsWith('github.com')) {
+        window.addEventListener('urlchange', async (info) => {
+            persistIfIssue();
+            scheduleUpdate(new URL(info.url));
         });
-    $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
-}
+    }
 
-const HEADER = /^#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
-const LITERAL = /\$\{.+?\}/s;
-const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
-const PROMPT_G = new RegExp(PROMPT, 'g');
-const COMMENT = /(^\s*|[^\s](\s+))((\/\/.*)(\n)?)/;
-const COMMENT_G = new RegExp(COMMENT, 'mg');
-const OUTPUT = /^-{3,}output-{3,}/im;
-const TRAILING_WHITESPACE = /\s+$/;
-const HAS_DOM_CONTENT_REGEX = /\[object \w*Element\]/;
-const SR_CONFIG = "srConfig";
-const GLOBAL_PREFIX = "g_";
-const SR_ENABLED_PATHS = `${STORAGE_NAMESPACE}enabledPaths`;
-const SR_REGION_FILTER = "srRegionFilter";
-const SR_HIDE_USER_SERVICE = "srHideUserService";
-const SR_SERVICE_FILTER = "srServiceFilter";
-const USER_SERVICE = "${user}";
-const varNameCache = new Map();
-const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
-const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/wiki\/?.*(?<!\/_(edit|new))$/i;
-const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/[^\/]+\.md)|(\/tree\/([^\/]\/?)+(.*\/[^\/]+\.md)?))?$/i;
-const ACTIONS_REGEX = /^(?<path>\/.*?\/.*?\/actions)\/runs\/\d+$/i;
-const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
-const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
-const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
-const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
-const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
+    async function updatePageTimerFired(location) {
+        updatingPageTimer = undefined;
+        if(isSRPage()) {
+            persistLastPath(location);
+            //wait for page to render
+            await waitForSelector('.markdown-body > *,.markdown-title > *');
+            let maxAttempts = 50;
+            while(doneLoading()>0 && maxAttempts-- > 0) {
+                await sleep(100);
+            }
+            if(maxAttempts > 0) {
+                await updatePage(`urlchange ${lastPath}`);
+            } else {
+                console.log('No changes detected');
+                return;
+            }
+        } else {
+            persistLastPath(location);
+        }
+        showToolbarOnPage();
+    }
+
+    function scheduleUpdate(location) {
+        if(updatingPageTimer) {
+            clearTimeout(updatingPageTimer);
+        }
+        updatingPageTimer = setTimeout(updatePageTimerFired, 100, location);
+    }
+
+    function persistLastPath(location) {
+        console.log(`Changing lastpath to ${location.pathname + location.search} from ${lastPath}` );
+        lastPath = location.pathname + location.search;
+    }
+
+    async function sleep(interval=500) {
+        return new Promise(resolve => setTimeout(resolve, interval));
+    }
+
+    function destroySelect2(...selectors) {
+        selectors.forEach(selector => {
+            let element = $(selector);
+            if (element && element.hasClass("select2-hidden-accessible")) {
+                element.next().remove();
+            }});
+    }
+
+    function bindDataAndEvents() {
+        destroySelect2("#service","#region");
+        Object.keys(dataAndEvents).forEach((key) => {
+            let element = $(`#${key}`);
+            if(element) {
+                if(dataAndEvents[key].data) {
+                    for (const [dKey, value] of Object.entries(dataAndEvents[key].data)) {
+                        element.data(dKey, value);
+                    }
+                }
+                if(dataAndEvents[key].events) {
+                    element.off();
+                    for (const [event, value] of Object.entries(dataAndEvents[key].events)) {
+                        element.on(event, value);
+                    }
+                }
+            } else {
+                console.warning(`Unable to bind, no such id: ${key}`);
+            }
+        })
+        $('#service,#region').select2(
+            {
+                dropdownAutoWidth : true,
+                width:'copy'
+            });
+        $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
+    }
+
+    const HEADER = /^#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
+    const LITERAL = /\$\{.+?\}/s;
+    const PROMPT = /~~~(?:(\w[\w-:]+)=)?(.+?)(\s*{.*?\}\s*)?~~~/;
+    const PROMPT_G = new RegExp(PROMPT, 'g');
+    const COMMENT = /(^\s*|[^\s](\s+))((\/\/.*)(\n)?)/;
+    const COMMENT_G = new RegExp(COMMENT, 'mg');
+    const OUTPUT = /^-{3,}output-{3,}/im;
+    const TRAILING_WHITESPACE = /\s+$/;
+    const HAS_DOM_CONTENT_REGEX = /\[object \w*Element\]/;
+    const SR_CONFIG = "srConfig";
+    const GLOBAL_PREFIX = "g_";
+    const SR_ENABLED_PATHS = `${STORAGE_NAMESPACE}enabledPaths`;
+    const SR_REGION_FILTER = "srRegionFilter";
+    const SR_HIDE_USER_SERVICE = "srHideUserService";
+    const SR_SERVICE_FILTER = "srServiceFilter";
+    const USER_SERVICE = "${user}";
+    const varNameCache = new Map();
+    const REGION_REGEX = /^(?<area>.*?) \((?<prettyName>.*?)\)/;
+    const WIKI_REGEX = /^(?<path>\/.*?\/.*?)\/wiki\/?.*(?<!\/_(edit|new))$/i;
+    const REPO_REGEX = /^(?<path>\/[^\/]+\/[^\/]+)(\/|(\/blob\/.*\/[^\/]+\.md)|(\/tree\/([^\/]\/?)+(.*\/[^\/]+\.md)?))?$/i;
+    const ACTIONS_REGEX = /^(?<path>\/.*?\/.*?\/actions)\/runs\/\d+$/i;
+    const LAST_REGION_KEY = `${STORAGE_NAMESPACE}lastRegion`;
+    const LAST_SERVICE_KEY = `${STORAGE_NAMESPACE}lastService`;
+    const ISSUES_KEY = `${STORAGE_NAMESPACE}issues`;
+    const CREDS_REQUEST = `curl -s -S -b ~/.speedrun/cookie -L -X POST -H "Content-Type: application/json; charset=UTF-8" -A "Speedrun V${GM_info.script.version}" -d '{"role": "$\{role}"DURATION}' ${FEDERATION_ENDPOINT}/credentials/$\{account}`;
+    const PERL_EXTRACT = `perl -ne 'use Term::ANSIColor qw(:constants); my $line = $_; my %mapping = (SessionToken=>"AWS_SESSION_TOKEN",SecretAccessKey=>"AWS_SECRET_ACCESS_KEY",AccessKeyId=>"AWS_ACCESS_KEY_ID",Expiration=>"AWS_CREDENTIAL_EXPIRATION"); while (($key, $value) = each (%mapping)) {my $val = $line; die BOLD WHITE ON_RED . "Unable to get credentials did you run srinit and do you have access to the role?" . RESET . RED . "\\n$line" . RESET . "\\n" if ($line=~/error/);$val =~ s/.*?"$key":"(.*?)".*$/$1/e; chomp($val); print "export $value=$val\\n";}print "export AWS_DEFAULT_REGION=$\{region}\\nexport AWS_REGION=$\{region}\\n";'`
     const COPY_WITH_CREDS = `credentials=$(CREDS_REQUEST | ${PERL_EXTRACT}) && $(echo $credentials)`;
 const COPY_WITH_CREDS_GRANTED = `${ASSUME_COMMAND} $\{profile}`;
 const COPY_WITH_REGION = `export AWS_DEFAULT_REGION=$\{region}\nexport AWS_REGION=$\{region}\n`;
@@ -1608,25 +1629,25 @@ let templates = {
     }
 };
 
-    var pageConfig = {};
+var pageConfig = {};
 
-    //https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
-    function escapeRegex(s) {
-        return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    };
+//https://stackoverflow.com/questions/3561493/is-there-a-regexp-escape-function-in-javascript
+function escapeRegex(s) {
+    return s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+};
 
-    let user = $("meta[name='user-login']").attr("content");
+let user = $("meta[name='user-login']").attr("content");
 
-    let tabNames = {
-        "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
-        "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
-        "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
-        "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
-    }
+let tabNames = {
+    "Preview" : "M14.064 0a8.75 8.75 0 00-6.187 2.563l-.459.458c-.314.314-.616.641-.904.979H3.31a1.75 1.75 0 00-1.49.833L.11 7.607a.75.75 0 00.418 1.11l3.102.954c.037.051.079.1.124.145l2.429 2.428c.046.046.094.088.145.125l.954 3.102a.75.75 0 001.11.418l2.774-1.707a1.75 1.75 0 00.833-1.49V9.485c.338-.288.665-.59.979-.904l.458-.459A8.75 8.75 0 0016 1.936V1.75A1.75 1.75 0 0014.25 0h-.186zM10.5 10.625c-.088.06-.177.118-.266.175l-2.35 1.521.548 1.783 1.949-1.2a.25.25 0 00.119-.213v-2.066zM3.678 8.116L5.2 5.766c.058-.09.117-.178.176-.266H3.309a.25.25 0 00-.213.119l-1.2 1.95 1.782.547zm5.26-4.493A7.25 7.25 0 0114.063 1.5h.186a.25.25 0 01.25.25v.186a7.25 7.25 0 01-2.123 5.127l-.459.458a15.21 15.21 0 01-2.499 2.02l-2.317 1.5-2.143-2.143 1.5-2.317a15.25 15.25 0 012.02-2.5l.458-.458h.002zM12 5a1 1 0 11-2 0 1 1 0 012 0zm-8.44 9.56a1.5 1.5 0 10-2.12-2.12c-.734.73-1.047 2.332-1.15 3.003a.23.23 0 00.265.265c.671-.103 2.273-.416 3.005-1.148z",
+    "Code" : "M4.72 3.22a.75.75 0 011.06 1.06L2.06 8l3.72 3.72a.75.75 0 11-1.06 1.06L.47 8.53a.75.75 0 010-1.06l4.25-4.25zm6.56 0a.75.75 0 10-1.06 1.06L13.94 8l-3.72 3.72a.75.75 0 101.06 1.06l4.25-4.25a.75.75 0 000-1.06l-4.25-4.25z",
+    "Debug" : "M4.72.22a.75.75 0 011.06 0l1 .999a3.492 3.492 0 012.441 0l.999-1a.75.75 0 111.06 1.061l-.775.776c.616.63.995 1.493.995 2.444v.327c0 .1-.009.197-.025.292.408.14.764.392 1.029.722l1.968-.787a.75.75 0 01.556 1.392L13 7.258V9h2.25a.75.75 0 010 1.5H13v.5c0 .409-.049.806-.141 1.186l2.17.868a.75.75 0 01-.557 1.392l-2.184-.873A4.997 4.997 0 018 16a4.997 4.997 0 01-4.288-2.427l-2.183.873a.75.75 0 01-.558-1.392l2.17-.868A5.013 5.013 0 013 11v-.5H.75a.75.75 0 010-1.5H3V7.258L.971 6.446a.75.75 0 01.558-1.392l1.967.787c.265-.33.62-.583 1.03-.722a1.684 1.684 0 01-.026-.292V4.5c0-.951.38-1.814.995-2.444L4.72 1.28a.75.75 0 010-1.06zM6.173 5h3.654A.173.173 0 0010 4.827V4.5a2 2 0 10-4 0v.327c0 .096.077.173.173.173zM5.25 6.5a.75.75 0 00-.75.75V11a3.5 3.5 0 107 0V7.25a.75.75 0 00-.75-.75h-5.5z",
+    "Output" : "M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"
+}
 
-    function injectToolbar() {
-        if(!$('#srToolbar').length) {
-            $("head").append(`<style type="text/css">${GM_getResourceText('select2css')}
+function injectToolbar() {
+    if(!$('#srToolbar').length) {
+        $("head").append(`<style type="text/css">${GM_getResourceText('select2css')}
         input:invalid.srInput , textarea:invalid.srInput {
           border: 2px solid var(--fgColor-danger)
         }
@@ -1770,26 +1791,26 @@ body:has(details#srModal[open]) {
 }
 </style>`);
 
-        // https://stackoverflow.com/a/67456813/3006039
-        function isChrome() {
-            return navigator.userAgentData && navigator.userAgentData.brands && navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome');
-        }
+            // https://stackoverflow.com/a/67456813/3006039
+            function isChrome() {
+                return navigator.userAgentData && navigator.userAgentData.brands && navigator.userAgentData.brands.some(b => b.brand === 'Google Chrome');
+            }
 
-        function needsTMSettingsUpdate() {
-            if(!isChrome()) {
+            function needsTMSettingsUpdate() {
+                if(!isChrome()) {
+                    return false;
+                }
+                try {
+                    new Function('return false');
+                } catch(e) {
+                    if(e.message && e.message.includes('unsafe-eval')){
+                        return true;
+                    }
+                }
                 return false;
             }
-            try {
-                new Function('return false');
-            } catch(e) {
-                if(e.message && e.message.includes('unsafe-eval')){
-                    return true;
-                }
-            }
-            return false;
-        }
-        let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--label-plum-bgColor-active)' : 'var(--page-header-bgColor)'}`, 'text-align': 'center'}});
-        toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
+            let toolbar = $('<div/>',{"id":"srToolbar","class":"position-fixed top-0 left-0","css":{"display":"none", "transform":"translate(calc(50vw - 50%))","padding":"2px","z-index":"50","border-radius":"5px", "background": `${GM_getValue('g_use_beta_endpoint', false) ? 'var(--label-plum-bgColor-active)' : 'var(--page-header-bgColor)'}`, 'text-align': 'center'}});
+            toolbar.append(`<a id='toggleSRToolbar' href="#"><img alt="Speedrun" src="${GM_info.script.icon}" style="image-rendering:pixelated; background: #383838; padding: 2px 2px 2px 2px; border-radius: 50%;vertical-align: middle;" width="25px" height="25px"/></a>
       <span id='toolbar'>
   <label id='srToggleTitle' class="switch">
   <input id='srEnabled' type="checkbox"><span class="slider round"></span>
