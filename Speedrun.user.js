@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.150
+// @version      1.151
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -277,6 +277,7 @@ const AsyncFunction = async function () {}.constructor;
 let toolbarShown = false;
 let githubSearchBarObserver = undefined;
 const TOAST_DURATION = 2500;
+let serviceToAccountsLookup = {};
 
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_LAST_SPEEDRUN_LINK = `${STORAGE_NAMESPACE}lastSRLink`;
@@ -1333,6 +1334,32 @@ ${variables.internal.result}`
             }});
     }
 
+    function select2NameAndAccountMatcher(params, data) {
+        // If there are no search terms, return all of the data
+        if ($.trim(params.term) === '') {
+          return data;
+        }
+
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+          return null;
+        }
+
+        // `params.term` should be the term that is used for searching
+        // `data.text` is the text that is displayed for the data object
+        if (data.text.indexOf(params.term) > -1) {
+          return data;
+        }
+
+        if(params.term.match(/^\d{3,}$/)) {
+            if(serviceToAccountsLookup[data.id] && [...serviceToAccountsLookup[data.id]].some(entry => entry.includes(params.term))) {
+              return data;
+            }
+        }
+        // Return `null` if the term should not be displayed
+        return null;
+    }
+
     function bindDataAndEvents() {
         destroySelect2("#service","#region");
         Object.keys(dataAndEvents).forEach((key) => {
@@ -1353,11 +1380,13 @@ ${variables.internal.result}`
                 console.warning(`Unable to bind, no such id: ${key}`);
             }
         })
-        $('#service,#region').select2(
+        $('#service').select2(
             {
+                matcher: select2NameAndAccountMatcher,
                 dropdownAutoWidth : true,
                 width:'copy'
             });
+        $('#region').select2({dropdownAutoWidth : true, width:'copy'});
         $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
     }
 
@@ -3599,15 +3628,17 @@ function updateTabs() {
     });
 
     let variables = undefined;
-    $('.canBeDangerous').each(async function(item) {
+    $('.canBeDangerous, #srCopyAccount').each(async function(item) {
         variables = variables ? variables : await nope('#copy.withCreds', true);
-        setButtonDanger($(this), variables);
+        const button = $(this);
+        button.hasClass('canBeDangerous') ? setButtonDanger(button, variables) : button.prop('disabled', !(variables.account));
     });
 }
 function getServices(pageConfig) {
     let result = {};
     let services = nullSafe(nullSafe(pageConfig).services);
     if(services) {
+        serviceToAccountsLookup = {};
         let serviceFilter = firstNonNull(arrayify(pageConfig[SR_SERVICE_FILTER]),[]);
         // hide user service if there is > 1 service or hide user service is true
         let hideUserService = (Object.keys(services).length > 1 && pageConfig[SR_HIDE_USER_SERVICE]) != false || pageConfig[SR_HIDE_USER_SERVICE] == true
@@ -3617,6 +3648,7 @@ function getServices(pageConfig) {
                                    dropdownName:getServiceDropdownName(service),
                                    config: getServiceVariables(service, services),
                                    regions: getRegions(service, pageConfig)};
+
             }
         }
     }
@@ -3628,6 +3660,10 @@ function getRegions(service, pageConfig) {
     let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
     let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
     for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
+        const account = $.extend(serviceVariables, config).account;
+        if(account) {
+            serviceToAccountsLookup[service] = serviceToAccountsLookup[service]?.add(account) || new Set([account]);
+        }
         let regions = isPartition(region) ? partitionMap[region] : [region];
         regions.forEach(region => {
             if(!regionFilter.length || region.includes(regionFilter)) {
