@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.151
+// @version      1.152
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
@@ -278,6 +278,8 @@ let toolbarShown = false;
 let githubSearchBarObserver = undefined;
 const TOAST_DURATION = 2500;
 let serviceToAccountsLookup = {};
+let regionToAccountLookup = {};
+const ACCOUNT_SEARCH_REGEX = /^\d{3,}$/;
 
 const SR_MULTI_SESSION = `${STORAGE_NAMESPACE}multiSession`;
 const SR_LAST_SPEEDRUN_LINK = `${STORAGE_NAMESPACE}lastSRLink`;
@@ -1345,16 +1347,26 @@ ${variables.internal.result}`
           return null;
         }
 
-        // `params.term` should be the term that is used for searching
-        // `data.text` is the text that is displayed for the data object
-        if (data.text.indexOf(params.term) > -1) {
+        // `params.term` is the search term
+        // `data.text` is the display text
+        if (data.text.toUpperCase().indexOf(params.term.toUpperCase()) > -1) {
           return data;
-        }
+        } else if(data.children) { //this is the region dropdown
+            const filteredChildren = [];
+            $.each(data.children, function (idx, child) {
+                // if region matches or account region matches
+                if (child.text.toUpperCase().indexOf(params.term.toUpperCase()) == 0 || params.term.match(ACCOUNT_SEARCH_REGEX) && regionToAccountLookup[child.id] && regionToAccountLookup[child.id].includes(params.term)) {
+                  filteredChildren.push(child);
+                }
+            });
 
-        if(params.term.match(/^\d{3,}$/)) {
-            if(serviceToAccountsLookup[data.id] && [...serviceToAccountsLookup[data.id]].some(entry => entry.includes(params.term))) {
-              return data;
+            if (filteredChildren.length) {
+                const modifiedData = $.extend({}, data, true);
+                modifiedData.children = filteredChildren;
+                return modifiedData;
             }
+        } else if(params.term.match(ACCOUNT_SEARCH_REGEX) && serviceToAccountsLookup[data.id] && [...serviceToAccountsLookup[data.id]].some(entry => entry.includes(params.term))) {
+            return data;
         }
         // Return `null` if the term should not be displayed
         return null;
@@ -1380,13 +1392,13 @@ ${variables.internal.result}`
                 console.warning(`Unable to bind, no such id: ${key}`);
             }
         })
-        $('#service').select2(
+        $('#service, #region').select2(
             {
                 matcher: select2NameAndAccountMatcher,
                 dropdownAutoWidth : true,
                 width:'copy'
             });
-        $('#region').select2({dropdownAutoWidth : true, width:'copy'});
+        //$('#region').select2({dropdownAutoWidth : true, width:'copy'});
         $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
     }
 
@@ -3657,6 +3669,7 @@ function getServices(pageConfig) {
 
 function getRegions(service, pageConfig) {
     let regionSet = new Set();
+    regionToAccountLookup = {};
     let serviceVariables = $.extend({},pageConfig, getServiceVariables(service, pageConfig.services));
     let regionFilter = firstNonNull(arrayify(serviceVariables[SR_REGION_FILTER]),[]);
     for (const [region, config] of Object.entries(nullSafe(serviceVariables.regions))){
@@ -3665,11 +3678,14 @@ function getRegions(service, pageConfig) {
             serviceToAccountsLookup[service] = serviceToAccountsLookup[service]?.add(account) || new Set([account]);
         }
         let regions = isPartition(region) ? partitionMap[region] : [region];
-        regions.forEach(region => {
+        for(const region of regions) {
             if(!regionFilter.length || region.includes(regionFilter)) {
                 regionSet.add(region);
+                if(account) {
+                    regionToAccountLookup[region] = account;
+                }
             }
-        });
+        }
     }
     return [...regionSet];
 }
