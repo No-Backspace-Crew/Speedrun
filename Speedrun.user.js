@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.152
+// @version      1.153
 // @description  Markdown to build tools
 // @author       No Backspace Crew
-// @require      https://speedrun.nobackspacecrew.com/js/jquery@3.7.1/jquery-3.7.1.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
 // @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
@@ -1137,7 +1137,7 @@ ${variables.internal.result}`
                         if(!result.contentWindow.document.getElementById('srSnapshot')) {
                             let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
                             let isLargeButton = false;
-                            let snapshotButton = $(histogram).find('button[title="table-preferences"]');
+                            let snapshotButton = $(histogram).find('button[data-analytics="add-to-dashboard_CWLI"]');
                             if (!snapshotButton.length) {
                                 snapshotButton = $(histogram).find('button');
                                 isLargeButton = true;
@@ -1152,7 +1152,22 @@ ${variables.internal.result}`
                                 snapshotButton.addClass('logs--button-separator-left');
                                 snapshotButton.find('span').text('Snapshot');
                             } else {
-                                snapshotButton.find('svg').replaceWith(svg);
+                                //There is no longer an svg in the cloudwatch insights ui
+                                //snapshotButton.find('svg').replaceWith(svg);
+                                const targetNode = $(histogram).find("button[data-analytics='query-results-summary']");
+                                if(targetNode.length) {
+                                  const observer = new MutationObserver((mutationsList) => {
+                                     for (const mutation of mutationsList) {
+                                         if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                                           snapshotButton.removeClass().addClass($(targetNode).attr('class'));
+                                         }
+                                     }
+                                  });
+                                  observer.observe(targetNode[0], {'attributes':true});
+                                  targetNode.attr('class').split(' ').forEach(e => { if (e.includes('disabled')) {snapshotButton.addClass(e)}});
+                                }
+                                snapshotButton.find('span').text('Snapshot');
+
                             }
                             snapshotButton.off('click');
                             snapshotButton.on('click', (event)=> {
@@ -1338,7 +1353,7 @@ ${variables.internal.result}`
 
     function select2NameAndAccountMatcher(params, data) {
         // If there are no search terms, return all of the data
-        if ($.trim(params.term) === '') {
+        if (params.term == undefined || params.term.trim() === '') {
           return data;
         }
 
