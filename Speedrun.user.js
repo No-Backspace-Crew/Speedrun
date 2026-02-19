@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.153
+// @version      1.154
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -1171,8 +1171,9 @@ ${variables.internal.result}`
                             }
                             snapshotButton.off('click');
                             snapshotButton.on('click', (event)=> {
-                                if(histogram) {
-                                    domSnapshot(histogram.ownerDocument.querySelector('.query-statistics') || histogram.ownerDocument.querySelector('.cw-chart'), `CloudWatch-${dayjs().format()}.png`);
+                                const document = result.contentWindow.document;
+                                if(document) {
+                                    domSnapshot(document.querySelector('.query-statistics, .cw-chart-container-graph'), `CloudWatch-${dayjs().format()}.png`);
                                 }
                             });
                             if(!isLargeButton) {
@@ -1368,9 +1369,9 @@ ${variables.internal.result}`
           return data;
         } else if(data.children) { //this is the region dropdown
             const filteredChildren = [];
-            $.each(data.children, function (idx, child) {
+            data.children.forEach((child) => {
                 // if region matches or account region matches
-                if (child.text.toUpperCase().indexOf(params.term.toUpperCase()) == 0 || params.term.match(ACCOUNT_SEARCH_REGEX) && regionToAccountLookup[child.id] && regionToAccountLookup[child.id].includes(params.term)) {
+                if (child.text.toUpperCase().indexOf(params.term.toUpperCase()) > -1 || params.term.match(ACCOUNT_SEARCH_REGEX) && regionToAccountLookup[child.id] && regionToAccountLookup[child.id].includes(params.term)) {
                   filteredChildren.push(child);
                 }
             });
@@ -4090,8 +4091,8 @@ function domSnapshot(element, filename){
                       filter: el => !(el.className == 'query-counters'||el.classList?.contains('histogram-toggle')),
                       style: {'backgroundColor':getBackgroundColor()},
                       //only include certain styles for logs histogram for speed
-                      includeStyleProperties: element.className?.includes('statistics') ?
-                      ['text-anchor','color','font-weight','fill','line-height','display','font-size','font-family','opacity', 'stroke','stroke-width','font','width', 'height','visibility']:null
+                      includeStyleProperties: element.className?.includes('statistics') || element.className?.includes('cw-chart-container-graph')?
+                      ['text-anchor','padding-block','padding-inline','border-block','border-inline','border-start-start-radius','border-start-end-radius','border-end-start-radius','border-end-end-radius','box-sizing','margin','border-top-width','border-right-width', 'border-bottom-width','border-left-width','background-color','text-wrap-mode','color','font-weight','fill','line-height','display','font-size','font-family','opacity', 'stroke','stroke-width','font','width', 'height','visibility']:null
                      }).then(imgURI => {
         const download = GM_addElement('a');
         download.href = imgURI;
