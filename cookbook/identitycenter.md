@@ -25,6 +25,16 @@ Alternatively if you set the variable `ssoStartUrl` anywhere in your `#srConfig`
 
 ## Configuration
 
+### Automatic configuration generation
+If you don't want to build your Speedrun configuration by hand, use this helper to have Speedrun generate a config that includes all of your accounts and permission sets for you.
+
+```
+#buildConfig
+~~~ssoStartUrl=Identity Center Url {label:"Identity Center Start Url", placeholder:'https://your_subdomain.awsapps.com', pattern:'https:\\/\\/[a-z0-9\\-]+\\.awsapps\\.com(\\/(start(\\/)?))?', default:'${ssoStartUrl}'}~~~
+```
+
+### Manual configuration creation
+
 Instead of configuring a `role` you need to provide an `account` and `permSet` in your [configuration](https://github.com/No-Backspace-Crew/Speedrun/wiki/Speedrun-Configuration).
 
 ````
