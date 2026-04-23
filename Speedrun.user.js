@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.154
+// @version      1.155
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -18,6 +18,7 @@
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.2.4/purify.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.6.7/modern-screenshot.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/p-throttle@8.1.0/p-throttle.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -236,7 +237,7 @@
 // @icon         data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAFKElEQVR4Xu1aWUhUURjWybKissWahvYyzBIbairJkvYsilYqqCCSIjCMkGijXoKgjWiFDHpoeYg2WolswzKspGwVsc0WTMYS222x5T9+0fm513O7M8LUufPyzzn33DPnfN/3L3PuDQ/T/BOu+f7DHAAcBWiOgOMCoSqA9NjY7zWtbXNhYVDIC8oktQGitgBg48uioyVcW3ifUvtVfnuyq8vKyAaqhJBTgLYAmG2cu1fU9AfUVbEvJihKCBkFOABUR/3hzRoSs1nlHyTy0Z/SW/j+1x6fJSW0zsmxRaatm2oz6msLwJjkGMr7cVVewndafCnZ4qyPZC9GvCXLlQAyMs4K5eD62Nyblsi1NKg2GOdz/ncAJPcZIVVy2dfP1Aj2ogGTaTyY93RrRhi1jKsnYZWRfkdiuk8dwfz1byJmIHZYrQ9qTQHaAoCNFw/fIjH3ubSQ2l1vbyXLFcEVkDDBTeNczWcI6xtHNnXKXLItSsrJVvqFIvCxyjzGB10B2gLAN57QqTGBfPuxiN5o5+XmURtKABP9IpvQ14WTRX6H70MBEs0/G6U5u6hr40ERI9ZdPmiLTFs38cX8amsLANLX0Q3rCZfxmRFkv7y4RDbi3SGy4TOzJdyghJ4lOdT/wX+TLJSAbOBNzTDCO2zJwr0BMY9JA1aAtgDwjVe9Foz4C4QPzz18n+yJ7AcEcsroxZTn605YQP2IDXH5wpcLvLPJIlvMKNxNbV4XWPV5rK+VezDNs+vATkOybSvAAaC6dj+yXNTuZszD12AB3NdGk6jrlieJbD13LFmePaAIn8tF13lsgcL4/JkTu1OXO0koa87ak4ZKCFgB2gLAEUebM8IVgLYn9RjFBM682fghiR66dD63RCjhyCayp0+tIRKhLM486gUek/A7thWgPQBpyYuIwaEvLkiknWsjou627HWG4PJsYMb47wrSXySG9O1FhiuhInMW9Ud506VxO97Po7YZ8wErQDsADnfxSf/v+7eONCOP+q+8rCQ78WGeVAcg3yPa80l4fYAKsShhPg31JfrkW67dkJgPq25X5G+mftU5hOUYoC0A2DhnHAzfq4wjpHtEFpA1G5c2aKUxg0wCPLrjMj9gwXnDbyX9JfOWY4D2ALxMSpJ8f2dxZwJvxfM9hu6zqu1MGj+ovjjN7eoWeXtW1ACyqPy4L8P3i1fH1jgvmMvyiFNj/lH5PB+vjAHaAsClz6O6Ifx/dJopAfMgJqASxL9CVHaXYsQpMRRUP3qg9JPn756V2sg2qnVZVoD2AHDp/60CgLRKCZyRIfHDqOtTmThR4h+8J4B+PCOMuCfOBvH+gNVnhaYxQHsA4AJjU0S0PX5anNPb9TWuhMSRVyVywRyyDOoKs9/j66uaKk6Vq+6Kp8d4f0ClBFMFaA8A6Pm43U3R2K6PYR4OKBjnFaVZfWEYEH52Yt5RGc9oiCtevFtUvrQpWdsKcACoRuBLWjtSAHzMtf+Noe/yLMHTKH/Lq6hUnPAgz9vNMlxhUAIUW3fbsxqLPWUlqD0AQJgDgWiL60Acbfg4mPZ/f0KXENWRFfi/SLtK4DEG6whYAQ4ALPyiQML7ejw7gEHcpqobgqUEzDOnwyNpxQFnAZ5+tAeAAxKstl0l2GUe61ZmgWBtUDWP9gAAIDMgkE0ufmogYQmfx3kBzglUsSfkFOAAwHyEK6FleEepcsRwszpD5XIhqwAzJWgHAGfQ7qM4lRJCJguoFqo9ACqA7F7/ZxRgd4Oq+xwAVAj979d/ALo5bH2kwaUtAAAAAElFTkSuQmCC
 // ==/UserScript==
 
-/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, domToPng */
+/* globals jQuery, $, _, dayjs, XRegExp, JSON5, srInvoke, DOMPurify, domToPng, pThrottle */
 
 //eval(Babel.transform((<><![CDATA[
 (async function() {
@@ -401,7 +402,7 @@ class CredentialsBroker {
         throw new Error('Not implemented');
     }
     isDemoAccount(variables) {
-        return
+        return false;
     }
 }
 class SpeedrunCredentialsBroker extends CredentialsBroker {
@@ -468,7 +469,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
     }
 
     class IdentityCenterCredentialsBroker extends CredentialsBroker {
-        getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge']};
+        getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge','buildConfig']};
         validate(variables) {
             if(!variables.permSet || !variables.region || !variables.account) {
                 throw new Error("permission set (permSet) and region must be defined");
@@ -479,7 +480,10 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
             let existingCreds = GM_getValue(startUrl,{});
             if(!existingCreds.region) {
                 const text = await retrieve(startUrl);
-                existingCreds.region = text.replaceAll(/.*?region\":\"([^\"]+).*/gm, '$1');
+                let matches = [...text.matchAll(/"region"\s*:\s*"([^"]+)"/gm)];
+                if(matches.length == 1 && matches[0].length > 1) {
+                    existingCreds.region = matches[0][1];
+                }
                 if(!existingCreds.region) {
                     throw new Error('Unable to detect Identity Center region to get credentials, check your url');
                 }
@@ -613,6 +617,82 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
             }
         }
 
+        getStartUrl(variables) {
+            const startUrl = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
+                if(!startUrl) {
+                    throw new Error('ssoStartUrl is required to get credentials');
+                }
+            return startUrl.replaceAll(/\/(start(\/)?)$/gm,'/start');
+        }
+
+        async getAccessToken(variables) {
+            const startUrl = this.getStartUrl(variables);
+
+            // detect region
+            let existingCreds = await this.detectIDCRegion(startUrl);
+
+            // get sso client
+            existingCreds = await this.registerClient(startUrl, existingCreds);
+
+            for(let pass=0; pass<2; pass++) {
+                // start device auth
+                let deviceUrl = await this.startDeviceAuthorization(startUrl, existingCreds);
+                existingCreds = await this.completeDeviceAuthorization(startUrl, existingCreds, deviceUrl);
+                existingCreds = await this.refreshAccessToken(startUrl, existingCreds);
+                //if refresh token still exists it's good, break out of loop, no need to do another device auth pass
+                if(existingCreds.refreshToken) {
+                    pass = 2;
+                }
+            }
+            return {region: existingCreds.region, accessToken: existingCreds.accessToken};
+        }
+
+        async listAccounts(variables) {
+            ///assignment/accounts?max_result=maxResults&next_token=nextToken
+            const {region,accessToken} = await this.getAccessToken(variables);
+            let accounts = [];
+            let nextToken = null;
+            do {
+                const request = {url:`https://portal.sso.${region}.amazonaws.com/assignment/accounts?max_result=100${nextToken?`&nextToken=${nextToken}`:''}`,
+                                     method: 'GET',
+                                     headers:{'x-amz-sso_bearer_token': accessToken},
+                                    };
+                                    console.log(request.url);
+
+                const result = await invoke(request);
+                if(result.status != 200) {
+                    throw new Error(`Unable to get listAccounts: ${result.responseText}`);
+                }
+                if(result.response.accountList && result.response.accountList.length) {
+                    accounts = accounts.concat(result.response.accountList);
+                }
+                nextToken = result.response.nextToken;
+            } while(nextToken)
+            return accounts;
+        }
+
+        async listPermissionSets(account, variables) {
+            ///assignment/roles?account_id=accountId&next_token=nextToken
+            const {region,accessToken} = await this.getAccessToken(variables);
+            let permissionSets = [];
+            let nextToken = null;
+            do {
+            const request = {url:`https://portal.sso.${region}.amazonaws.com/assignment/roles?account_id=${account}&max_result=100${nextToken?`&nextToken=${nextToken}`:''}`,
+                                     method: 'GET',
+                                     headers:{'x-amz-sso_bearer_token': accessToken},
+                                    };
+                    const result = await invoke(request);
+                    if(result.status != 200) {
+                        throw new Error(`Unable to get listPermissionSets: ${result.responseText}`);
+                    }
+                    if(result.response.roleList && result.response.roleList.length) {
+                        permissionSets = permissionSets.concat(result.response.roleList.map(x=>x.roleName));
+                    }
+                    nextToken = result.response.nextToken;
+            } while(nextToken);
+            return permissionSets;
+        }
+
         async getCredentials(variables) {
             const type = variables.internal.credentialsType || variables.internal.templateType;
             switch(type) {
@@ -631,38 +711,16 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
                     if(credentials) {
                         return credentials;
                     }
-                    const startUrl = variables.ssoStartUrl || GM_getValue('g_identity_center_endpoint', undefined);
-                    if(!startUrl) {
-                        throw new Error('ssoStartUrl is required to get credentials');
-                    }
-                    startUrl.replaceAll(/\/(start(\/)?)$/gm,'/start');
-
-                    // detect region
-                    let existingCreds = await this.detectIDCRegion(startUrl);
-
-                    // get sso client
-                    existingCreds = await this.registerClient(startUrl, existingCreds);
-
-                    for(let pass=0; pass<2; pass++) {
-                        // start device auth
-                        let deviceUrl = await this.startDeviceAuthorization(startUrl, existingCreds);
-                        existingCreds = await this.completeDeviceAuthorization(startUrl, existingCreds, deviceUrl);
-                        existingCreds = await this.refreshAccessToken(startUrl, existingCreds);
-                        //if refresh token still exists it's good, break out of loop, no need do another device auth pass
-                        if(existingCreds.refreshToken) {
-                            pass = 2;
-                        }
-                    }
-                    const request = {url:`https://portal.sso.${existingCreds.region}.amazonaws.com/federation/credentials?role_name=${variables.permSet}&account_id=${variables.account}`,
+                    const {region, accessToken} = await this.getAccessToken(variables);
+                    const request = {url:`https://portal.sso.${region}.amazonaws.com/federation/credentials?role_name=${variables.permSet}&account_id=${variables.account}`,
                                      method: 'GET',
-                                     headers:{'x-amz-sso_bearer_token': existingCreds.accessToken},
+                                     headers:{'x-amz-sso_bearer_token': accessToken},
                                     };
                     const result = await invoke(request);
                     if(result.status != 200) {
                         throw new Error(`Unable to get credentials: ${result.responseText}`);
                     }
                     credentialsCache[`${variables.account}:${variables.permSet}`] = {credentials: result.response.roleCredentials};
-
                     if(type=='copy') {
                         return `export AWS_CREDENTIAL_EXPIRATION=${dayjs(result.response.roleCredentials.expiration).toISOString()}
 export AWS_ACCESS_KEY_ID=${result.response.roleCredentials.accessKeyId}
@@ -674,8 +732,22 @@ ${variables.internal.result}`
                 }
                 return result.response.roleCredentials;
 
-                break
+                break;
             }
+                case 'buildConfig': {
+                    let accounts = await this.listAccounts(variables);
+                    const throttle = pThrottle({
+                        limit: 20,
+                        interval: 1000
+                    });
+                    const throttledPermissionSets = throttle(async (account, variables) => {
+                        account.permissionSets = await this.listPermissionSets(account.accountId, variables);
+                        return account;
+                    });
+                    accounts = await Promise.all(accounts.map(account => throttledPermissionSets(account, variables)));
+                    return accounts;
+                    break;
+                }
         }
     }
     getCacheKey() {
@@ -1662,22 +1734,26 @@ let templates = {
     iframe : {
     },
     lambda : {
-        value: "${content.trim().length = 0 ? undefined : content}",
+        value: "${content.trim().length === 0 ? undefined : content}",
         creds: true
     },
     '!lambda' : {
-        value: "${content.trim().length = 0 ? undefined : content}",
+        value: "${content.trim().length === 0 ? undefined : content}",
         creds: true,
         type: 'lambda'
     },
+    'buildConfig': {
+        value: "",
+        creds: true,
+    },
     '!stepfunction' : {
         type: 'stepfunction',
-        value: "${content.trim().length = 0 ? undefined : content}",
+        value: "${content.trim().length === 0 ? undefined : content}",
         creds: true
     },
     '!eventbridge' : {
         type: 'eventbridge',
-        value: "${content.trim().length = 0 ? undefined : content}",
+        value: "${content.trim().length === 0 ? undefined : content}",
         creds: true
     },
     stepfunctionExecution : {
@@ -3307,6 +3383,34 @@ async function nope(content, preview = false, anchor, runBtn) {
                     let executionArn = JSON.parse(response.responseText).executionArn;
                     setConsoleColor(variables);
                     await nope(`#stepfunctionExecution {region: "${variables.region}", account: "${variables.account}", partition: "${variables.partition}", role: "${variables.role}", executionArn: "${executionArn}"}\n`);
+                    break;
+                }
+                case "buildConfig": {
+                    variables.internal.result = await variables.internal.credentialsBroker.getCredentials(variables);
+                    const ssoStartUrl = variables.internal.credentialsBroker.getStartUrl(variables);
+                    const {region} = await variables.internal.credentialsBroker.detectIDCRegion(ssoStartUrl);
+                    let config =
+                    {
+                        ssoStartUrl,
+                            "services" : {
+                            }
+                    }
+                    for(const account of variables.internal.result) {
+                      if(account.permissionSets) {
+                      if(account.permissionSets.length==1) {
+                          config.services[account.accountName] = {regions:{[region]:{account: account.accountId, permSet: account.permissionSets[0]}}};
+                      }else {
+                          for(const permissionSet of account.permissionSets) {
+                              config.services[`${account.accountName} - ${permissionSet}`]= {regions:{[region]: {account: account.accountId, permSet:permissionSet}}};
+                          }
+                      }
+                      }
+                    }
+                    config = `\`\`\`
+#srConfig
+${JSON5.stringify(config,null,2)}
+\`\`\``;
+                    copyAndPrependToOutput(config, runBtn);
                     break;
                 }
                 default:
