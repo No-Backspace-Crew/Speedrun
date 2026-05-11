@@ -23,7 +23,19 @@ Alternatively if you set the variable `ssoStartUrl` anywhere in your `#srConfig`
 ```
 ````
 
+!!! tip
+  Identity Center sessions expire after 8 hours.  If you would prefer not to authenticate so often, your Identity Center administrator can extend your session duration to last up to 90 days by following [these instructions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html).
 ## Configuration
+
+### Automatic configuration generation
+If you don't want to build your Speedrun configuration by hand, use this helper to have Speedrun generate a config that includes all of your accounts and permission sets for you.
+
+```
+#buildConfig
+~~~ssoStartUrl=Identity Center Url {label:"Identity Center Start Url", placeholder:'https://your_subdomain.awsapps.com', pattern:'https:\\/\\/[a-z0-9\\-]+\\.awsapps\\.com(\\/(start(\\/)?))?'}~~~
+```
+
+### Manual configuration creation
 
 Instead of configuring a `role` you need to provide an `account` and `permSet` in your [configuration](https://github.com/No-Backspace-Crew/Speedrun/wiki/Speedrun-Configuration).
 
