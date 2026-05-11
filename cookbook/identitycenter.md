@@ -23,6 +23,8 @@ Alternatively if you set the variable `ssoStartUrl` anywhere in your `#srConfig`
 ```
 ````
 
+!!! tip
+  Identity Center sessions expire after 8 hours.  If you would prefer not to authenticate so often, your Identity Center administrator can extend your session duration to last up to 90 days by following [these instructions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html).
 ## Configuration
 
 ### Automatic configuration generation
