@@ -23,8 +23,14 @@ Alternatively if you set the variable `ssoStartUrl` anywhere in your `#srConfig`
 ```
 ````
 
-!!! tip
-  Identity Center sessions expire after 8 hours.  If you would prefer not to authenticate so often, your Identity Center administrator can extend your session duration to last up to 90 days by following [these instructions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html).
+Once you've configured Identity Center, a new button will appear on the toolbar to refresh Identity Center Configuration. Click this button to authenticate with Identity Center and load all of your accounts and permission sets. These values are cached in local storage and drive the Speedrun dropdowns. If you obtain new permissions or access to new accounts, click this button again to refresh your configuration for the dropdowns.
+
+<img width="405" height="114" alt="image" src="https://github.com/user-attachments/assets/1c4a682e-5b45-40ff-b074-07458cf5857b" />
+
+
+>[!TIP]
+>Identity Center sessions expire after 8 hours.  If you would prefer not to authenticate so often, your Identity Center administrator can extend your session duration to last up to 90 days by following [these instructions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html).
+
 ## Configuration
 
 ### Automatic configuration generation
