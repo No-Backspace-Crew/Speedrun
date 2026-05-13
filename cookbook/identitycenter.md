@@ -27,11 +27,13 @@ Once you've configured Identity Center, a new button will appear on the toolbar 
 
 <img width="405" height="114" alt="image" src="https://github.com/user-attachments/assets/1c4a682e-5b45-40ff-b074-07458cf5857b" />
 
-
 >[!TIP]
 >Identity Center sessions expire after 8 hours.  If you would prefer not to authenticate so often, your Identity Center administrator can extend your session duration to last up to 90 days by following [these instructions](https://docs.aws.amazon.com/singlesignon/latest/userguide/user-interactive-sessions.html).
 
 ## Configuration
+
+### Disabling Dynamic Loading of Identity Center Configuration
+If you don't like the dropdown layout of dynamic configuration or need to enable additional regions add `dynamicSSOConfig: false` to your `#srConfig` and use the guidance below to manually create the srConfig configuration necessary to drive your Speedrun dropdowns.
 
 ### Automatic configuration generation
 If you don't want to build your Speedrun configuration by hand, use this helper to have Speedrun generate a config that includes all of your accounts and permission sets for you.
