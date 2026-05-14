@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.156
+// @version      1.157
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -658,8 +658,6 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
                                      method: 'GET',
                                      headers:{'x-amz-sso_bearer_token': accessToken},
                                     };
-                                    console.log(request.url);
-
                 const result = await invoke(request);
                 if(result.status != 200) {
                     throw new Error(`Unable to get listAccounts: ${result.responseText}`);
@@ -1570,17 +1568,7 @@ Object.entries(regionMap).forEach(([name, region]) => {
 
 addEventListener('popstate', async (event) => {
     //when the back button is pressed, all events/data is lost, this is an attempt to wire those back up
-    let result = isSRPage();
-    if(result) {
-        setTimeout(async () => {
-            let [,path] = result;
-            let pageEnabled = await updatePageConfig(path);
-            bindDataAndEvents();
-            showToolbarOnPage();
-            $("#service").trigger('change');
-        }
-                   , 50);
-    }
+    rebindPageConfig(event.target.location.path);
 });
 
 function isPartition(str) {
@@ -2162,8 +2150,8 @@ function insertSSORefreshButton(ssoRefreshRequired, ssoStartUrl){
         const $button = $(button);
         $button.on('click.sr', srRefreshClickHandler);
         $('#srSettings').parent().prepend($button);
-        dataAndEvents.srRefresh = { events: {'click.sr': async(event) => {await srRefreshClickHandler();}}}
     }
+    dataAndEvents.srRefresh = { events: {'click.sr': async(event) => {await srRefreshClickHandler();}}}
     $('#srRefresh').show();
     $('#ssoRefreshRequired').attr('hidden', !ssoRefreshRequired);
     $('#srRefresh').attr('title', `Refresh Configuration from Identity Center ${ssoStartUrl}`)
@@ -3753,7 +3741,6 @@ async function updateTabs() {
         insertSSORefreshButton(allLookups[ssoStartUrl]==undefined,ssoStartUrl);
     } else {
         $('#srRefresh').remove();
-        delete dataAndEvents.srRefresh;
     }
     let pageNeedsCreds = false;
     $('.srRunBtn').each(async function (item) {
@@ -4036,7 +4023,7 @@ async function wireUpContent() {
             }
             const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
             const actions = $('<div class="UnderlineNav-actions">');
-            const runBtnId = `sr-btn-${block}`;
+            const runBtnId = `sr-btn-${block}${window.location.pathname.replaceAll('/','-')}`;
             const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
             runBtn.prop('disabled',true);
             actions.append(runBtn);
@@ -4284,6 +4271,20 @@ function srUpdateClickHandler(event) {
 async function srRefreshClickHandler(event) {
     await nope('#buildConfig {persistConfig: true}');
     toast('Identity Center configuration refreshed');
+    rebindPageConfig();
+}
+
+function rebindPageConfig(location){
+    let result = isSRPage();
+    if(result) {
+        setTimeout(async () => {
+            let [,path] = result;
+            let pageEnabled = await updatePageConfig(location || path);
+            bindDataAndEvents();
+            showToolbarOnPage();
+            $("#service").trigger('change');
+        }, 50);
+    }
 }
 
 function normalizeStartUrl(startUrl) {
