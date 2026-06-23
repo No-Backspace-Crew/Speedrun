@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.157
+// @version      1.158
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -1385,7 +1385,7 @@ ${variables.internal.result}`
             await waitForSelector('.markdown-body > *,.markdown-title > *');
             let maxAttempts = 50;
             while(doneLoading()>0 && maxAttempts-- > 0) {
-                await sleep(100);
+                await sleep(50);
             }
             if(maxAttempts > 0) {
                 await updatePage(`urlchange ${lastPath}`);
@@ -2565,7 +2565,7 @@ async function setFavIcon() {
     await sleep(500);
     let isVisible = isEnabledPath();
     let head = $('head');
-    $('link[rel~="icon"]').each((i,el) => {
+    $('link[rel~="icon"]').each(async (i,el) => {
         el = $(el);
         let details = favIcons[isVisible+''][el.attr('rel')];
         if(details.href != el.attr('href')){
@@ -3839,6 +3839,9 @@ function getRegions(service, pageConfig) {
 }
 
 function parseContent(str, name) {
+    if(str === undefined) {
+        return undefined;
+    }
     const groups = str.match(HEADER);
     if(groups && groups[1] && (!name || name === groups[1])) {
         let body = str.replace(HEADER,"").replace(TRAILING_WHITESPACE,"");
@@ -4023,13 +4026,12 @@ async function wireUpContent() {
             }
             const nav = $(`<nav id="sr-nav-${block}" class="d-flex UnderlineNav--right" style="margin-bottom:4px;" aria-label="Preview">`);
             const actions = $('<div class="UnderlineNav-actions">');
-            const runBtnId = `sr-btn-${block}${window.location.pathname.replaceAll('/','-')}`;
+            const runBtnId = `sr-btn-${block}${window.location.pathname.replaceAll(/[^a-zA-Z0-9_-]/g,'-')}`;
             const runBtn = $(`<button id="${runBtnId}" type="button" class="btn color-fg-on-emphasis btn-sm m-1 srRunBtn">Run</button>`);
             runBtn.prop('disabled',true);
             actions.append(runBtn);
             nav.append(actions);
             dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
-
 
             const navBody = $('<div class="UnderlineNav-body">');
             var index = 0;
