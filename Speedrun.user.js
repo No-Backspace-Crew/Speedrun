@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.158
+// @version      1.159
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -446,7 +446,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
     }
 
     isDemoAccount(variables) {
-        return variables.account && variables.account.startsWith("-");
+        return variables.account && String(variables.account).startsWith("-");
     }
 }
 
@@ -905,8 +905,8 @@ ${variables.internal.result}`
                             }
                             let defaultColor = (role.toLowerCase().match(/(full|write|admin)/) ? '#d13211' : 'green');
                             roleColor = getConsoleColor(cacheKey, defaultColor);
-                            accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor);
-                            $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor).css('color', defaultFontColor);
+                            accountInfoParent.css('background-color', roleColor).css('color', defaultFontColor).css('border-radius','0px 0px 5px 5px');
+                            $('button[data-testid="more-menu__awsc-nav-account-menu-button"]').filter(":visible").css('background-color', roleColor).css('color', defaultFontColor).css('border-left-width', '5px').css('border-radius','0px 0px 5px 5px');
                         }
                         if(isMultiSession) {
                             persistTimestamp({label: cacheKey, timestamp: expiration, value: subdomain}, SR_SESSIONS_KEY);
@@ -1626,6 +1626,7 @@ let templates = {
             "CloudWatch Alarms": "cloudwatch/home?region=${region}#alarmsV2:",
             "CloudWatch Dashboards": "cloudwatch/home?region=${region}#dashboards:",
             "CloudWatch Logs": "cloudwatch/home?region=${region}#logsV2:log-groups",
+            "CloudWatch Logs Analytics": "cloudwatch/home?region=${region}#log-analytics",
             "CloudWatch Logs Insights": "cloudwatch/home?region=${region}#logsV2:logs-insights",
             "CloudWatch Metrics": "cloudwatch/home?region=${region}#metricsV2:",
             "CloudWatch X-Ray": "cloudwatch/home?region=${region}#xray:traces",
@@ -2558,13 +2559,11 @@ function doneLoading() {
 
 function showToolbarOnPage() {
     isSRPage() && (toolbarShown || doneLoading()) ? (GM_getValue('srToolbarVisible', true) ? `${$("#toolbar").show() + $("#toggleSRToolbar").attr('title','Minimize Speedrun toolbar')}` : `${$("#toolbar").hide()+ $("#toggleSRToolbar").attr('title','Maximize Speedrun toolbar')}`) + $("#srToolbar").show() : $("#srToolbar").hide()
-    setFavIcon();
+    setFavIcon(isEnabledPath());
 }
 
-async function setFavIcon() {
+async function setFavIcon(isVisible) {
     await sleep(500);
-    let isVisible = isEnabledPath();
-    let head = $('head');
     $('link[rel~="icon"]').each(async (i,el) => {
         el = $(el);
         let details = favIcons[isVisible+''][el.attr('rel')];
@@ -3310,7 +3309,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     break;
                 }
                 case "lambda" : {
-                    if(variables.account && String(variables.account).startsWith('-')) {
+                    if(variables.internal.credentialsBroker.isDemoAccount(variables)) {
                         throw new Error(`Lambda not enabled on demo accounts`);
                     }
                     const isFunctionUrl = variables.functionUrl != undefined;
@@ -3347,7 +3346,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     break;
                 }
                 case "eventbridge" : {
-                    if(variables.account && String(variables.account).startsWith('-')) {
+                    if (variables.internal.credentialsBroker.isDemoAccount(variables)) {
                         throw new Error(`EventBridge not enabled on demo accounts`);
                     }
                     if(!variables.eventBusName){
@@ -3381,7 +3380,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                     break;
                 }
                 case "stepfunction" : {
-                    if(variables.account && String(variables.account).startsWith('-')) {
+                    if (variables.internal.credentialsBroker.isDemoAccount(variables)) {
                         throw new Error(`Step Functions not enabled on demo accounts`);
                     }
                     if(variables.functionName == undefined) {
