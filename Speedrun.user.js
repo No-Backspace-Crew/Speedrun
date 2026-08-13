@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.159
+// @version      1.160
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -1271,7 +1271,7 @@ ${variables.internal.result}`
                 return false;
             }
         }
-        return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces)\//i) ? result : null;
+        return result && !result.groups.path.match(/^\/(sessions|login|settings|features|codespaces|security|resources|enterprise|open-source|account|sponsors)\//i) ? result : null;
     }
 
     function getFavIconData(icon){
@@ -2562,15 +2562,16 @@ function showToolbarOnPage() {
     setFavIcon(isEnabledPath());
 }
 
-async function setFavIcon(isVisible) {
-    await sleep(500);
-    $('link[rel~="icon"]').each(async (i,el) => {
+function setFavIcon(isVisible) {
+    if(isVisible) {
+        $('link[rel="fluid-icon"], link[rel="mask-icon"], link[rel="manifest"]').remove();
+    }
+    $('.js-site-favicon').each((i,el) => {
         el = $(el);
         let details = favIcons[isVisible+''][el.attr('rel')];
         if(details.href != el.attr('href')){
-            //el.remove();
             el.attr('href', details.href);
-            //head.append(el);
+            el.attr('type', details.type);
         }
     });
 }
