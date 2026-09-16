@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.160
+// @version      1.161
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -472,7 +472,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
     class IdentityCenterCredentialsBroker extends CredentialsBroker {
         getValidTemplateTypes() {return ['federate','lambda','copy','stepfunction','eventbridge','buildConfig']};
         validate(variables) {
-            if(!variables.permSet || !variables.region || !variables.account) {
+            if (!variables.permSet || !variables.account || (variables.internal.templateType !== "buildConfig" && !variables.region)){
                 throw new Error("permission set (permSet) and region must be defined");
             }
             variables.accountAndPermSet = `${variables.account}:${variables.permSet}`;
@@ -1701,6 +1701,19 @@ let templates = {
         type: "federate",
         value : "cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${encodeCloudWatchURL(logGroup)}"
     },
+    CWLAnalytics : {
+        type: "federate",
+        data: {
+          active: 'a',
+          a: {
+            pos: '0',
+            label: "${typeof label === 'undefined' ? 'Query 1' : label}",
+            type: 'query',
+            query: "${content.trim()}"
+          }
+        },
+        value: "cloudwatch/home?region=${region}#log-analytics?${encodeCloudwatchAnalyticsURL(data)}"
+    },
     NewGitHubWiki : {
         type: "link",
         value: "https://github.com/${slugify(org)}/${slugify(repo)}/wiki/_new?wiki[name]=${encodeURIComponent(title)}&wiki[body]=${encodeURIComponent(content)}"
@@ -2277,6 +2290,28 @@ function encodeCloudWatchURL(str, passes=2) {
     return str.replaceAll('%','$');
 }
 
+function encodeCloudWatchAnalyticsURL(obj, prefix = '') {
+  let parts = [];
+  for (const [key, value] of Object.entries(obj)) {
+    const fullKey = prefix ? `${prefix}.${key}` : key;
+    if (typeof value === 'object' && value !== null) {
+      // Recursively flatten nested objects
+      parts.push(encodeCloudWatchAnalyticsURL(value, fullKey));
+    } else {
+      // 1. Standard URI encoding
+      // 2. Replace '%' with '*' and lowercase the hex digits
+      let encodedVal = encodeURIComponent(value).replace(
+        /%([0-9A-F]{2})/g,
+        (match, p1) => '*' + p1.toLowerCase()
+      );
+      // Prefix strings with ~'
+      parts.push(`${fullKey}=~'${encodedVal}`);
+    }
+  }
+  return parts.join('&');
+}
+
+
 function cachedValidVarName(name) {
     return firstNonNull(varNameCache[name], varNameCache.set(name, isValidVarName(name)).get(name));
 }
@@ -2739,6 +2774,7 @@ var exposedFunctions = {
     srTimestamp: srTimestamp,
     encodeCloudWatchInsightsParam: encodeCloudWatchInsightsParam,
     encodeCloudWatchURL: encodeCloudWatchURL,
+    encodeCloudwatchAnalyticsURL: encodeCloudWatchAnalyticsURL,
     nullSafe: nullSafe,
     arrayify: arrayify,
     slugify: slugify,
