@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.161
+// @version      1.162
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0-rc.0/select2.min.js
-// @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0-rc.0/select2.min.css
+// @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0/select2.min.js
+// @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0/select2.min.css
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/dayjs.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/utc.js
 // @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/duration.js
@@ -38,6 +38,7 @@
 // @match        https://console.aws.amazon.com/*
 // @match        https://*.aws.amazon.com/oauth*
 // @match        https://*.awsapps.com/start*
+// @match        https://*.app.aws/console*
 // @connect      speedrun-api.us-west-2.nobackspacecrew.com
 // @connect      speedrun-api-beta.us-west-2.nobackspacecrew.com
 // @connect      lambda.us-east-1.amazonaws.com
@@ -244,6 +245,7 @@
     'use strict';
     const STORAGE_NAMESPACE = 'SR:';
     const SSO_URL_LOOKUP = `${STORAGE_NAMESPACE}SSO_URL_LOOKUP`;
+    const AAM_URL_LOOKUP = `${STORAGE_NAMESPACE}AAM_URL_LOOKUP`;
     if(window.location.hostname.endsWith('awsapps.com')) {
         if(window.location.pathname === '/start/' && window.location.hash.startsWith('#/console?')){
             const params = new URLSearchParams(window.location.hash.split('#/console?')[1]);
@@ -253,6 +255,19 @@
                 if(existingLookup[account] != window.location.hostname) {
                     existingLookup[account] = window.location.hostname;
                     GM_setValue(SSO_URL_LOOKUP, existingLookup);
+                }
+            }
+        }
+        return;
+    } else if (window.location.hostname.match(/\w{2}-\w+\.account-access\.\w{2}-\w{4,}-\d\.app\.aws/)) {
+        if(window.location.pathname === '/console'){
+            const params = new URLSearchParams(window.location.search);
+            const account = params.get('account');
+            if(account && account.match(/\d+/)){
+                const existingLookup = GM_getValue(AAM_URL_LOOKUP, {});
+                if(existingLookup[account] != window.location.hostname) {
+                    existingLookup[account] = window.location.hostname;
+                    GM_setValue(AAM_URL_LOOKUP, existingLookup);
                 }
             }
         }
@@ -383,6 +398,7 @@ if(window.location.hostname == 'github.com' || window.location.hostname == 'www.
 }
 const FEDERATION_ENDPOINT = `https://speedrun-api${GM_getValue('g_use_beta_endpoint', false)?"-beta":""}.us-west-2.nobackspacecrew.com/v1`;
 var IDENTITY_CENTER_ENDPOINT = GM_getValue('g_identity_center_endpoint', undefined);
+var AAM_ENDPOINT = undefined;
 const ASSUME_COMMAND = `${GM_getValue('g_use_beta_endpoint', false)?"d":""}assume`;
 var sessionVariables = {};
 const TIMESTAMPS_KEY = `${STORAGE_NAMESPACE}timestamps`;
@@ -774,14 +790,23 @@ ${variables.internal.result}`
 
     function getFederationLink(arn, destination, duration, account) {
         const normalizedDuration = normalizeDuration(duration);
-        const isRole = arn.includes(":role/");
+        const isRole = arn?.match(/:(assumed-)?role\//);
         let url = undefined;
+        let isAAM = false;
         if(isRole) {
-            url = new URL(`${FEDERATION_ENDPOINT}/federate/${arn.split(':')[4]}`)
-            url.searchParams.append('role',arn.split(/:(?:assumed-)?role\//)[1]);
-            if(GM_getValue(SR_MULTI_SESSION, false)) {
-                url.searchParams.append('logout',false);
+            const role = arn.split(/:(?:assumed-)?role\//)[1];
+            const account = arn.split(':')[4];
+            if(role.startsWith('speedrun-')) {
+               url = new URL(`${FEDERATION_ENDPOINT}/federate/${account}`);
+               if(GM_getValue(SR_MULTI_SESSION, false)) {
+                   url.searchParams.append('logout',false);
+               }
+            } else {
+                url = new URL(`${AAM_ENDPOINT}`);
+                url.searchParams.append('account', account);
+                isAAM = true;
             }
+            url.searchParams.append('role',role);
         }
         else {
             let searchParams = new URLSearchParams();
@@ -791,13 +816,15 @@ ${variables.internal.result}`
             return `${IDENTITY_CENTER_ENDPOINT.replaceAll(/\/(start(\/)?)$/gm,'')}/start/#/console?` + searchParams.toString();
         }
         url.searchParams.append('destination',destination.replace(/\.com\/cloudwatch\/home/,'.com/cloudwatch/deeplink.js'));
-        if(normalizedDuration) {
-            url.searchParams.append('duration', normalizedDuration);
-        }
-        if(!url.searchParams.has('logout') && isRole){
-            const urlWithoutLogout = new URL(url);
-            urlWithoutLogout.searchParams.append('logout',false);
-            GM_setValue(SR_LAST_SPEEDRUN_LINK, {timestamp: Date.now(), url: urlWithoutLogout.toString()});
+        if(!isAAM) {
+            if(normalizedDuration) {
+                url.searchParams.append('duration', normalizedDuration);
+            }
+            if(!url.searchParams.has('logout') && isRole) {
+                const urlWithoutLogout = new URL(url);
+                urlWithoutLogout.searchParams.append('logout',false);
+                GM_setValue(SR_LAST_SPEEDRUN_LINK, {timestamp: Date.now(), url: urlWithoutLogout.toString()});
+            }
         }
         return url.toString();
     }
@@ -856,6 +883,7 @@ ${variables.internal.result}`
                     if(result) {
                         let [,arn, account, role] = result;
                         let isIdentityCenter = false;
+                        let isAAM = false;
                         let addLink = false;
                         let permSet = undefined;
                         if(role.startsWith('AWSReservedSSO_')){
@@ -873,6 +901,15 @@ ${variables.internal.result}`
                                 } else {
                                     console.warn('Unable to determine session issuer');
                                 }
+                            }
+                        } else if(session?.sessionIdentityStore || userInfo.issuer?.startsWith("https://identitycenter.amazonaws.com/ssoins-")){
+                            isAAM = true;
+                            AAM_ENDPOINT = GM_getValue(AAM_URL_LOOKUP)[account];
+                            if(AAM_ENDPOINT) {
+                                AAM_ENDPOINT = `https://${AAM_ENDPOINT}/console`;
+                                addLink = true;
+                            } else {
+                               console.warn('Unable to determine session issuer');
                             }
                         } else if (role?.startsWith('speedrun-')) {
                             arn = `arn:aws:iam::${account}:role/${role}`;
@@ -929,7 +966,7 @@ ${variables.internal.result}`
                                 let curHtml = srLink.html();
                                 console.log('Speedrun link',url);
                                 GM_setClipboard(url);
-                                srLink.html('Copied!');
+                                srLink.html("<span style='font-family:Amazon Ember, Helvetica Neue, Roboto, Arial, sans-serif;font-size:12px;'>Copied!</span>");
                                 setTimeout(()=>{srLink.html(curHtml)}, 2000);
 
                             });
