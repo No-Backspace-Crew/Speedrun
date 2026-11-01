@@ -1086,6 +1086,38 @@ function unescapeCloudwatchInsights(s) {
     }
     return unescapeCloudwatchQueryDetails(result);
 }
+
+function unescapeCloudwatchAnalytics(s) {
+    let qIdx = s.indexOf('?');
+    if (qIdx === -1) {
+        return {};
+    }
+    let params = new URLSearchParams(s.slice(qIdx + 1));
+    let decodeVal = (v) => v ? unescapeCloudwatchQueryDetails(v.replace(/^~'/, '')) : v;
+    let active = decodeVal(params.get('active')) || 'a';
+    let query = decodeVal(params.get(`${active}.query`)) || '';
+    let match = /\bSTART=(\S+)\s+END=(\S+)/.exec(query);
+    if (!match) {
+        return {};
+    }
+    let [, rawStart, rawEnd] = match;
+    let parseAnalyticsDuration = (val) => {
+        let m = /^(-?\d+)(s|m|h|d|w|mo|y)$/i.exec(val);
+        if (!m) {
+            return val;
+        }
+        let units = { s: 1, m: 60, h: 3600, d: 86400, w: 604800, mo: 2592000, y: 31536000 };
+        return parseInt(m[1], 10) * units[m[2].toLowerCase()];
+    };
+    let isRelative = /^(-?\d+)(s|m|h|d|w|mo|y)$/i.test(rawStart);
+    return {
+        queryDetail: {
+            start: isRelative ? parseAnalyticsDuration(rawStart) : rawStart,
+            end: isRelative ? parseAnalyticsDuration(rawEnd) : rawEnd,
+            timeType: isRelative ? 'RELATIVE' : (rawStart.includes('Z') ? 'ABSOLUTE' : undefined)
+        }
+    };
+}
 //console.log(unescapeCloudwatchLogs("#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255Ddf1b3ad5025b42aeb659fc10468fe964$3Fstart$3D1650006000000$26end$3D1650092399000$26filterPattern$3Da$253Db"));
 //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))")));
 //console.log(unescapeCloudwatchInsights(unescapeCloudwatch("#metricsV2:graph=~(view~'timeSeries~stacked~false~metrics~(~(~(expression~'SEARCH*28*27*7bAWS*2fApiGateway*2cApiName*7d*27*2c*20*27Average*27*2c*20300*29~id~'e1~period~300))~(~'AWS*2fApiGateway~'4XXError~'ApiName~'dev-serverless-api-sample~(id~'m1)))~region~'us-west-2~stat~'Average~period~300~start~'2022-04-14T20*3a13*3a00.988Z~end~'2022-04-14T20*3a26*3a00.741Z);query=~'*7bAWS*2fApiGateway*2cApiName*7d")));
@@ -1166,7 +1198,7 @@ function extractCloudWatchTimeAndAddSnapshot() {
     }
     let obj;
     let hash = window.location.hash;
-    let src = firstGroup(/#(\w+:\w+-?\w*)/, hash);
+    let src = firstGroup(/#(\w+:\w+-?\w*|log-analytics)/, hash);
     switch(src) {
         case 'logsV2:log-groups':
             obj = unescapeCloudwatchLogs(hash);
@@ -1174,6 +1206,9 @@ function extractCloudWatchTimeAndAddSnapshot() {
         case 'logsV2:logs-insights':
         case 'metricsV2:graph':
             obj = unescapeCloudwatchInsights(unescapeCloudwatch(hash));
+            break;
+        case 'log-analytics':
+            obj = unescapeCloudwatchAnalytics(hash);
             break;
         case 'alarmsV2:alarm':
             waitForSelector('#microConsole-Alarms').then(async (result) => {
@@ -1291,6 +1326,57 @@ function extractCloudWatchTimeAndAddSnapshot() {
                     }
                 }
             );
+        });
+    } else if(src=='log-analytics') {
+        waitForSelector('[data-testid="cloudwatch-console-log-analytics"]').then((analyticsRoot) => {
+            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
+            const injectAnalyticsSnapshotButtons = () => {
+                const dismissHistBtn = analyticsRoot.querySelector('button[data-testid="histogram-dismiss-button"]');
+                if (dismissHistBtn && !document.getElementById('srSnapshotHistogram')) {
+                    const histBtn = $(dismissHistBtn).clone();
+                    histBtn.attr({
+                        id: 'srSnapshotHistogram',
+                        title: 'Snapshot histogram',
+                        'aria-label': 'Snapshot histogram',
+                        'data-testid': 'snapshot-histogram'
+                    });
+                    histBtn.removeClass('right-0').css('right', '20px');
+                    histBtn.find('svg').replaceWith($(svg).attr({ width: 12, height: 12 }));
+                    histBtn.off('click').on('click', () => {
+                        const histEl = analyticsRoot.querySelector('[data-analytics="histogram"]');
+                        if (histEl) {
+                            domSnapshot(histEl, `CloudWatch-${dayjs().format()}.png`);
+                        }
+                    });
+                    $(dismissHistBtn).before(histBtn);
+                }
+
+                const dismissChartBtn = analyticsRoot.querySelector('button[data-testid="dismiss-chart"]');
+                if (dismissChartBtn && !document.getElementById('srSnapshotChart')) {
+                    const chartBtn = $(dismissChartBtn).clone();
+                    chartBtn.attr({
+                        id: 'srSnapshotChart',
+                        title: 'Snapshot visualization',
+                        'aria-label': 'Snapshot visualization',
+                        'data-testid': 'snapshot-chart'
+                    });
+                    chartBtn.empty().append($(svg), 'Snapshot');
+                    chartBtn.off('click').on('click', () => {
+                        const chartEl = analyticsRoot.querySelector('[data-testid="chart-widgets"]');
+                        if (chartEl) {
+                            domSnapshot(chartEl, `CloudWatch-${dayjs().format()}.png`);
+                        }
+                    });
+                    $(dismissChartBtn).before(chartBtn);
+                }
+            };
+
+            injectAnalyticsSnapshotButtons();
+            if (!analyticsRoot.dataset.srObserved) {
+                analyticsRoot.dataset.srObserved = 'true';
+                const observer = new MutationObserver(injectAnalyticsSnapshotButtons);
+                observer.observe(analyticsRoot, { childList: true, subtree: true });
+            }
         });
     }
 }
@@ -4397,11 +4483,11 @@ function getLatestVersion(remoteVersion) {
 
 function domSnapshot(element, filename){
     domToPng(element,{scale:2,sandbox:element.ownerDocument, debug:true, style:element.style, autoDestruct:true,
-                      filter: el => !(el.className == 'query-counters'||el.classList?.contains('histogram-toggle')),
+                      filter: el => !(el.className == 'query-counters'||el.classList?.contains('histogram-toggle')||el.dataset?.testid === 'histogram-dismiss-button'||el.id?.startsWith('srSnapshot')),
                       style: {'backgroundColor':getBackgroundColor()},
                       //only include certain styles for logs histogram for speed
-                      includeStyleProperties: element.className?.includes('statistics') || element.className?.includes('cw-chart-container-graph')?
-                      ['text-anchor','padding-block','padding-inline','border-block','border-inline','border-start-start-radius','border-start-end-radius','border-end-start-radius','border-end-end-radius','box-sizing','margin','border-top-width','border-right-width', 'border-bottom-width','border-left-width','background-color','text-wrap-mode','color','font-weight','fill','line-height','display','font-size','font-family','opacity', 'stroke','stroke-width','font','width', 'height','visibility']:null
+                      includeStyleProperties: element.className?.includes('statistics') || element.className?.includes('cw-chart-container-graph') || element.dataset?.analytics === 'histogram' || element.dataset?.testid === 'chart-widgets'?
+                      ['text-anchor','padding-block','padding-inline','border-block','border-inline','border-start-start-radius','border-start-end-radius','border-end-start-radius','border-end-end-radius','box-sizing','margin','border-top-width','border-right-width', 'border-bottom-width','border-left-width','background-color','text-wrap-mode','color','font-weight','fill','line-height','display','font-size','font-family','opacity', 'stroke','stroke-width','font','width', 'height','visibility','flex-direction','align-items','justify-content','gap','position','top','right','bottom','left','overflow']:null
                      }).then(imgURI => {
         const download = GM_addElement('a');
         download.href = imgURI;
