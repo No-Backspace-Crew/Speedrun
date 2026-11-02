@@ -1413,7 +1413,7 @@ function extractCloudWatchTimeAndAddSnapshot() {
             if (!analyticsRoot.dataset.srObserved) {
                 analyticsRoot.dataset.srObserved = 'true';
                 const observer = new MutationObserver(injectAnalyticsSnapshotButtons);
-                observer.observe(analyticsRoot, { childList: true, subtree: true, characterData: true });
+                observer.observe(analyticsRoot, { childList: true, subtree: true });
             }
         });
     }
