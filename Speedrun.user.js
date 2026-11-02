@@ -1087,15 +1087,23 @@ function unescapeCloudwatchInsights(s) {
     return unescapeCloudwatchQueryDetails(result);
 }
 
-function unescapeCloudwatchAnalytics(s) {
-    let qIdx = s.indexOf('?');
-    if (qIdx === -1) {
-        return {};
+function unescapeCloudwatchAnalytics(s, useEditor = false) {
+    let query = '';
+    if (useEditor) {
+        let viewLines = document.querySelectorAll('[data-testid="query-editor-container"] .view-lines .view-line');
+        if (viewLines.length) {
+            query = Array.from(viewLines).map(l => l.textContent.replace(/\u00a0/g, ' ')).join('\n');
+        }
     }
-    let params = new URLSearchParams(s.slice(qIdx + 1));
-    let decodeVal = (v) => v ? unescapeCloudwatchQueryDetails(v.replace(/^~'/, '')) : v;
-    let active = decodeVal(params.get('active')) || 'a';
-    let query = decodeVal(params.get(`${active}.query`)) || '';
+    if (!query) {
+        let qIdx = s.indexOf('?');
+        if (qIdx !== -1) {
+            let params = new URLSearchParams(s.slice(qIdx + 1));
+            let decodeVal = (v) => v ? unescapeCloudwatchQueryDetails(v.replace(/^~'/, '')) : v;
+            let active = decodeVal(params.get('active')) || 'a';
+            query = decodeVal(params.get(`${active}.query`)) || '';
+        }
+    }
     let match = /\bSTART=(\S+)\s+END=(\S+)/.exec(query);
     if (!match) {
         return {};
@@ -1192,6 +1200,28 @@ function waitForSelector(selector, source=document) {
     });
 }
 
+function persistCloudWatchTimestamp(obj) {
+    let start = firstNonNull(nullSafe(obj?.queryDetail).start,nullSafe(obj?.graph).start);
+    let end = firstNonNull(nullSafe(obj?.queryDetail).end,nullSafe(obj?.graph).end);
+    let timeType = nullSafe(obj?.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
+    if(start != undefined && end != undefined && timeType != undefined){
+        let timestamp = {};
+        timestamp.start = start;
+        timestamp.end = end;
+        if(timeType === 'RELATIVE'){
+            timestamp.type = 'relative';
+            timestamp.label = `${getFormattedTimeUnit(convertDuration(start))} - ${getFormattedTimeUnit(convertDuration(end))}`;
+        }else{
+            timestamp.label = `${timestamp.start} - ${timestamp.end}`.replace(/T/g,' ').replace(/\.\d{3}Z/g,'Z');
+            timestamp.type = 'fixed';
+        }
+        if(timestamp.label) {
+            console.log(`Extracted ${timestamp.type} timestamp`,timestamp);
+            persistTimestamp(timestamp, TIMESTAMPS_KEY);
+        }
+    }
+}
+
 function extractCloudWatchTimeAndAddSnapshot() {
     if (!/^\/cloudwatch\/home/.test(window.location.pathname)) {
         return;
@@ -1247,25 +1277,7 @@ function extractCloudWatchTimeAndAddSnapshot() {
     //#logsV2:log-groups/log-group/$252Faws$252Flambda$252Fserverless-api-sample-dev-serverless-api-sample/log-events/2022$252F04$252F14$252F$255B$2524LATEST$255D456616728e3e40d093af1981cbe2d8b1$3Fstart$3D1649228400000$26end$3D1649235600000
     //#logsV2:logs-insights$3FqueryDetail$3D~(end~0~start~-3600~timeType~'RELATIVE~unit~'seconds~editorString~'~isLiveTail~false~queryId~'~source~(~'*2faws*2flambda*2fserverless-api-sample-dev-serverless-api-sample))
     //#metricsV2:graph=~(region~'us-east-1~metrics~(~(~'AWS*2fLambda~'Throttles~'FunctionName~'IsRecyclingWeek~(stat~'Sum)))~view~'timeSeries~stacked~false~start~'2022-04-19T20*3a41*3a00.000Z~end~'2022-04-19T21*3a22*3a00.000Z~period~60~annotations~(horizontal~(~(label~'Throttles*20*3e*200*20for*201*20datapoints*20within*201*20minute~value~0)))~title~'Lambda-Throttles)
-    let start = firstNonNull(nullSafe(obj.queryDetail).start,nullSafe(obj.graph).start);
-    let end = firstNonNull(nullSafe(obj.queryDetail).end,nullSafe(obj.graph).end);
-    let timeType = nullSafe(obj.queryDetail).timeType || ((start+"").includes('P') ? 'RELATIVE' : ((start+"").includes('Z') ? 'ABSOLUTE' : undefined));
-    if(start != undefined && end != undefined && timeType != undefined){
-        let timestamp = {};
-        timestamp.start = start;
-        timestamp.end = end;
-        if(timeType === 'RELATIVE'){
-            timestamp.type = 'relative';
-            timestamp.label = `${getFormattedTimeUnit(convertDuration(start))} - ${getFormattedTimeUnit(convertDuration(end))}`;
-        }else{
-            timestamp.label = `${timestamp.start} - ${timestamp.end}`.replace(/T/g,' ').replace(/\.\d{3}Z/g,'Z');
-            timestamp.type = 'fixed';
-        }
-        if(timestamp.label) {
-            console.log(`Extracted ${timestamp.type} timestamp`,timestamp);
-            persistTimestamp(timestamp, TIMESTAMPS_KEY);
-        }
-    }
+    persistCloudWatchTimestamp(obj);
 
     if(src=='logsV2:logs-insights') {
         waitForSelector('#microConsole-Logs').then(async (result) => {
@@ -1329,8 +1341,34 @@ function extractCloudWatchTimeAndAddSnapshot() {
         });
     } else if(src=='log-analytics') {
         waitForSelector('[data-testid="cloudwatch-console-log-analytics"]').then((analyticsRoot) => {
+            if (obj?.queryDetail?.start !== undefined && obj?.queryDetail?.end !== undefined && !analyticsRoot.dataset.lastExtractedTime) {
+                analyticsRoot.dataset.lastExtractedTime = `${obj.queryDetail.start}_${obj.queryDetail.end}`;
+            }
             const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 32 32"><path fill="currentColor" d="M29 26H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h6.46l1.71-2.55A1 1 0 0 1 12 4h8a1 1 0 0 1 .83.45L22.54 7H29a1 1 0 0 1 1 1v17a1 1 0 0 1-1 1ZM4 24h24V9h-6a1 1 0 0 1-.83-.45L19.46 6h-6.92l-1.71 2.55A1 1 0 0 1 10 9H4Z"/><path fill="currentColor" d="M16 22a6 6 0 1 1 6-6a6 6 0 0 1-6 6Zm0-10a4 4 0 1 0 4 4a4 4 0 0 0-4-4Z"/></svg>';
+            const syncAnalyticsTimestamp = () => {
+                const currentObj = unescapeCloudwatchAnalytics(window.location.hash, true);
+                const start = currentObj?.queryDetail?.start;
+                const end = currentObj?.queryDetail?.end;
+                if (start !== undefined && end !== undefined) {
+                    const timeKey = `${start}_${end}`;
+                    if (analyticsRoot.dataset.lastExtractedTime !== timeKey) {
+                        analyticsRoot.dataset.lastExtractedTime = timeKey;
+                        persistCloudWatchTimestamp(currentObj);
+                    }
+                }
+            };
             const injectAnalyticsSnapshotButtons = () => {
+                const statusEl = analyticsRoot.querySelector('[data-testid="metrics-summary-status"]');
+                if (statusEl && /^(Scheduling|Instantiating|Running)\b/.test(statusEl.textContent.trim())) {
+                    syncAnalyticsTimestamp();
+                }
+
+                const runBtn = analyticsRoot.querySelector('button[data-testid="run-query"]');
+                if (runBtn && !runBtn.dataset.srBound) {
+                    runBtn.dataset.srBound = 'true';
+                    runBtn.addEventListener('click', syncAnalyticsTimestamp);
+                }
+
                 const dismissHistBtn = analyticsRoot.querySelector('button[data-testid="histogram-dismiss-button"]');
                 if (dismissHistBtn && !document.getElementById('srSnapshotHistogram')) {
                     const histBtn = $(dismissHistBtn).clone();
@@ -1375,7 +1413,7 @@ function extractCloudWatchTimeAndAddSnapshot() {
             if (!analyticsRoot.dataset.srObserved) {
                 analyticsRoot.dataset.srObserved = 'true';
                 const observer = new MutationObserver(injectAnalyticsSnapshotButtons);
-                observer.observe(analyticsRoot, { childList: true, subtree: true });
+                observer.observe(analyticsRoot, { childList: true, subtree: true, characterData: true });
             }
         });
     }
@@ -1476,6 +1514,16 @@ function updateConsoleFavIcon(){
 
 if(location.host.endsWith('console.aws.amazon.com')) {
     window.addEventListener('hashchange', extractCloudWatchTimeAndAddSnapshot, false);
+    let lastSrc = firstGroup(/#(\w+:\w+-?\w*|log-analytics)/, window.location.hash);
+    window.navigation?.addEventListener('navigate', () => {
+        setTimeout(() => {
+            const currentSrc = firstGroup(/#(\w+:\w+-?\w*|log-analytics)/, window.location.hash);
+            if (currentSrc !== lastSrc) {
+                lastSrc = currentSrc;
+                extractCloudWatchTimeAndAddSnapshot();
+            }
+        }, 0);
+    });
     const body = document.querySelector("body");
     if(body) {
         if(!(await addSpeedrunLink())) {
