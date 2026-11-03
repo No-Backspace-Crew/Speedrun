@@ -1635,7 +1635,7 @@ function bindDataAndEvents() {
                 }
             }
         } else {
-            if(key != 'srUpdate') {
+            if(key != 'srUpdate' && (!dataAndEvents[key].page || dataAndEvents[key].page === window.location.pathname)) {
                 console.warn(`Unable to bind, no such id: ${key}`);
             }
         }
@@ -4319,7 +4319,7 @@ async function wireUpContent(blocks) {
             runBtn.prop('disabled',true);
             actions.append(runBtn);
             nav.append(actions);
-            dataAndEvents[runBtnId] = {'data': {details}, 'events': {}};
+            dataAndEvents[runBtnId] = {'page': window.location.pathname, 'data': {details}, 'events': {}};
 
             const navBody = $('<div class="UnderlineNav-body">');
             var index = 0;
@@ -4327,7 +4327,7 @@ async function wireUpContent(blocks) {
                 const localBlock = block;
                 let tab = $(`<span id='tab-${key}-${localBlock}' class="UnderlineNav-item${key==='Output'?' d-none':''}" ${index++ == 0 ? 'aria-current="page"' : ''}><svg xmlns="http://www.w3.org/2000/svg" class="UnderlineNav-octicon octicon octicon-tools" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="${value}"></path></svg><span>${key}</span></span>`);
                 navBody.append(tab);
-                dataAndEvents[`tab-${key}-${localBlock}`] = {events:{click:function(tab) {
+                dataAndEvents[`tab-${key}-${localBlock}`] = {'page': window.location.pathname, events:{click:function(tab) {
                     for (const [oTabKey, oTabValue] of Object.entries(tabNames)) {
                         let tabId = `${oTabKey}-${localBlock}`
                             if(oTabKey === key) {
