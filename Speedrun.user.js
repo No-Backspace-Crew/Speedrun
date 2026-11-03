@@ -2317,7 +2317,8 @@ html.sr-scrolled .sr-autohide > * {
         dataAndEvents.toggleSRToolbar = {
             events:
             {
-                click:function () {
+                click:function (event) {
+                    event.preventDefault();
                     GM_setValue("srToolbarVisible",$('#toolbar').toggle().is(':visible'));
                     showToolbarOnPage();
                 }
