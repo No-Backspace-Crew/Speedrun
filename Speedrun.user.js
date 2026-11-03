@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.164
+// @version      1.165
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -3234,7 +3234,7 @@ async function nope(content, preview = false, anchor, runBtn) {
     delete pageVariables.templates;
     delete pageVariables.services;
     let variables = {internal:{region:getRegion()}, user: GM_getValue("g_usernameOverride") || user, region: extractRegion(getRegion()), service: getService()};
-    let details = parseContent(content);
+    let details = _.isString(content) ? parseContent(content) : _.cloneDeep(content);
     variables.content = details.body;
     variables.internal.showPin = details.service != undefined;
     variables.internal.running = !preview;
@@ -3300,7 +3300,7 @@ async function nope(content, preview = false, anchor, runBtn) {
     }
     sessionVariables = variables;
 
-    variables.internal.prompts = getPrompts(content, variables.internal.template);
+    variables.internal.prompts = getPrompts(details.code, variables.internal.template);
     let existingUserConfig = {}, existingCredentialsBroker = undefined;
     if (!preview) {
         if(hasElements(variables.internal.prompts) && !(variables.prompts === false)) {
@@ -3888,12 +3888,7 @@ async function updatePage(reason) {
     }, { passive: true });
 }
 
-        let pageEnabled = await updatePageConfig(path);
-
-        // second pass to wire up content
-        if(pageEnabled) {
-            await wireUpContent();
-        }
+        await updatePageConfig(path);
 
         bindDataAndEvents();
         $("#service").trigger('change');
@@ -4030,7 +4025,7 @@ async function updateTabs() {
     let pageNeedsCreds = false;
     $('.srRunBtn').each(async function (item) {
         const btn = $(this);
-        const variables = await nope(btn.data('code'), true);
+        const variables = await nope(btn.data('details'), true);
         try {
             if(variables.internal.templateType != 'iframe' || (variables.internal.templateType == 'iframe' && variables.internal.prompts && variables.internal.prompts.length)) {
                 $(`#${btn.data('previewTab')}`).find('code').addBack().last().html(await buildPreview(variables));
@@ -4130,7 +4125,7 @@ function parseContent(str, name) {
     const groups = str.match(HEADER);
     if(groups && groups[1] && (!name || name === groups[1])) {
         let body = str.replace(HEADER,"").replace(TRAILING_WHITESPACE,"");
-        return {template: groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, body};
+        return {template: groups[1], "service" : groups[3], "variables": groups[4] ? parseJSON(groups[4]) : undefined, body, code: str};
     }
     return undefined;
 }
@@ -4156,40 +4151,46 @@ async function buildConfig(enabled) {
     pageConfig = (user && (userConfig.services[USER_SERVICE].regions.aws.account || userConfig.services[USER_SERVICE].ssoStartUrl)) ? userConfig : {};
     pageConfig = overlaySSOConfig(pageConfig, userConfig.services[USER_SERVICE].ssoStartUrl);
     const configs = [];
+    const blocks = [];
     let numPreBlocks = 0;
     if(enabled) {
+        const isDone = doneLoading();
         let preBlocks = $(".markdown-body pre");
         for (const pre of preBlocks){
             numPreBlocks++;
-            const details = parseContent($(pre).text(), SR_CONFIG);
+            const details = parseContent($(pre).text(), isDone ? SR_CONFIG : undefined);
             if(details) {
-                // hide sr config by default
-                if(!doneLoading() && $(pre).parents('.details-reset').length == 0) {
-                    $(pre).parent().wrap('<details class="details-reset"></details>')
-                        .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
-                        .prev().on('click', function(event) {
-                        let btn = $(event.delegateTarget);
-                        let text = btn.contents().get(0);
-                        let toggleText = text.nodeValue.includes('Show') ? 'Hide' : 'Show';
-                        btn.attr('title', `${toggleText} Speedrun Config`);
-                        text.nodeValue = `${toggleText} `;
-                    });
-                }
-                if (details.variables && details.variables.transclude) {
-                    const paths = arrayify(details.variables.transclude);
-                    const results = await Promise.all(paths.map(p => retrieve(p)));
-                    for (const result of results) {
-                        $(result).find(".markdown-body pre").each(function () {
-                            const transclude = parseContent($(this).text(), SR_CONFIG);
-                            if (transclude) pushConfig(configs, transclude.body);
+                if(details.template === SR_CONFIG) {
+                    // hide sr config by default
+                    if(!isDone && $(pre).parents('.details-reset').length == 0) {
+                        $(pre).parent().wrap('<details class="details-reset"></details>')
+                            .before(`<summary class="btn srConfig" title='Show Speedrun Config'>Show <img width="20" height="20" style="background-color:transparent;vertical-align:middle" src="${GM_info.script.icon}"/> Config <span class="dropdown-caret"></span></summary>`)
+                            .prev().on('click', function(event) {
+                            let btn = $(event.delegateTarget);
+                            let text = btn.contents().get(0);
+                            let toggleText = text.nodeValue.includes('Show') ? 'Hide' : 'Show';
+                            btn.attr('title', `${toggleText} Speedrun Config`);
+                            text.nodeValue = `${toggleText} `;
                         });
                     }
-                }
+                    if (details.variables && details.variables.transclude) {
+                        const paths = arrayify(details.variables.transclude);
+                        const results = await Promise.all(paths.map(p => retrieve(p)));
+                        for (const result of results) {
+                            $(result).find(".markdown-body pre").each(function () {
+                                const transclude = parseContent($(this).text(), SR_CONFIG);
+                                if (transclude) pushConfig(configs, transclude.body);
+                            });
+                        }
+                    }
 
-                // if there is any body content overlay that
-                let body = details.body.trim()
-                if(body.length > 0) {
-                    pushConfig(configs, body);
+                    // if there is any body content overlay that
+                    let body = details.body.trim()
+                    if(body.length > 0) {
+                        pushConfig(configs, body);
+                    }
+                } else {
+                    blocks.push({pre, details});
                 }
             }
         }
@@ -4205,6 +4206,9 @@ async function buildConfig(enabled) {
         }
         if(pageConfig.srShowConfig || numPreBlocks == 1){
             $('.srConfig[title^="Show"]').trigger('click');
+        }
+        if(!isDone) {
+            await wireUpContent(blocks);
         }
     }
     return pageConfig;
@@ -4291,13 +4295,12 @@ function persistLastRole(variables) {
     }
 }
 
-async function wireUpContent() {
+async function wireUpContent(blocks) {
     let block = 0;
-    for (const pre of $(".markdown-body pre")) {
-        const code = $(pre).text();
-        const groups = code.match(HEADER);
-        if(groups && groups[1] && hasTemplate(groups[1])) {
-            const isEmbed = groups[1].startsWith('!');
+    for (const {pre, details} of blocks) {
+        if(hasTemplate(details.template)) {
+            const code = details.code;
+            const isEmbed = details.template.startsWith('!');
             block++;
             //wrap the copy content with ticks.
             let codeFence = "```";
@@ -4316,7 +4319,7 @@ async function wireUpContent() {
             runBtn.prop('disabled',true);
             actions.append(runBtn);
             nav.append(actions);
-            dataAndEvents[runBtnId] = {'data': {code}, 'events': {}};
+            dataAndEvents[runBtnId] = {'data': {details}, 'events': {}};
 
             const navBody = $('<div class="UnderlineNav-body">');
             var index = 0;
@@ -4354,7 +4357,7 @@ async function wireUpContent() {
                 codeTab.after(debugTab);
                 debugTab.after(outputTab);
                 dataAndEvents[runBtnId].events.click = async function() {
-                    await nope(runBtn.data('code'), false, runBtn.data('anchor'), runBtn);
+                    await nope(runBtn.data('details'), false, runBtn.data('anchor'), runBtn);
                 };
 
         }
