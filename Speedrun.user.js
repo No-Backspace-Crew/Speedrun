@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.165
+// @version      1.166
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
@@ -231,6 +231,7 @@
 // @connect      portal.sso.sa-east-1.amazonaws.com
 // @connect      speedrun.nobackspacecrew.com
 // @connect      awsapps.com
+// @connect      app.aws
 // @noframes
 // @run-at       document-end
 // @updateURL    https://speedrun.nobackspacecrew.com/userscripts/Speedrun.meta.js
@@ -438,6 +439,7 @@ class SpeedrunCredentialsBroker extends CredentialsBroker {
     async getCredentials(variables) {
         switch(variables.internal.credentialsType || variables.internal.templateType) {
             case 'federate':
+                AAM_ENDPOINT = undefined;
                 return {
                     url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl, variables.roleDuration) : variables.internal.consoleUrl
                 }
@@ -773,6 +775,189 @@ ${variables.internal.result}`
         }
     }
 
+class AAMCredentialsBroker extends CredentialsBroker {
+    getValidTemplateTypes() {
+        return ['federate','lambda','copy','stepfunction','eventbridge','buildConfig'];
+    }
+    validate(variables) {
+        if (variables.internal.templateType !== "buildConfig") {
+            if (!variables.role || !variables.account || !variables.region || !variables.partition) {
+                throw new Error("Unable to determine role arn, role, account, region and partition must be defined");
+            }
+            variables.roleArn = `arn:${variables.partition}:iam::${variables.account}:role/${variables.role}`;
+        }
+    }
+    getUrl(variables) {
+        const aamUrl = variables.aamUrl;
+        if(!aamUrl) {
+            throw new Error('aamUrl is required to get credentials');
+        }
+        return normalizeAAMUrl(aamUrl);
+    }
+    parseUrl(aamUrl) {
+        const match = aamUrl.match(/^https:\/\/(?<tenantId>[a-z0-9\-]+)\.account-access\.(?<region>[a-z0-9\-]+)\.app\.aws/i);
+        if(!match) {
+            throw new Error('Unable to parse Account Access Manager url, check your url');
+        }
+        return match.groups;
+    }
+    async ensureAuthenticated(aamUrl) {
+        const result = await invoke({
+            url: `${aamUrl}/auth/session`,
+            method: 'GET',
+            headers: {'User-Agent': navigator.userAgent},
+        });
+        if(result.status == 200 && result.response?.authenticated) {
+            return;
+        }
+        let authToast = $("#authToast");
+        let tab = undefined;
+        try {
+            await new Promise(async (resolve, reject) => {
+                authToast.attr('hidden',false);
+                await sleep(200);
+                tab = GM_openInTab(aamUrl, {active:true,setParent:true});
+                let attempts = 550;
+                tab.onclose = () => {
+                    attempts = -1;
+                };
+                $('#authToastCancelled').on('click.sr', () => {authToast.attr('hidden', true);attempts = -1});
+                let timer = setInterval(async ()=>{
+                    try {
+                        if(attempts < 0) {
+                            throw new Error('Unable to get credentials, user cancelled authentication');
+                        }
+                        if(attempts-- == 0) {
+                            throw new Error('Timed out waiting for user authentication.  Unable to get credentials');
+                        }
+                        const tokenResult = await invoke({
+                            url: `${aamUrl}/auth/session`,
+                            method: 'GET',
+                            headers: {'User-Agent': navigator.userAgent},
+                        });
+                        if(tokenResult.status == 200 && tokenResult.response?.authenticated) {
+                            clearInterval(timer);
+                            resolve();
+                        }
+                    } catch(e) {
+                        clearInterval(timer);
+                        reject(e);
+                    }
+                }, 1000);
+            });
+        } finally {
+            authToast.attr('hidden', true);
+            $('#authToastCancelled').off('click.sr');
+            if(tab && !tab.closed) {
+                tab.close();
+            }
+            window.focus();
+        }
+    }
+    async listRoles(variables) {
+        const aamUrl = this.getUrl(variables);
+        const {tenantId} = this.parseUrl(aamUrl);
+        await this.ensureAuthenticated(aamUrl);
+        let roles = [];
+        let nextToken = null;
+        do {
+            const request = {
+                url: `${aamUrl}/api/access?maxResults=100&tenantId=${encodeURIComponent(tenantId)}${nextToken ? `&nextToken=${encodeURIComponent(nextToken)}` : ''}`,
+                method: 'GET',
+                headers: {'X-Csrf-Token': '1', 'User-Agent': navigator.userAgent},
+            };
+            const result = await invoke(request);
+            if(result.status != 200) {
+                throw new Error(`Unable to get listRoles: ${result.responseText}`);
+            }
+            if(result.response.roles && result.response.roles.length) {
+                roles = roles.concat(result.response.roles);
+            }
+            nextToken = result.response.nextToken;
+        } while(nextToken);
+        return roles;
+    }
+    getCachedCredentials(account, role, forceNewCreds, duration) {
+        const cacheKey = `${account}:${role}`;
+        const cachedCredentials = credentialsCache[cacheKey];
+        if(!forceNewCreds && cachedCredentials && !needsRefresh(cachedCredentials.expiration, cachedCredentials.duration)) {
+            console.log('Using cached credentials');
+            return cachedCredentials.credentials;
+        }
+    }
+    async getCredentials(variables) {
+        const type = variables.internal.credentialsType || variables.internal.templateType;
+        switch(type) {
+            case 'federate':
+                AAM_ENDPOINT = `${this.getUrl(variables)}/console`;
+                return {
+                    url: variables.internal.newCreds ? getFederationLink(variables.roleArn, variables.internal.consoleUrl, variables.roleDuration) : variables.internal.consoleUrl
+                };
+                break;
+            case 'lambda':
+            case 'stepfunction':
+            case 'cfn':
+            case 'eventbridge':
+            case 'copy': {
+                let roleCredentials = this.getCachedCredentials(variables.account, variables.role, variables.forceNewCreds, variables.roleDuration);
+                if(!roleCredentials) {
+                    const aamUrl = this.getUrl(variables);
+                    const {tenantId} = this.parseUrl(aamUrl);
+                    await this.ensureAuthenticated(aamUrl);
+                    const request = {
+                        url: `${aamUrl}/api/access/credentials?tenantId=${encodeURIComponent(tenantId)}&roleArn=${encodeURIComponent(variables.roleArn)}&accessType=PROGRAMMATIC_ACCESS`,
+                        method: 'GET',
+                        headers: {'X-Csrf-Token': '1', 'User-Agent': navigator.userAgent},
+                    };
+                    const result = await invoke(request);
+                    if(result.status != 200) {
+                        throw new Error(`Unable to get credentials: ${result.responseText}`);
+                    }
+                    roleCredentials = result.response.credentialsDetails.programmaticAccess;
+                    const expiration = dayjs(roleCredentials.expiration).valueOf();
+                    credentialsCache[`${variables.account}:${variables.role}`] = {expiration, credentials: roleCredentials, duration: (expiration - Date.now()) / 1000};
+                }
+                if(type=='copy') {
+                    return `export AWS_CREDENTIAL_EXPIRATION=${dayjs(roleCredentials.expiration).toISOString()}
+export AWS_ACCESS_KEY_ID=${roleCredentials.accessKeyId}
+export AWS_SECRET_ACCESS_KEY=${roleCredentials.secretAccessKey}
+export AWS_SESSION_TOKEN=${roleCredentials.sessionToken}
+export AWS_DEFAULT_REGION=${variables.region}
+export AWS_REGION=${variables.region}
+${variables.internal.result}`;
+                }
+                return roleCredentials;
+                break;
+            }
+            case 'buildConfig': {
+                const roles = await this.listRoles(variables);
+                const accountsById = {};
+                for(const item of roles) {
+                    if(!accountsById[item.accountId]) {
+                        accountsById[item.accountId] = {
+                            accountId: item.accountId,
+                            accountName: item.accountName,
+                            roles: []
+                        };
+                    }
+                    const roleName = item.roleArn.split(/:role\//)[1];
+                    if(roleName) {
+                        accountsById[item.accountId].roles.push(roleName);
+                    }
+                }
+                return Object.values(accountsById);
+                break;
+            }
+        }
+    }
+    getCacheKey() {
+        return 'roleArn';
+    }
+    getDangerKey() {
+        return 'role';
+    }
+}
+
 let credentialsBroker = getCredentialsBroker();
 
 dayjs.extend(window.dayjs_plugin_utc);
@@ -796,7 +981,7 @@ function getFederationLink(arn, destination, duration, account) {
     if(isRole) {
         const role = arn.split(/:(?:assumed-)?role\//)[1];
         const account = arn.split(':')[4];
-        if(role.startsWith('speedrun-')) {
+        if(!AAM_ENDPOINT && role.startsWith('speedrun-')) {
             url = new URL(`${FEDERATION_ENDPOINT}/federate/${account}`);
             if(GM_getValue(SR_MULTI_SESSION, false)) {
                 url.searchParams.append('logout',false);
@@ -903,7 +1088,8 @@ async function addSpeedrunLink() {
                         }
                     } else if(session?.sessionIdentityStore || userInfo.issuer?.startsWith("https://identitycenter.amazonaws.com/ssoins-")){
                         isAAM = true;
-                        AAM_ENDPOINT = GM_getValue(AAM_URL_LOOKUP)[account];
+                        arn = `arn:aws:iam::${account}:role/${role}`;
+                        AAM_ENDPOINT = GM_getValue(AAM_URL_LOOKUP, {})[account];
                         if(AAM_ENDPOINT) {
                             AAM_ENDPOINT = `https://${AAM_ENDPOINT}/console`;
                             addLink = true;
@@ -1739,10 +1925,11 @@ let templates = {
     settings : `~~~g_usernameOverride=Username Override {label:'Override your GitHub username when setting the user variable (optional)'}~~~
                     ~~~g_aws-accountId=AWS Account Id {placeholder:'123456789012', pattern:'\\\\d{12}', label:"Your personal AWS account id <a href='https://github.com/No-Backspace-Crew/Speedrun/wiki/Creating-Speedrun-Roles'>Read more</a>"}~~~
                     ~~~g_role=Role {"default":"speedrun-ReadOnly", label:"Your personal default role"}~~~
-                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Identity Center (Experimental)':'identitycenter','Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
+                    ~~~g_credentials_broker=Credentials Broker {"type":"select",options: {'Speedrun (Preferred)':'speedrun', 'Identity Center (Experimental)':'identitycenter','Account Access Manager (Experimental)':'aam','Granted (Experimental)':'granted'}, "default":'speedrun', label:"The credentials broker to get credentials from"}~~~
                     ~~~g_granted_profile=Granted Profile {label:"If using Granted, your personal profile"}~~~
                     ~~~g_identity_center_endpoint=Identity Center Url {label:"Identity Center start url if using your personal profile", placeholder:'https://your_subdomain.awsapps.com', pattern:'https:\\\\/\\\\/[a-z0-9\\\\-]+\\\\.awsapps\\\\.com(\\\\/(start(\\\\/)?))?'}~~~
                     ~~~g_identity_center_permSet=Identity Center Permission Set  {label:"If using Identity Center, your permission set"}~~~
+                    ~~~g_aam_endpoint=Account Access Manager Url {label:"Account Access Manager url if using your personal profile", placeholder:'https://your_tenant.account-access.us-east-1.app.aws', pattern:'https:\\\\/\\\\/[a-z0-9\\\\-]+\\\\.account-access\\\\.[a-z0-9\\\\-]+\\\\.app\\\\.aws(\\\\/(console(\\\\/)?)?)?'}~~~
                     ~~~g_force_new_creds=Force New Credentials {"type":"checkbox","default":false, "cast":"Boolean", label:"Gets new credentials every request, useful during testing"}~~~
                     ~~~g_use_beta_endpoint=Use Beta Endpoint {"type":"checkbox","default":false, "cast":"Boolean", label:"For testing beta features"}~~~`,
     copy : "${content}",
@@ -2412,9 +2599,9 @@ function insertSRUpdateButton(add=false){
     return '';
 }
 
-function insertSSORefreshButton(ssoRefreshRequired, ssoStartUrl){
+function insertRefreshButton(ssoRefreshRequired, url, label = 'Identity Center'){
     if($('#srRefresh').length == 0) {
-        const button = `<a class="minimalPadding btn btn-sm BtnGroup-item" id="srRefresh" title="Refresh Configuration from Identity Center"><span id='ssoRefreshRequired' hidden=${!ssoRefreshRequired} class="Label mr-1 color-fg-attention">Identity Center refresh required, click to start</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools color-fg">
+        const button = `<a class="minimalPadding btn btn-sm BtnGroup-item" id="srRefresh" title="Refresh Configuration from ${label}"><span id='ssoRefreshRequired' hidden=${!ssoRefreshRequired} class="Label mr-1 color-fg-attention">${label} refresh required, click to start</span><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" width="20" height="20" class="octicon octicon-tools color-fg">
   <path d="m8.533.133 5.25 1.68A1.75 1.75 0 0 1 15 3.48V7c0 1.566-.32 3.182-1.303 4.682-.983 1.498-2.585 2.813-5.032 3.855a1.697 1.697 0 0 1-1.33 0c-2.447-1.042-4.049-2.357-5.032-3.855C1.32 10.182 1 8.566 1 7V3.48a1.75 1.75 0 0 1 1.217-1.667l5.25-1.68a1.748 1.748 0 0 1 1.066 0Zm-.61 1.429.001.001-5.25 1.68a.251.251 0 0 0-.174.237V7c0 1.36.275 2.666 1.057 3.859.784 1.194 2.121 2.342 4.366 3.298a.196.196 0 0 0 .154 0c2.245-.957 3.582-2.103 4.366-3.297C13.225 9.666 13.5 8.358 13.5 7V3.48a.25.25 0 0 0-.174-.238l-5.25-1.68a.25.25 0 0 0-.153 0ZM9.5 6.5c0 .536-.286 1.032-.75 1.3v2.45a.75.75 0 0 1-1.5 0V7.8A1.5 1.5 0 1 1 9.5 6.5Z"></path>
   <g transform="translate(10, 10) scale(0.6)">
     <circle cx="8" cy="8" r="9.5" fill="var(--button-default-bgColor-rest,var(--color-btn-bg))" />
@@ -2431,8 +2618,9 @@ function insertSSORefreshButton(ssoRefreshRequired, ssoStartUrl){
     }
     dataAndEvents.srRefresh = { events: {'click.sr': async(event) => {await srRefreshClickHandler();}}}
     $('#srRefresh').show();
+    $('#ssoRefreshRequired').text(`${label} refresh required, click to start`);
     $('#ssoRefreshRequired').attr('hidden', !ssoRefreshRequired);
-    $('#srRefresh').attr('title', `Refresh Configuration from Identity Center ${ssoStartUrl}`)
+    $('#srRefresh').attr('title', `Refresh Configuration from ${label} ${url}`)
 }
 
 
@@ -2876,13 +3064,15 @@ function setFavIcon(isVisible) {
 }
 
 function getUserConfig() {
+    const broker = GM_getValue('g_credentials_broker', 'speedrun');
     return {
         "services" : {
             [USER_SERVICE] : {
                 "role" : GM_getValue('g_role', 'speedrun-ReadOnly'),
                 "profile" : GM_getValue('g_granted_profile', undefined),
                 "permSet" : GM_getValue('g_identity_center_permSet', undefined),
-                "ssoStartUrl": GM_getValue('g_identity_center_endpoint', undefined),
+                "ssoStartUrl": broker === 'aam' ? undefined : GM_getValue('g_identity_center_endpoint', undefined),
+                "aamUrl": broker === 'identitycenter' ? undefined : GM_getValue('g_aam_endpoint', undefined),
                 "regions" : {
                     "aws" : {
                         "account" : GM_getValue('g_aws-accountId')
@@ -3530,7 +3720,9 @@ async function nope(content, preview = false, anchor, runBtn) {
     };
 
     variables.internal.result = await deepInterpolate(variables.internal.template, variables, variables.ignoreErrors || preview);
-    variables.internal.credentialsBroker = (variables.ssoStartUrl && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
+    variables.internal.credentialsBroker = (variables.aamUrl && (!variables.ssoStartUrl || credentialsBroker.constructor.name == 'AAMCredentialsBroker') && credentialsBroker.constructor.name != 'AAMCredentialsBroker') ?
+        new AAMCredentialsBroker()
+    : (variables.ssoStartUrl && (!variables.aamUrl || credentialsBroker.constructor.name == 'IdentityCenterCredentialsBroker') && credentialsBroker.constructor.name != 'IdentityCenterCredentialsBroker') ?
         new IdentityCenterCredentialsBroker()
     : credentialsBroker;
 
@@ -3704,10 +3896,11 @@ async function nope(content, preview = false, anchor, runBtn) {
                 }
                 case "buildConfig": {
                     variables.internal.result = await variables.internal.credentialsBroker.getCredentials(variables);
-                    const ssoStartUrl = variables.internal.credentialsBroker.getStartUrl(variables);
-                    const {region} = await variables.internal.credentialsBroker.detectIDCRegion(ssoStartUrl);
+                    const isAAM = variables.internal.credentialsBroker.constructor.name === 'AAMCredentialsBroker';
+                    const url = isAAM ? variables.internal.credentialsBroker.getUrl(variables) : variables.internal.credentialsBroker.getStartUrl(variables);
+                    const {region} = isAAM ? variables.internal.credentialsBroker.parseUrl(url) : await variables.internal.credentialsBroker.detectIDCRegion(url);
                     let config = {
-                        ssoStartUrl,
+                        ...(isAAM ? {aamUrl: url} : {ssoStartUrl: url}),
                         "services" : {
                         }
                     }
@@ -3717,6 +3910,11 @@ async function nope(content, preview = false, anchor, runBtn) {
                             for(const permissionSet of account.permissionSets) {
                                 config.services[account.accountName].regions[`${region} - ${permissionSet}`]= {permSet:permissionSet};
                             }
+                        } else if(account.roles) {
+                            config.services[account.accountName] = {account: account.accountId, regions:{}};
+                            for(const role of account.roles) {
+                                config.services[account.accountName].regions[`${region} - ${role}`]= {role};
+                            }
                         }
                     }
                     config = variables.persistConfig ? JSON5.stringify(config,null,2) : `\`\`\`
@@ -3725,7 +3923,7 @@ ${JSON5.stringify(config,null,2)}
 \`\`\``;
                     if(variables.persistConfig) {
                         const allLookups = GM_getValue(SR_SSO_CONFIG_LOOKUP_KEY, {});
-                        allLookups[ssoStartUrl] = config;
+                        allLookups[url] = config;
                         GM_setValue(SR_SSO_CONFIG_LOOKUP_KEY, allLookups);
                         $('#ssoRefreshRequired').attr('hidden',true);
                     } else {
@@ -3811,7 +4009,7 @@ function getValue(selector, useText) {
 }
 
 function extractRegion(textRegionValue) {
-    return textRegionValue ? textRegionValue.replace(/ - [\w \.]+$/,'') : textRegionValue;
+    return textRegionValue ? textRegionValue.replace(/ - (?!.* - ).+$/,'') : textRegionValue;
 }
 
 function updateRegions() {
@@ -4016,10 +4214,13 @@ function setButtonDanger(btn, variables) {
 async function updateTabs() {
     let hasService = document.querySelector("#region").length > 0
     $('#accountRequired').attr('hidden',true);
-    const ssoStartUrl = normalizeStartUrl((await nope("#copy.withCreds", true)).ssoStartUrl);
-    if(ssoStartUrl) {
+    const copyVars = await nope("#copy.withCreds", true);
+    const ssoStartUrl = normalizeStartUrl(copyVars.ssoStartUrl);
+    const aamUrl = normalizeAAMUrl(copyVars.aamUrl);
+    const dynamicUrl = aamUrl || ssoStartUrl;
+    if(dynamicUrl) {
         const allLookups = GM_getValue(SR_SSO_CONFIG_LOOKUP_KEY, {});
-        insertSSORefreshButton(allLookups[ssoStartUrl]==undefined,ssoStartUrl);
+        insertRefreshButton(allLookups[dynamicUrl]==undefined, dynamicUrl, aamUrl ? 'AAM' : 'Identity Center');
     } else {
         $('#srRefresh').remove();
     }
@@ -4135,11 +4336,11 @@ function hasElements(arr) {
     return arr && Array.isArray(arr) && arr.length>0;
 }
 
-function overlaySSOConfig(config, ssoStartUrl) {
-    ssoStartUrl = normalizeStartUrl(ssoStartUrl);
-    if(ssoStartUrl) {
+function overlaySSOConfig(config, ssoStartUrl, aamUrl) {
+    const url = normalizeAAMUrl(aamUrl) || normalizeStartUrl(ssoStartUrl);
+    if(url) {
         const allLookups = GM_getValue(SR_SSO_CONFIG_LOOKUP_KEY, {});
-        const ssoConfig = allLookups[ssoStartUrl];
+        const ssoConfig = allLookups[url];
         if(ssoConfig) {
             config = $.extend(true, parseJSON(ssoConfig), config);
         }
@@ -4149,8 +4350,8 @@ function overlaySSOConfig(config, ssoStartUrl) {
 
 async function buildConfig(enabled) {
     let userConfig = getUserConfig();
-    pageConfig = (user && (userConfig.services[USER_SERVICE].regions.aws.account || userConfig.services[USER_SERVICE].ssoStartUrl)) ? userConfig : {};
-    pageConfig = overlaySSOConfig(pageConfig, userConfig.services[USER_SERVICE].ssoStartUrl);
+    pageConfig = (user && (userConfig.services[USER_SERVICE].regions.aws.account || userConfig.services[USER_SERVICE].ssoStartUrl || userConfig.services[USER_SERVICE].aamUrl)) ? userConfig : {};
+    pageConfig = overlaySSOConfig(pageConfig, userConfig.services[USER_SERVICE].ssoStartUrl, userConfig.services[USER_SERVICE].aamUrl);
     const configs = [];
     const blocks = [];
     let numPreBlocks = 0;
@@ -4217,8 +4418,10 @@ async function buildConfig(enabled) {
 
 function pushConfig(configs, content) {
     let json = parseJSON(content);
-    if(json.ssoStartUrl && (String(firstNonNull(json.dynamicSSOConfig, true)).toLowerCase() != "false")) {
-        json = overlaySSOConfig(json, json.ssoStartUrl);
+    const ssoStartUrl = (json.ssoStartUrl && (String(firstNonNull(json.dynamicSSOConfig, true)).toLowerCase() != "false")) ? json.ssoStartUrl : undefined;
+    const aamUrl = (json.aamUrl && (String(firstNonNull(json.dynamicAAMConfig, true)).toLowerCase() != "false")) ? json.aamUrl : undefined;
+    if(ssoStartUrl || aamUrl) {
+        json = overlaySSOConfig(json, ssoStartUrl, aamUrl);
     }
     configs.push(json);
     return json;
@@ -4423,7 +4626,14 @@ function alert(body, title) {
     $('#srModal-title').text(title || 'Alert');
     $('#srModal-body').html($('<p/>',{class:'text-mono'}).append(body));
     $('#srModal-error').attr('hidden',true);
-    $('#srModal-ok').prevAll().remove();
+    let okBtn = $('#srModal-ok');
+    okBtn.prevAll().remove();
+    okBtn.prop('disabled', false);
+    okBtn.addClass('btn-primary').removeClass('color-bg-danger-emphasis');
+    okBtn.off("click.sr").on("click.sr", function() {
+        okBtn.off("click.sr");
+        document.querySelector('#srModal').open = false;
+    });
     //todo make this a separate modal?
     setTimeout(() => {document.querySelector('#srModal').open = true}, 100);
 }
@@ -4505,6 +4715,9 @@ function getCredentialsBroker() {
         case "identitycenter":
             return new IdentityCenterCredentialsBroker();
             break;
+        case "aam":
+            return new AAMCredentialsBroker();
+            break;
         default:
             alertAndThrow('Unknown credentials broker');
             break;
@@ -4563,7 +4776,8 @@ function srUpdateClickHandler(event) {
 
 async function srRefreshClickHandler(event) {
     await nope('#buildConfig {persistConfig: true}');
-    toast('Identity Center configuration refreshed');
+    const isAAM = $('#srRefresh').attr('title')?.includes('AAM');
+    toast(`${isAAM ? 'AAM' : 'Identity Center'} configuration refreshed`);
     rebindPageConfig();
 }
 
@@ -4582,6 +4796,10 @@ function rebindPageConfig(location){
 
 function normalizeStartUrl(startUrl) {
     return startUrl ? startUrl.replace(/(\/?(start)?\/?)$/,'/start') : startUrl;
+}
+
+function normalizeAAMUrl(aamUrl) {
+    return aamUrl ? aamUrl.replace(/(\/?(console)?\/?)$/,'') : aamUrl;
 }
 
 //  ]]></>).toString(), { "targets": "> 0.25%, not dead"}).code);
