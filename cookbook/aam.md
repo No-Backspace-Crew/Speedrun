@@ -9,6 +9,8 @@ If you'd like to configure Speedrun to use [Account Access Manager](https://docs
 
 To use the Account Access Manager credentials broker, click the gear icon in the Speedrun toolbar to enter settings. Then change the **Credentials Broker** to Account Access Manager (Experimental), and set your **Account Access Manager Url** and default **Role** for your personal account. Setting this will configure what role to use when you select your GitHub username in the dropdowns.
 
+<img width="646" height="800" alt="SCR-20261111-icaa" src="https://github.com/user-attachments/assets/8858c81c-1a1e-4c27-8a5e-3c7d7a6beb6f" />
+
 Alternatively if you set the variable `aamUrl` anywhere in your `#srConfig`, it will override this setting. If you are configuring pages for your team include something like this on your page.
 
 ````
