@@ -1,24 +1,24 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.166
+// @version      1.167
 // @description  Markdown to build tools
 // @author       No Backspace Crew
-// @require      https://speedrun.nobackspacecrew.com/js/jquery@4.0.0/jquery-4.0.0.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/lodash@4.17.21/lodash.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/jquery@4.1.0/jquery-4.1.0.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/lodash@4.18.1/lodash.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/select2@4.1.0/select2.min.js
 // @resource     select2css https://speedrun.nobackspacecrew.com/css/select2@4.1.0/select2.min.css
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/dayjs.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/utc.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/duration.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.13/plugin/relativeTime.js
-// @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@1.0.6/dayjs-parser.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.2/xregexp.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.23/dayjs.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.23/plugin/utc.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.23/plugin/duration.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs@1.11.23/plugin/relativeTime.js
+// @require      https://speedrun.nobackspacecrew.com/js/dayjs-parser@1.0.7/dayjs-parser.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/xregexp@5.1.3/xregexp.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/json5@2.2.3/index.min.js
 // @require      https://speedrun.nobackspacecrew.com/js/srInvoke@0.0.2/srInvoke.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.2.4/purify.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.6.7/modern-screenshot.min.js
-// @require      https://speedrun.nobackspacecrew.com/js/p-throttle@8.1.0/p-throttle.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/dompurify@3.4.18/purify.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/modern-screenshot@4.7.0/modern-screenshot.min.js
+// @require      https://speedrun.nobackspacecrew.com/js/p-throttle@8.1.1/p-throttle.min.js
 // @sandbox      JavaScript
 // @grant        GM_setValue
 // @grant        GM_getValue
