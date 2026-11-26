@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.167
+// @version      1.168
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.1.0/jquery-4.1.0.min.js
@@ -1731,9 +1731,12 @@ async function handleTurboNavigation(reason) {
     persistIfIssue();
     persistLastPath(window.location);
 
-    if (isSRPage()) {
+    if (isSRPage() && !document.documentElement.hasAttribute('data-turbo-preview')) {
         if (!doneLoading()) {
             await updatePage(reason);
+        } else if ($('#srToolbar').length && !$('#region').data('select2')) {
+            await rebindPageConfig();
+            return;
         }
     }
     showToolbarOnPage();
@@ -1763,9 +1766,21 @@ async function sleep(interval=500) {
 function destroySelect2(...selectors) {
     selectors.forEach(selector => {
         let element = $(selector);
-        if (element && element.hasClass("select2-hidden-accessible")) {
-            element.next().remove();
-        }});
+        if (!element.length) {
+            return;
+        }
+        if (element.data('select2')) {
+            element.select2('destroy');
+        }
+        while (element.next('.select2-container').length) {
+            element.next('.select2-container').remove();
+        }
+        element.removeClass('select2-hidden-accessible')
+            .removeAttr('data-select2-id')
+            .removeAttr('aria-hidden')
+            .removeAttr('tabindex');
+        element.find('[data-select2-id]').removeAttr('data-select2-id');
+    });
 }
 
 function select2NameAndAccountMatcher(params, data) {
@@ -1830,10 +1845,11 @@ function bindDataAndEvents() {
         {
             matcher: select2NameAndAccountMatcher,
             dropdownAutoWidth : true,
-            width:'copy'
+            width:'element'
         });
     //$('#region').select2({dropdownAutoWidth : true, width:'copy'});
-    $('#service').children().length ? $('#service').next().show() : $('#service').next().hide();
+    $('#service').children().length ? $('#service').next('.select2-container').show() : $('#service').next('.select2-container').hide();
+    $('#region').children().length ? $('#region').next('.select2-container').show() : $('#region').next('.select2-container').hide();
 }
 
 const HEADER = /^#(!?\w+(\.?\w)*)(?:[ \t]+(?:[Ss]ervice=)([^\s-]+))?([ \t]*{.*})?(?:[ \t]*\n)?/;
@@ -1915,7 +1931,7 @@ Object.entries(regionMap).forEach(([name, region]) => {
 
 addEventListener('popstate', async (event) => {
     //when the back button is pressed, all events/data is lost, this is an attempt to wire those back up
-    rebindPageConfig(event.target.location.pathname);
+    await rebindPageConfig(event.target.location.pathname, true);
 });
 
 function isPartition(str) {
@@ -2277,7 +2293,8 @@ body:has(details#srModal[open]) {
   background-color: var(--bgColor-emphasis);
 }
 
-body:has([data-testid="quick-search-input-overlay"]) #srToolbar {
+body:has([data-testid="quick-search-input-overlay"]) #srToolbar,
+html[data-turbo-preview] #srToolbar {
     display: none !important;
 }
 
@@ -2521,7 +2538,7 @@ html.sr-scrolled .sr-autohide > * {
         }}};*/
 
         dataAndEvents.region = {events: {'change': async function() {
-            curRegion = extractRegion($('#region option:selected').text());
+            curRegion = getRegion();
             await updateTabs();
         }}};
 
@@ -3404,7 +3421,7 @@ function prependToOutput(outputText, runBtn, copy=false) {
       <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check js-clipboard-check-icon color-fg-success d-none">
     <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
 </svg>
-    </clipboard-copy></div><div class="d-flex flex-row"><code style='word-wrap:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div></div></div>`;
+    </clipboard-copy></div><div class="d-flex flex-row"><code style='white-space:pre-wrap'>${escapeHTMLStartTags(outputText)}</code></div></div></div>`;
         output.prepend(timelineItem);
         timelineItem = output.children().first();
         $(`#tab-${outputTabId}`).removeClass('d-none').click();
@@ -3610,7 +3627,7 @@ async function nope(content, preview = false, anchor, runBtn) {
                             url.hash = anchor.attr('href').substring(1);
                         }
                         let parameters = new URLSearchParams();
-                        parameters.append('srRegion', extractRegion(getValue('#select2-region-container', true)));
+                        parameters.append('srRegion', getRegion());
                         parameters.append('srService', getValue('#service'));
                         if(runBtn && runBtn.prop('id')) {
                             parameters.append('srButton', runBtn.prop('id'));
@@ -3939,7 +3956,7 @@ ${JSON5.stringify(config,null,2)}
             alertAndThrow(e);
         }
         //persist last region and service
-        let lastRegion = extractRegion(getValue('#select2-region-container', true));
+        let lastRegion = getRegion();
         if(lastRegion) {
             localStorage.setItem(LAST_REGION_KEY, lastRegion);
         }
@@ -4018,6 +4035,7 @@ function updateRegions() {
     let regions = [];
     let currentOptGroup = undefined;
     let numRegions = 0;
+    let matchedRegion = undefined;
     for(const region of firstNonNull(getRegions(service.val(), pageConfig))) {
         let splits = region.split(' ', 2);
         let suffix = splits.length > 1 ? splits[1] : '';
@@ -4025,14 +4043,21 @@ function updateRegions() {
             currentOptGroup = $(`<optgroup label='${regionNameMap[splits[0]].area}'/>`);
             regions.push(currentOptGroup);
         }
-        currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${region}" ${region == lastRegion ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
+        const isSelected = region == lastRegion;
+        if(isSelected) {
+            matchedRegion = region;
+        }
+        currentOptGroup.append($(`<option title='${regionNameMap[splits[0]].name}' value="${region}" ${isSelected ? 'selected' : ''}>${region} - ${regionNameMap[splits[0]].prettyName}</option>`));
         numRegions++;
     }
     const region = $('#region');
     // Always sync visibility with regional availability:
     $('.needsRegion').toggle(regions.length > 0);
     region.empty().append(regions).prop('disabled',numRegions == 1).attr('hidden',numRegions ==0);
-    regions.length > 0 ? region.next().show() : region.next().hide();
+    if(matchedRegion !== undefined) {
+        region.val(matchedRegion);
+    }
+    regions.length > 0 ? region.next('.select2-container').show() : region.next('.select2-container').hide();
 }
 
 
@@ -4088,9 +4113,10 @@ async function updatePage(reason) {
 }
 
         await updatePageConfig(path);
+        updateRegions();
 
         bindDataAndEvents();
-        $("#service").trigger('change');
+        $("#region").trigger('change');
 
         for(const block of $(".markdown-body p > code, .markdown-body li > code, .markdown-body td > code, .markdown-body :header > code").not('code + span.copyCursor')) {
             $(block).after(`<span class='copyCursor'><clipboard-copy aria-label="Copy text" value="${escapeHTMLStartTags($(block).text())}" data-view-component="true" tabindex="0" role="button">    <svg aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-copy" style="display: inline-block;">    <path fill-rule="evenodd" d="M0 6.75C0 5.784.784 5 1.75 5h1.5a.75.75 0 010 1.5h-1.5a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-1.5a.75.75 0 011.5 0v1.5A1.75 1.75 0 019.25 16h-7.5A1.75 1.75 0 010 14.25v-7.5z"></path><path fill-rule="evenodd" d="M5 1.75C5 .784 5.784 0 6.75 0h7.5C15.216 0 16 .784 16 1.75v7.5A1.75 1.75 0 0114.25 11h-7.5A1.75 1.75 0 015 9.25v-7.5zm1.75-.25a.25.25 0 00-.25.25v7.5c0 .138.112.25.25.25h7.5a.25.25 0 00.25-.25v-7.5a.25.25 0 00-.25-.25h-7.5z"></path></svg>    <svg style="display: none;" aria-hidden="true" height="16" viewBox="0 0 16 16" version="1.1" width="16" data-view-component="true" class="octicon octicon-check color-fg-success">    <path fill-rule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z"></path></svg></clipboard-copy></span>`);
@@ -4778,19 +4804,26 @@ async function srRefreshClickHandler(event) {
     await nope('#buildConfig {persistConfig: true}');
     const isAAM = $('#srRefresh').attr('title')?.includes('AAM');
     toast(`${isAAM ? 'AAM' : 'Identity Center'} configuration refreshed`);
-    rebindPageConfig();
+    await rebindPageConfig();
 }
 
-function rebindPageConfig(location){
+async function rebindPageConfig(location, onlyIfUnbound = false){
     let result = isSRPage();
     if(result) {
-        setTimeout(async () => {
+        if(updatingPage || (onlyIfUnbound && $('#region').data('select2'))) {
+            return;
+        }
+        try {
+            updatingPage = true;
             let [,path] = result;
             let pageEnabled = await updatePageConfig(location || path);
+            updateRegions();
             bindDataAndEvents();
             showToolbarOnPage();
-            $("#service").trigger('change');
-        }, 50);
+            $("#region").trigger('change');
+        } finally {
+            updatingPage = false;
+        }
     }
 }
 
