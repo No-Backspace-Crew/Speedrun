@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Speedrun
 // @namespace    https://speedrun.nobackspacecrew.com/
-// @version      1.168
+// @version      1.168.1
 // @description  Markdown to build tools
 // @author       No Backspace Crew
 // @require      https://speedrun.nobackspacecrew.com/js/jquery@4.1.0/jquery-4.1.0.min.js
@@ -1845,7 +1845,7 @@ function bindDataAndEvents() {
         {
             matcher: select2NameAndAccountMatcher,
             dropdownAutoWidth : true,
-            width:'element'
+            width:'auto'
         });
     //$('#region').select2({dropdownAutoWidth : true, width:'copy'});
     $('#service').children().length ? $('#service').next('.select2-container').show() : $('#service').next('.select2-container').hide();
